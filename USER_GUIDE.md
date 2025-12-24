@@ -16,11 +16,15 @@ Dokumen ini berisi panduan lengkap cara menggunakan aplikasi ASOI untuk keperlua
 ### Menambah Tiang (TR/TM)
 1.  Geser peta ke lokasi tiang, atau tekan tombol **🎯** (lokasi saya) untuk zoom ke posisi Anda.
 2.  Tekan tombol ikon **Tiang (⚡)** di menu bawah.
-3.  Pilih Jenis Tiang:
-    *   **TR** (Tegangan Rendah): Tiang Besi/Beton 7m, 9m.
-    *   **TM** (Tegangan Menengah): Tiang Beton 11m, 13m, dst.
-4.  Isi data konstruksi (misal: C1, C2) dan keterangan.
-5.  Tekan **"Simpan"**. Marker tiang akan muncul di peta.
+3.  Pilih Jenis Jaringan:
+    *   **SUTR** (Tegangan Rendah): Tiang Besi/Beton 9m, 11m.
+    *   **SUTM** (Tegangan Menengah): Tiang Beton 11m, 12m, 14m.
+4.  **(Khusus SUTM)** Pilih **Standar Konstruksi**:
+    *   **Nasional**: TM-1, TM-2, TM-3, dst (SPLN).
+    *   **Lokal**: TM1B, TM2B, TM4B, dst (standar daerah).
+    *   ⚠️ Standar akan terkunci setelah tiang pertama ditambahkan.
+5.  Isi data konstruksi dan keterangan.
+6.  Tekan **"Simpan"**. Marker tiang akan muncul di peta.
 
 ### Menambah Gardu
 1.  Tekan tombol ikon **Gardu (🏠)**.
@@ -39,7 +43,11 @@ Dokumen ini berisi panduan lengkap cara menggunakan aplikasi ASOI untuk keperlua
 
 *   **Ganti Mode Peta**: Klik ikon Layer di kanan atas untuk ganti Satellite/Standard.
 *   **Pasang Disini**: Tombol cepat untuk memasang marker tepat di koordinat GPS Anda berdiri saat ini.
-*   **Layer Control**: Klik ikon Tumpukan Kertas untuk menyembunyikan/menampilkan asset tertentu (misal: hanya mau lihat Gardu saja).
+*   **Layer Control**: Klik ikon ⚙️ untuk mengatur visibilitas:
+    *   **Label Tiang/Gardu**: Tampilkan/sembunyi nama label.
+    *   **Titik Tiang/Gardu**: Tampilkan/sembunyi marker bulat.
+    *   **Jalur Kabel**: Toggle per jenis (SUTR/SUTM/SKUTM).
+*   **Zoom Persisten**: Level zoom peta tetap tersimpan saat menambah data.
 
 ## 4. Menyimpan & Sinkronisasi Data
 

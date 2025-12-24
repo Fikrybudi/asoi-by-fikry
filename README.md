@@ -2,7 +2,14 @@
 
 **ASOI** adalah aplikasi mobile berbasis **React Native (Expo)** yang dirancang untuk mempermudah proses survey lapangan aset PLN (Tiang, Gardu, dan Jalur Kabel). Aplikasi ini bekerja secara **Offline-First**, memungkinkan surveyor bekerja di area tanpa sinyal dan menyinkronkan data ke Cloud (Supabase) saat kembali online.
 
-![App Status](https://img.shields.io/badge/status-production-green) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-blue) ![Expo](https://img.shields.io/badge/sdk-Expo%2052-black)
+![App Status](https://img.shields.io/badge/version-v1.1-blue) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green) ![Expo](https://img.shields.io/badge/sdk-Expo%2052-black)
+
+## 🆕 What's New in v1.1
+
+- **Standar Konstruksi Lokal/Nasional**: Toggle antara standar SPLN (TM-1, TM-2) dan standar lokal (TM1B, TM2B).
+- **Zoom Persistence**: Zoom level peta tetap tersimpan saat menambah tiang/gardu.
+- **Marker Gardu Baru**: Titik bulat orange untuk gardu, terpisah dari tiang.
+- **Layer Control Lengkap**: Toggle visibility untuk label + titik tiang/gardu.
 
 ## ✨ Fitur Utama
 
@@ -14,10 +21,12 @@
     *   **CSV**: Kompatibel dengan Excel & Google Maps Import.
     *   **PDF**: Laporan siap cetak dengan rekap material.
 *   **🛠️ Tools Lengkap**:
-    *   Layer Control (menyembunyikan/menampilkan aset tertentu).
+    *   Layer Control (menyembunyikan/menampilkan label & titik aset).
     *   Snap-to-Location (Pasang titik survey di lokasi saat ini).
+    *   Standar Konstruksi Nasional/Lokal (SUTM).
+    *   Zoom level persists across map updates.
     *   Edit Survey & History Management.
-*   **📸 Dokumentasi**: Foto aset langsung dari aplikasi (Coming Soon).
+*   **📸 Dokumentasi**: Foto aset langsung dari aplikasi.
 
 ## 📱 Screenshots
 
