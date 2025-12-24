@@ -15,6 +15,7 @@ import {
     Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
 import { Coordinate, Gardu } from '../../types';
 import {
     JENIS_GARDU,
@@ -361,7 +362,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        paddingTop: Constants.statusBarHeight + 10,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#e0e0e0',

@@ -35,6 +35,7 @@ interface SurveyMapProps {
     skutm: boolean;
   };
   onCenterChange?: (coordinate: Coordinate) => void;
+  selectedTiangIds?: string[];
 }
 
 // =============================================================================
@@ -47,8 +48,9 @@ const generateMapHTML = (
   garduList: Gardu[],
   jalurList: JalurKabel[],
   currentJalurCoords: Coordinate[],
-  isAddMode: boolean,
   isAddingTiang: boolean,
+  isAddingGardu: boolean,
+  isDrawingJalur: boolean,
   lastTiangCoord: Coordinate | undefined,
   visibleLayers: {
     tiang: boolean;
@@ -56,8 +58,11 @@ const generateMapHTML = (
     sutr: boolean;
     sutm: boolean;
     skutm: boolean;
-  } = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true }
+  } = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true },
+  selectedTiangIds: string[] = [],
+  zoomLevel: number = 18
 ) => {
+  const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
   // Tiang markers with labels
   const tiangMarkers = tiangList.map(t => {
     // Color based on jenis jaringan
@@ -71,16 +76,34 @@ const generateMapHTML = (
       borderColor = '#00838F';
     }
 
+    // Check if selected
+    const isSelected = selectedTiangIds.includes(t.id);
+    if (isSelected) {
+      bgColor = '#FFEB3B'; // Yellow warning color
+      borderColor = '#FF9800'; // Orange border
+    }
+
+    const labelStyle = isSelected
+      ? `background:${bgColor};color:black;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 0 8px #FFC107;border:2px solid ${borderColor};transform:scale(1.1);`
+      : `background:${bgColor};color:white;padding:3px 6px;border-radius:4px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);border:2px solid ${borderColor};`;
+
+    // Extract height and strength numbers
+    const tinggiNum = t.tinggiTiang ? t.tinggiTiang.replace(/[^0-9]/g, '') : '';
+    const kekuatanNum = t.kekuatanTiang ? t.kekuatanTiang.replace(/[^0-9]/g, '') : '';
+    const labelText = tinggiNum && kekuatanNum
+      ? `${t.konstruksi} ${tinggiNum}/${kekuatanNum}`
+      : `${t.nomorUrut}. ${t.konstruksi}`;
+
     return `
     // Tiang marker
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       icon: L.divIcon({
         className: 'tiang-icon',
-        html: '<div style="background:${bgColor};color:white;padding:3px 6px;border-radius:4px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);border:2px solid ${borderColor};">${t.nomorUrut}. ${t.konstruksi}</div>',
-        iconSize: [60, 24],
-        iconAnchor: [30, 50]
+        html: '<div style="${labelStyle}">${labelText}</div>',
+        iconSize: null,
+        iconAnchor: [0, 30]
       })
-    }).addTo(map).bindPopup('<b>Tiang ${t.nomorUrut}</b><br>${t.konstruksi}<br>${t.jenisTiang} ${t.tinggiTiang}')
+    }).addTo(map).bindPopup('<b>Tiang ${t.nomorUrut}</b><br>${t.konstruksi}<br>${t.jenisTiang} ${t.tinggiTiang}/${t.kekuatanTiang}')
       .on('click', function() {
         window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiang', id: '${t.id}'}));
       });
@@ -88,24 +111,44 @@ const generateMapHTML = (
     // Small dot at exact location
     L.circleMarker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
-      radius: 5,
+      radius: ${isSelected ? 8 : 5},
       fillColor: '${bgColor}',
       color: '${borderColor}',
       weight: 2,
-      fillOpacity: 1
-    }).addTo(map);
+      fillOpacity: 1,
+      className: 'titik-tiang'
+    }).addTo(map)
+      .on('click', function() {
+        window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiang', id: '${t.id}'}));
+      });
   `;
   }).join('\n');
 
   const garduMarkers = garduList.map(g => `
+    // Gardu label - shifted to southwest
     L.marker([${g.koordinat.latitude}, ${g.koordinat.longitude}], {
       icon: L.divIcon({
         className: 'gardu-icon',
         html: '<div style="background:#FF9800;color:white;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${g.nomorGardu}<br><span style="font-size:9px;opacity:0.9;">${g.kapasitasKVA}kVA</span></div>',
-        iconSize: [70, 45],
-        iconAnchor: [35, 22]
+        iconSize: null,
+        iconAnchor: [-5, -5]
       })
     }).addTo(map).bindPopup('<b>${g.nomorGardu}</b><br>${g.jenisGardu}<br>${g.kapasitasKVA} kVA')
+      .on('click', function() {
+        window.ReactNativeWebView.postMessage(JSON.stringify({type: 'gardu', id: '${g.id}'}));
+      });
+    
+    // Gardu circle marker - slightly larger than tiang, orange color, offset to not overlap with tiang
+    var garduOffset = -0.000015; // ~1.5m offset to the left
+    L.circleMarker([${g.koordinat.latitude}, ${g.koordinat.longitude} + garduOffset], {
+      pane: 'tiangPane',
+      radius: 7,
+      fillColor: '#FF9800',
+      color: '#E65100',
+      weight: 2,
+      fillOpacity: 1,
+      className: 'titik-gardu'
+    }).addTo(map)
       .on('click', function() {
         window.ReactNativeWebView.postMessage(JSON.stringify({type: 'gardu', id: '${g.id}'}));
       });
@@ -188,13 +231,17 @@ const generateMapHTML = (
           }
         }
 
+        // Offset jalur label to opposite side of tiang labels (tiang labels are above, so jalur goes below)
+        const jalurLabelOffset = 0.00003; // ~3m below
+        const adjustedMidLat = midLat - jalurLabelOffset;
+
         segmentLabels += `
-          L.marker([${midLat}, ${midLng}], {
+          L.marker([${adjustedMidLat}, ${midLng}], {
             icon: L.divIcon({
               className: 'segment-label segment-label-${j.jenisJaringan}',
               html: '<div style="background:${color};color:white;padding:2px 5px;border-radius:8px;font-size:8px;font-weight:bold;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.3);opacity:0.9;">${segDistLabel}</div>',
               iconSize: [40, 16],
-              iconAnchor: [20, 8]
+              iconAnchor: [20, -4]
             }),
             interactive: false
           }).addTo(map);
@@ -453,7 +500,7 @@ const generateMapHTML = (
   <script>
     var map = L.map('map', {
       zoomControl: true
-    }).setView([${center.latitude}, ${center.longitude}], 18);
+    }).setView([${center.latitude}, ${center.longitude}], ${zoomLevel});
 
     // Create custom pane for Tiang points (above lines, below labels)
     map.createPane('tiangPane');
@@ -505,14 +552,25 @@ const generateMapHTML = (
       }));
     });
 
+    // Track zoom changes to persist across re-renders
+    map.on('zoomend', function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'zoomChange',
+        zoom: map.getZoom()
+      }));
+    });
+
     // Helper to update visibility dynamically
     window.updateLayerVisibility = function(layers) {
       var css = '';
       if (!layers.tiang) css += '.tiang-icon { display: none !important; }';
       if (!layers.gardu) css += '.gardu-icon { display: none !important; }';
+      if (!layers.titikTiang) css += '.titik-tiang { display: none !important; }';
+      if (!layers.titikGardu) css += '.titik-gardu { display: none !important; }';
       if (!layers.sutr) css += '.segment-label-SUTR { display: none !important; }';
       if (!layers.sutm) css += '.segment-label-SUTM { display: none !important; }';
       if (!layers.skutm) css += '.segment-label-SKUTM { display: none !important; }';
+      
       
       var styleId = 'dynamic-layer-styles';
       var styleEl = document.getElementById(styleId);
@@ -552,6 +610,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   lastTiangCoord,
   visibleLayers = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true },
   onCenterChange,
+  selectedTiangIds = [],
 }, ref) => {
   const webviewRef = useRef<WebView>(null);
   const containerRef = useRef<View>(null);
@@ -562,6 +621,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   const [isLoading, setIsLoading] = useState(true);
   const [centerCoordinate, setCenterCoordinate] = useState<Coordinate | null>(null);
   const [liveDistance, setLiveDistance] = useState<number | null>(null);
+  const [currentZoom, setCurrentZoom] = useState(18); // Track current zoom level
 
   // Expose captureMap method via ref
   useImperativeHandle(ref, () => ({
@@ -664,6 +724,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       } else if (data.type === 'jalur') {
         const jalur = jalurList.find(j => j.id === data.id);
         if (jalur && onJalurPress) onJalurPress(jalur);
+      } else if (data.type === 'zoomChange') {
+        setCurrentZoom(data.zoom);
       }
     } catch (error) {
       console.log('Message parse error:', error);
@@ -678,10 +740,13 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     garduList,
     jalurList,
     currentJalurCoords,
-    isAddMode,
     isAddingTiang,
+    isAddingGardu,
+    isDrawingJalur,
     lastTiangCoord,
-    visibleLayers // PASSED HERE
+    visibleLayers,
+    selectedTiangIds,
+    currentZoom
   );
 
   return (

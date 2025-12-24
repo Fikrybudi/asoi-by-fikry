@@ -146,6 +146,9 @@ export interface Survey {
     garduList: Gardu[];
     jalurList: JalurKabel[];
 
+    // Construction standard (locked after first tiang is added)
+    standarKonstruksi?: 'Nasional' | 'Lokal';
+
     // Rencana teknik summary
     rencanaTeknik?: RencanaTeknik;
 

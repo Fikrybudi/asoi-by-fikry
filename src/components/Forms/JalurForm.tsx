@@ -12,6 +12,7 @@ import {
     ScrollView,
     Modal,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { Coordinate, JalurKabel } from '../../types';
 import { PENGHANTAR, JENIS_JARINGAN } from '../../utils/plnStandards';
 import { formatDistance, calculatePolylineLength } from '../../utils/geoUtils';
@@ -344,7 +345,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        paddingTop: Constants.statusBarHeight + 10,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#e0e0e0',

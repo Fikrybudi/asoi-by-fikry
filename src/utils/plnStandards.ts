@@ -94,6 +94,63 @@ export const KONSTRUKSI_TM: Record<string, KonstruksiTM> = {
     },
 };
 
+export const KONSTRUKSI_TM_LOKAL: Record<string, KonstruksiTM> = {
+    'TM1B': {
+        kode: 'TM1B',
+        nama: 'Tiang Penyangga',
+        keterangan: 'Jaringan lurus atau sudut ≤5° (Nasional: TM-1)',
+        isolator: 'Pin Insulator'
+    },
+    'TM2B': {
+        kode: 'TM2B',
+        nama: 'Tiang Sudut Kecil',
+        keterangan: 'Sudut 5° - 30°, double cross arm (Nasional: TM-2)',
+        isolator: 'Pin Insulator'
+    },
+    'TM4B': {
+        kode: 'TM4B',
+        nama: 'Tiang Penegang (Asfan)',
+        keterangan: 'Dipasang setiap 10-15 gawang, pakai Asfan (Nasional: TM-3)',
+        isolator: 'Suspension/Asfan Insulator'
+    },
+    'TM14B': {
+        kode: 'TM14B',
+        nama: 'Tiang Akhir',
+        keterangan: 'Tiang akhir tanpa kabel naik (Nasional: TM-4)',
+        isolator: 'Suspension Insulator'
+    },
+    'TM11B': {
+        kode: 'TM11B',
+        nama: 'Tiang Awal',
+        keterangan: 'Tiang awal dengan kabel naik outdoor (Nasional: TM-4)',
+        isolator: 'Suspension Insulator'
+    },
+    'TM3B': {
+        kode: 'TM3B',
+        nama: 'Tiang Penegang DC',
+        keterangan: 'Penegang Double Circuit (4 travers) (Nasional: TM-3D)',
+        isolator: 'Suspension + Pin Insulator'
+    },
+    'TM7B': {
+        kode: 'TM7B',
+        nama: 'Tiang Sudut 90°',
+        keterangan: 'Belokan siku/tegak lurus (Nasional: TM-7)',
+        isolator: 'Suspension Insulator'
+    },
+    'TM8B': {
+        kode: 'TM8B',
+        nama: 'Tiang Percabangan',
+        keterangan: 'Titik cabang jaringan TM (Nasional: TM-8)',
+        isolator: 'Pin + Suspension'
+    },
+    'TM5B': {
+        kode: 'TM5B',
+        nama: 'Tiang Portal',
+        keterangan: 'Lokasi gardu/portal trafo (Nasional: TM-11)',
+        isolator: 'Pin Insulator'
+    },
+};
+
 // =============================================================================
 // KONSTRUKSI JTR/SUTR - SALURAN UDARA TEGANGAN RENDAH (220/380 V)
 // =============================================================================

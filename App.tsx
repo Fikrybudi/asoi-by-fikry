@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch } from 'react-native';
+import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import SurveyMap, { SurveyMapRef } from './src/components/Map/SurveyMap';
@@ -16,15 +16,19 @@ import SurveyHistoryScreen from './src/screens/SurveyHistoryScreen';
 import { Coordinate, Tiang, Gardu, JalurKabel, Survey } from './src/types';
 import { surveyService, tiangService, garduService, jalurService } from './src/services/database';
 import { calculateDistance } from './src/utils/geoUtils';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from './src/services/supabaseClient';
+import LoginScreen from './src/screens/LoginScreen';
 
-// =============================================================================
-// MAIN APP
-// =============================================================================
+// ... other imports
 
 export default function App() {
   // ==========================================================================
   // STATE
   // ==========================================================================
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   const [currentSurvey, setCurrentSurvey] = useState<Survey | null>(null);
   const [toolMode, setToolMode] = useState<ToolMode>('none');
@@ -74,9 +78,10 @@ export default function App() {
   const [layerVisibility, setLayerVisibility] = useState({
     tiang: true,
     gardu: true,
+    titikTiang: true,
+    titikGardu: true,
     sutr: true,
     sutm: true,
-    skutm: true,
     skutm: true,
   });
 
@@ -88,10 +93,28 @@ export default function App() {
   // ==========================================================================
 
   useEffect(() => {
-    initializeSurvey();
+    // 1. Check for valid session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthInitialized(true);
+      if (session) {
+        initializeSurvey();
+      }
+    });
+
+    // 2. Listen for auth changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session && !currentSurvey) {
+        initializeSurvey();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const initializeSurvey = async () => {
+    // ... logic to load survey (same as before)
     try {
       console.log('Initializing survey...');
 
@@ -186,7 +209,10 @@ export default function App() {
   // FORM SUBMIT HANDLERS
   // ==========================================================================
 
-  const handleTiangSubmit = async (data: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'>) => {
+  const handleTiangSubmit = async (
+    data: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'>,
+    standarUsed: 'Nasional' | 'Lokal'
+  ) => {
     try {
       if (!currentSurvey) {
         Alert.alert('Error', 'Survey belum dimuat');
@@ -201,9 +227,14 @@ export default function App() {
 
       if (newTiang) {
         const updatedTiangList = [...currentSurvey.tiangList, newTiang];
+
+        // Lock standarKonstruksi on first SUTM tiang
+        const shouldLockStandar = !currentSurvey.standarKonstruksi && data.jenisJaringan === 'SUTM';
+
         setCurrentSurvey(prev => prev ? {
           ...prev,
           tiangList: updatedTiangList,
+          ...(shouldLockStandar && { standarKonstruksi: standarUsed }),
         } : null);
 
         // If this is tiang #2 or more, offer to auto-connect with previous tiang
@@ -685,6 +716,18 @@ export default function App() {
   // RENDER
   // ==========================================================================
 
+  if (!authInitialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1565C0' }}>
+        <ActivityIndicator size="large" color="white" />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen />;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
@@ -769,6 +812,7 @@ export default function App() {
           lastTiangCoord={currentSurvey?.tiangList.length ? currentSurvey.tiangList[currentSurvey.tiangList.length - 1].koordinat : undefined}
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}
+          selectedTiangIds={underbuildTiangIds}
         />
       </View>
 
@@ -785,6 +829,21 @@ export default function App() {
             <Ionicons name="location" size={20} color="white" style={{ marginRight: 8 }} />
             <Text style={styles.placePinText}>
               {toolMode === 'add-tiang' ? 'Pasang Tiang Disini' : 'Pasang Gardu Disini'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Floating Action Button for Jalur Drawing */}
+      {toolMode === 'draw-jalur' && centerCoordinate !== null && !uiHidden && (
+        <View style={styles.placePinContainer}>
+          <TouchableOpacity
+            style={[styles.placePinButton, { backgroundColor: '#E91E63' }]}
+            onPress={() => handleMapPress(centerCoordinate)}
+          >
+            <Ionicons name="add-circle" size={20} color="white" style={{ marginRight: 8 }} />
+            <Text style={styles.placePinText}>
+              {drawingCoords.length === 0 ? 'Mulai Jalur Disini' : `Tambah Titik (${drawingCoords.length})`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -818,6 +877,7 @@ export default function App() {
             setToolMode('none');
           }}
           lastJenisJaringan={lastJenisJaringan}
+          lockedStandar={currentSurvey?.standarKonstruksi}
         />
       )}
 
@@ -882,75 +942,105 @@ export default function App() {
         onRequestClose={() => setShowLayerControl(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={styles.layerModalContent}>
+          <View style={[styles.layerModalContent, { maxHeight: '80%' }]}>
             <Text style={styles.layerTitle}>Atur Layer Peta</Text>
 
-            <View style={styles.layerItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="pricetag" size={18} color="#666" style={{ marginRight: 8 }} />
-                <Text style={styles.layerItemText}>Label Tiang</Text>
+            <ScrollView style={{ maxHeight: 400 }}>
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="pricetag" size={18} color="#666" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Label Tiang</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.tiang}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, tiang: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.tiang ? "#2196F3" : "#f4f3f4"}
+                />
               </View>
-              <Switch
-                value={layerVisibility.tiang}
-                onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, tiang: v }))}
-                trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={layerVisibility.tiang ? "#2196F3" : "#f4f3f4"}
-              />
-            </View>
 
-            <View style={styles.layerItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="flash" size={18} color="#FF9800" style={{ marginRight: 8 }} />
-                <Text style={styles.layerItemText}>Label Gardu</Text>
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="flash" size={18} color="#FF9800" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Label Gardu</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.gardu}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, gardu: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.gardu ? "#2196F3" : "#f4f3f4"}
+                />
               </View>
-              <Switch
-                value={layerVisibility.gardu}
-                onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, gardu: v }))}
-                trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={layerVisibility.gardu ? "#2196F3" : "#f4f3f4"}
-              />
-            </View>
 
-            <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Jalur Kabel</Text>
+              <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Titik Marker</Text>
 
-            <View style={styles.layerItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="radio-button-on" size={18} color="#4CAF50" style={{ marginRight: 8 }} />
-                <Text style={styles.layerItemText}>Label SUTR (TR)</Text>
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="ellipse" size={18} color="#2196F3" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Titik Tiang</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.titikTiang}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, titikTiang: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.titikTiang ? "#2196F3" : "#f4f3f4"}
+                />
               </View>
-              <Switch
-                value={layerVisibility.sutr}
-                onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sutr: v }))}
-                trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={layerVisibility.sutr ? "#4CAF50" : "#f4f3f4"}
-              />
-            </View>
 
-            <View style={styles.layerItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="radio-button-on" size={18} color="#E91E63" style={{ marginRight: 8 }} />
-                <Text style={styles.layerItemText}>Label SUTM (TM)</Text>
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="ellipse" size={18} color="#FF9800" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Titik Gardu</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.titikGardu}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, titikGardu: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.titikGardu ? "#FF9800" : "#f4f3f4"}
+                />
               </View>
-              <Switch
-                value={layerVisibility.sutm}
-                onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sutm: v }))}
-                trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={layerVisibility.sutm ? "#E91E63" : "#f4f3f4"}
-              />
-            </View>
 
-            <View style={styles.layerItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="radio-button-on" size={18} color="#00BCD4" style={{ marginRight: 8 }} />
-                <Text style={styles.layerItemText}>Label SKUTM</Text>
+              <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Jalur Kabel</Text>
+
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="radio-button-on" size={18} color="#4CAF50" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Label SUTR (TR)</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.sutr}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sutr: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.sutr ? "#4CAF50" : "#f4f3f4"}
+                />
               </View>
-              <Switch
-                value={layerVisibility.skutm}
-                onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, skutm: v }))}
-                trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={layerVisibility.skutm ? "#00BCD4" : "#f4f3f4"}
-              />
-            </View>
+
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="radio-button-on" size={18} color="#E91E63" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Label SUTM (TM)</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.sutm}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sutm: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.sutm ? "#E91E63" : "#f4f3f4"}
+                />
+              </View>
+
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="radio-button-on" size={18} color="#00BCD4" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Label SKUTM</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.skutm}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, skutm: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.skutm ? "#00BCD4" : "#f4f3f4"}
+                />
+              </View>
+            </ScrollView>
 
             <TouchableOpacity
               style={styles.layerCloseButton}

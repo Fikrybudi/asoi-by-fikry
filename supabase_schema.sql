@@ -108,11 +108,14 @@ ALTER TABLE tiang ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gardu ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jalur ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for anon users (for mobile app without auth)
-CREATE POLICY "Allow all for anon" ON surveys FOR ALL USING (true);
-CREATE POLICY "Allow all for anon" ON tiang FOR ALL USING (true);
-CREATE POLICY "Allow all for anon" ON gardu FOR ALL USING (true);
-CREATE POLICY "Allow all for anon" ON jalur FOR ALL USING (true);
+-- Policy: Team Shared Access (Authenticated Users Only)
+-- Users must be logged in to View/Insert/Update/Delete.
+-- Anonymous users are blocked.
+
+CREATE POLICY "Enable access for authenticated users only" ON surveys FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable access for authenticated users only" ON tiang FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable access for authenticated users only" ON gardu FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable access for authenticated users only" ON jalur FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- =============================================================================
 -- STORAGE BUCKET FOR PHOTOS
