@@ -13,6 +13,7 @@ import * as Crypto from 'expo-crypto';
 
 interface SurveyRow {
     id: string;
+    user_id: string;  // Owner of the survey
     nama_survey: string;
     jenis_survey: string;
     lokasi: string;
@@ -171,8 +172,16 @@ export const supabaseSurveyService = {
      */
     async upsertSurvey(survey: Survey): Promise<boolean> {
         try {
+            // Get current user for ownership
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.error('No authenticated user');
+                return false;
+            }
+
             const surveyRow: Partial<SurveyRow> = {
                 id: survey.id,
+                user_id: user.id,  // Associate survey with current user
                 nama_survey: survey.namaSurvey,
                 jenis_survey: survey.jenisSurvey,
                 lokasi: survey.lokasi,

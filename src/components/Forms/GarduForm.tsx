@@ -63,6 +63,19 @@ export default function GarduForm({
     const [catatan, setCatatan] = useState(initialData?.catatan || '');
     const [fotos, setFotos] = useState<string[]>(initialData?.foto || []);
 
+    // Reset form when initialData changes (for edit mode)
+    React.useEffect(() => {
+        setNomorGardu(initialData?.nomorGardu || '');
+        setNamaGardu(initialData?.namaGardu || '');
+        setJenisGardu(initialData?.jenisGardu || 'Cantol');
+        setKapasitasKVA(initialData?.kapasitasKVA || 100);
+        setMerekTrafo(initialData?.merekTrafo || '');
+        setTahunPasang(initialData?.tahunPasang?.toString() || new Date().getFullYear().toString());
+        setSelectedProteksi(initialData?.peralatanProteksi || ['FCO (Fuse Cut Out)', 'LA (Lightning Arrester)']);
+        setCatatan(initialData?.catatan || '');
+        setFotos(initialData?.foto || []);
+    }, [initialData]);
+
     const handleSubmit = () => {
         if (!nomorGardu.trim()) {
             alert('Nomor gardu harus diisi');
@@ -145,7 +158,7 @@ export default function GarduForm({
                     <TouchableOpacity onPress={onCancel}>
                         <Text style={styles.cancelButton}>Batal</Text>
                     </TouchableOpacity>
-                    <Text style={styles.title}>Tambah Gardu</Text>
+                    <Text style={styles.title}>{initialData ? 'Edit Gardu' : 'Tambah Gardu'}</Text>
                     <TouchableOpacity onPress={handleSubmit}>
                         <Text style={styles.saveButton}>Simpan</Text>
                     </TouchableOpacity>

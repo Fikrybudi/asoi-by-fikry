@@ -23,6 +23,9 @@ import {
 import { Survey } from '../types';
 import { surveyService } from '../services/database';
 import { supabaseSurveyService, syncManager } from '../services/supabaseService';
+import { generateBASurveyPdf } from '../utils/baSurveyPdf';
+import SignatureCapture from '../components/Forms/SignatureCapture';
+import { Image } from 'react-native';
 
 // =============================================================================
 // TYPES
@@ -60,6 +63,27 @@ export default function SurveyHistoryScreen({
     const [editLokasi, setEditLokasi] = useState('');
     const [editSurveyor, setEditSurveyor] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    // BA Survey Edit States
+    const [editIdPelanggan, setEditIdPelanggan] = useState('');
+    const [editNamaPelanggan, setEditNamaPelanggan] = useState('');
+    const [editTarifDaya, setEditTarifDaya] = useState('');
+    const [editHasilSurvey, setEditHasilSurvey] = useState('');
+    const [editNamaPerwakilan, setEditNamaPerwakilan] = useState('');
+    const [editKeterangan, setEditKeterangan] = useState('');
+    const [editChecklist, setEditChecklist] = useState({
+        perluasanJTM: false,
+        bangunGardu: false,
+        perluasanJTR: false,
+        tanamTiang: false,
+        dikenakanPFK: false,
+    });
+    const [editAppDipasang, setEditAppDipasang] = useState<'Persil' | 'Gardu'>('Persil');
+    const [editKonstruksiOleh, setEditKonstruksiOleh] = useState<'Pelanggan' | 'PLN'>('Pelanggan');
+    // Signature states
+    const [editSignaturePelanggan, setEditSignaturePelanggan] = useState<string>('');
+    const [editSignatureSurveyor, setEditSignatureSurveyor] = useState<string>('');
+    const [showSignaturePad, setShowSignaturePad] = useState<'pelanggan' | 'surveyor' | null>(null);
 
     useEffect(() => {
         if (visible) {
@@ -202,6 +226,24 @@ export default function SurveyHistoryScreen({
         setEditName(survey.namaSurvey);
         setEditLokasi(survey.lokasi || '');
         setEditSurveyor(survey.surveyor || '');
+        // BA fields
+        setEditIdPelanggan(survey.idPelanggan || '');
+        setEditNamaPelanggan(survey.namaPelanggan || '');
+        setEditTarifDaya(survey.tarifDaya || '');
+        setEditHasilSurvey(survey.hasilSurvey || '');
+        setEditNamaPerwakilan(survey.namaPerwakilan || '');
+        setEditKeterangan(survey.keterangan || '');
+        setEditChecklist(survey.baChecklist || {
+            perluasanJTM: false,
+            bangunGardu: false,
+            perluasanJTR: false,
+            tanamTiang: false,
+            dikenakanPFK: false,
+        });
+        setEditAppDipasang(survey.appDipasang || 'Persil');
+        setEditKonstruksiOleh(survey.konstruksiOleh || 'Pelanggan');
+        setEditSignaturePelanggan(survey.signaturePelanggan || '');
+        setEditSignatureSurveyor(survey.signatureSurveyor || '');
     };
 
     const handleSaveEdit = async () => {
@@ -216,7 +258,20 @@ export default function SurveyHistoryScreen({
             const updates = {
                 namaSurvey: editName,
                 lokasi: editLokasi,
-                surveyor: editSurveyor
+                surveyor: editSurveyor,
+                // BA fields
+                idPelanggan: editIdPelanggan,
+                namaPelanggan: editNamaPelanggan,
+                alamatPelanggan: editLokasi,
+                tarifDaya: editTarifDaya,
+                hasilSurvey: editHasilSurvey,
+                namaPerwakilan: editNamaPerwakilan,
+                keterangan: editKeterangan,
+                baChecklist: editChecklist,
+                appDipasang: editAppDipasang,
+                konstruksiOleh: editKonstruksiOleh,
+                signaturePelanggan: editSignaturePelanggan,
+                signatureSurveyor: editSignatureSurveyor,
             };
 
             // Update Local & Trigger Cloud Sync
@@ -509,7 +564,7 @@ export default function SurveyHistoryScreen({
                                 selectTextOnFocus
                             />
 
-                            <Text style={styles.label}>Lokasi</Text>
+                            <Text style={styles.label}>Lokasi / Alamat</Text>
                             <TextInput
                                 style={styles.input}
                                 value={editLokasi}
@@ -518,7 +573,132 @@ export default function SurveyHistoryScreen({
                                 selectTextOnFocus
                             />
 
-                            <Text style={styles.label}>Surveyor</Text>
+                            {/* Separator BA Survey Data */}
+                            <Text style={{ marginTop: 16, marginBottom: 8, fontSize: 14, fontWeight: 'bold', color: '#1565C0' }}>
+                                📋 Data BA Survey
+                            </Text>
+
+                            <Text style={styles.label}>ID Pelanggan (opsional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editIdPelanggan}
+                                onChangeText={setEditIdPelanggan}
+                                placeholder="ID PLN jika ada"
+                            />
+
+                            <Text style={styles.label}>Nama Pelanggan</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editNamaPelanggan}
+                                onChangeText={setEditNamaPelanggan}
+                                placeholder="Contoh: PT. Mekarjaya"
+                            />
+
+                            <Text style={styles.label}>Tarif / Daya</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editTarifDaya}
+                                onChangeText={setEditTarifDaya}
+                                placeholder="Contoh: R3 / 197kVA"
+                            />
+
+                            <Text style={styles.label}>Hasil Survey</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editHasilSurvey}
+                                onChangeText={setEditHasilSurvey}
+                                placeholder="Contoh: Survei Perencanaan"
+                            />
+
+                            <Text style={styles.label}>Keterangan Sketsa</Text>
+                            <TextInput
+                                style={[styles.input, { height: 60 }]}
+                                value={editKeterangan}
+                                onChangeText={setEditKeterangan}
+                                placeholder="Contoh: Kebutuhan tiang 2 btg..."
+                                multiline
+                            />
+
+                            {/* Checklist */}
+                            <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '600', color: '#333' }}>Checklist Pekerjaan</Text>
+                            {[
+                                { key: 'perluasanJTM', label: 'Perluasan JTM' },
+                                { key: 'bangunGardu', label: 'Bangun Gardu' },
+                                { key: 'perluasanJTR', label: 'Perluasan JTR' },
+                                { key: 'tanamTiang', label: 'Tanam Tiang' },
+                                { key: 'dikenakanPFK', label: 'Dikenakan PFK' },
+                            ].map((item) => (
+                                <TouchableOpacity
+                                    key={item.key}
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
+                                    onPress={() => setEditChecklist(prev => ({ ...prev, [item.key]: !prev[item.key as keyof typeof prev] }))}
+                                >
+                                    <Text style={{ fontSize: 16, marginRight: 8 }}>
+                                        {editChecklist[item.key as keyof typeof editChecklist] ? '☑️' : '⬜'}
+                                    </Text>
+                                    <Text style={{ fontSize: 14, color: '#333' }}>{item.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+
+                            {/* Pasal 7: APP Dipasang */}
+                            <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '600', color: '#333' }}>7. APP Dipasang di</Text>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editAppDipasang === 'Persil' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
+                                    onPress={() => setEditAppDipasang('Persil')}
+                                >
+                                    <Text style={{ color: editAppDipasang === 'Persil' ? 'white' : '#333', fontWeight: '600' }}>Persil</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editAppDipasang === 'Gardu' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
+                                    onPress={() => setEditAppDipasang('Gardu')}
+                                >
+                                    <Text style={{ color: editAppDipasang === 'Gardu' ? 'white' : '#333', fontWeight: '600' }}>Gardu</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Pasal 8: Konstruksi Oleh */}
+                            <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '600', color: '#333' }}>8. Konstruksi Bangunan Gardu Oleh</Text>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editKonstruksiOleh === 'Pelanggan' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
+                                    onPress={() => setEditKonstruksiOleh('Pelanggan')}
+                                >
+                                    <Text style={{ color: editKonstruksiOleh === 'Pelanggan' ? 'white' : '#333', fontWeight: '600' }}>Pelanggan</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editKonstruksiOleh === 'PLN' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
+                                    onPress={() => setEditKonstruksiOleh('PLN')}
+                                >
+                                    <Text style={{ color: editKonstruksiOleh === 'PLN' ? 'white' : '#333', fontWeight: '600' }}>PLN</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Separator Tanda Tangan */}
+                            <Text style={{ marginTop: 16, marginBottom: 8, fontSize: 14, fontWeight: 'bold', color: '#1565C0' }}>
+                                ✍️ Tanda Tangan
+                            </Text>
+
+                            <Text style={styles.label}>Nama Perwakilan Pelanggan</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editNamaPerwakilan}
+                                onChangeText={setEditNamaPerwakilan}
+                                placeholder="Yang menandatangani"
+                            />
+                            {/* Signature Pelanggan */}
+                            <TouchableOpacity
+                                style={{ marginTop: 8, padding: 12, backgroundColor: editSignaturePelanggan ? '#E8F5E9' : '#f0f0f0', borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: editSignaturePelanggan ? '#4CAF50' : '#ddd', borderStyle: 'dashed' }}
+                                onPress={() => setShowSignaturePad('pelanggan')}
+                            >
+                                {editSignaturePelanggan ? (
+                                    <Image source={{ uri: editSignaturePelanggan }} style={{ width: 200, height: 60, resizeMode: 'contain' }} />
+                                ) : (
+                                    <Text style={{ color: '#666' }}>✍️ Tap untuk tanda tangan Pelanggan</Text>
+                                )}
+                            </TouchableOpacity>
+
+                            <Text style={[styles.label, { marginTop: 16 }]}>Nama Surveyor PLN</Text>
                             <TextInput
                                 style={styles.input}
                                 value={editSurveyor}
@@ -526,6 +706,17 @@ export default function SurveyHistoryScreen({
                                 placeholder="Nama Surveyor"
                                 selectTextOnFocus
                             />
+                            {/* Signature Surveyor */}
+                            <TouchableOpacity
+                                style={{ marginTop: 8, padding: 12, backgroundColor: editSignatureSurveyor ? '#E3F2FD' : '#f0f0f0', borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: editSignatureSurveyor ? '#2196F3' : '#ddd', borderStyle: 'dashed' }}
+                                onPress={() => setShowSignaturePad('surveyor')}
+                            >
+                                {editSignatureSurveyor ? (
+                                    <Image source={{ uri: editSignatureSurveyor }} style={{ width: 200, height: 60, resizeMode: 'contain' }} />
+                                ) : (
+                                    <Text style={{ color: '#666' }}>✍️ Tap untuk tanda tangan Surveyor</Text>
+                                )}
+                            </TouchableOpacity>
 
                             <View style={styles.modalActions}>
                                 <TouchableOpacity
@@ -544,10 +735,68 @@ export default function SurveyHistoryScreen({
                                     </Text>
                                 </TouchableOpacity>
                             </View>
+
+                            {/* Regenerate PDF BA Button */}
+                            {editingSurvey?.namaPelanggan && (
+                                <TouchableOpacity
+                                    style={[styles.modalButton, { backgroundColor: '#FF9800', marginTop: 12 }]}
+                                    onPress={async () => {
+                                        if (!editingSurvey) return;
+                                        try {
+                                            await generateBASurveyPdf({
+                                                baData: {
+                                                    jenisPermohonan: editingSurvey.jenisSurvey || 'Pasang Baru',
+                                                    tarifDaya: editingSurvey.tarifDaya || 'R1 / 1300VA',
+                                                    idPelanggan: editingSurvey.idPelanggan || '',
+                                                    namaPelanggan: editingSurvey.namaPelanggan || '',
+                                                    alamat: editingSurvey.alamatPelanggan || editingSurvey.lokasi || '',
+                                                    tanggalSurvey: new Date(editingSurvey.tanggalSurvey),
+                                                    hasilSurvey: editingSurvey.hasilSurvey || 'Survei Perencanaan',
+                                                    namaSurveyor: editingSurvey.surveyor || '',
+                                                    namaPerwakilan: editingSurvey.namaPerwakilan || '',
+                                                    keterangan: editingSurvey.keterangan || '',
+                                                    appDipasang: editingSurvey.appDipasang || 'Persil',
+                                                    konstruksiOleh: editingSurvey.konstruksiOleh || 'Pelanggan',
+                                                    checklist: editingSurvey.baChecklist || {
+                                                        perluasanJTM: false,
+                                                        bangunGardu: false,
+                                                        perluasanJTR: false,
+                                                        tanamTiang: false,
+                                                        dikenakanPFK: false,
+                                                    },
+                                                    signaturePelanggan: editingSurvey.signaturePelanggan,
+                                                    signatureSurveyor: editingSurvey.signatureSurveyor,
+                                                }
+                                            });
+                                            Alert.alert('✅ PDF BA', 'PDF Berita Acara Survey berhasil di-generate!');
+                                        } catch (error) {
+                                            console.error(error);
+                                            Alert.alert('Error', 'Gagal generate PDF BA');
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.saveButtonText}>📄 Regenerate PDF BA</Text>
+                                </TouchableOpacity>
+                            )}
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
+
+            {/* Signature Capture Modal */}
+            <SignatureCapture
+                visible={showSignaturePad !== null}
+                title={showSignaturePad === 'pelanggan' ? 'Tanda Tangan Perwakilan Pelanggan' : 'Tanda Tangan Surveyor PLN'}
+                onSave={(signature) => {
+                    if (showSignaturePad === 'pelanggan') {
+                        setEditSignaturePelanggan(signature);
+                    } else {
+                        setEditSignatureSurveyor(signature);
+                    }
+                    setShowSignaturePad(null);
+                }}
+                onCancel={() => setShowSignaturePad(null)}
+            />
         </SafeAreaView>
     );
 }

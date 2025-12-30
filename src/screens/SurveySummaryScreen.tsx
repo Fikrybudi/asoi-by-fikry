@@ -28,6 +28,7 @@ interface SurveySummaryScreenProps {
     onSaveAndClose: () => void;
     onNewSurvey: () => void;
     mapScreenshot?: string;
+    onExportPDFGambar?: () => Promise<void>; // Callback to trigger map capture and PDF generation
 }
 
 // =============================================================================
@@ -41,8 +42,10 @@ export default function SurveySummaryScreen({
     onSaveAndClose,
     onNewSurvey,
     mapScreenshot,
+    onExportPDFGambar,
 }: SurveySummaryScreenProps) {
     const [isExporting, setIsExporting] = useState(false);
+    const [isExportingGambar, setIsExportingGambar] = useState(false);
 
     // Calculate statistics
     const totalTiang = survey.tiangList.length;
@@ -135,6 +138,22 @@ export default function SurveySummaryScreen({
             Alert.alert('Error', `Gagal export KML: ${error?.message || 'Unknown error'}`);
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const handleExportPDFGambar = async () => {
+        if (!onExportPDFGambar) {
+            Alert.alert('Info', 'Fitur ini memerlukan akses ke peta');
+            return;
+        }
+        setIsExportingGambar(true);
+        try {
+            await onExportPDFGambar();
+        } catch (error: any) {
+            console.error('PDF Gambar export error:', error);
+            Alert.alert('Error', `Gagal export PDF Gambar: ${error?.message || 'Unknown error'}`);
+        } finally {
+            setIsExportingGambar(false);
         }
     };
 
@@ -454,6 +473,22 @@ export default function SurveySummaryScreen({
                                         <>
                                             <Ionicons name="grid" size={24} color="#388E3C" style={{ marginBottom: 4 }} />
                                             <Text style={styles.exportButtonText}>Export CSV (Excel)</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+
+                                {/* PDF Gambar - with map screenshot */}
+                                <TouchableOpacity
+                                    style={[styles.exportButton, { backgroundColor: '#7B1FA2' }]}
+                                    onPress={handleExportPDFGambar}
+                                    disabled={isExportingGambar}
+                                >
+                                    {isExportingGambar ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="image" size={24} color="white" style={{ marginRight: 8 }} />
+                                            <Text style={styles.exportButtonText}>Export PDF Gambar (Blangko)</Text>
                                         </>
                                     )}
                                 </TouchableOpacity>

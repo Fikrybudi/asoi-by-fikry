@@ -16,9 +16,12 @@ import SurveyHistoryScreen from './src/screens/SurveyHistoryScreen';
 import { Coordinate, Tiang, Gardu, JalurKabel, Survey } from './src/types';
 import { surveyService, tiangService, garduService, jalurService } from './src/services/database';
 import { calculateDistance } from './src/utils/geoUtils';
+import { generatePdfWithMap, sharePdf } from './src/utils/pdfExport';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './src/services/supabaseClient';
 import LoginScreen from './src/screens/LoginScreen';
+import BASurveyForm, { BASurveyData } from './src/components/Forms/BASurveyForm';
+import { generateBASurveyPdf } from './src/utils/baSurveyPdf';
 
 // ... other imports
 
@@ -52,6 +55,10 @@ export default function App() {
   const [editingJalur, setEditingJalur] = useState<JalurKabel | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Edit tiang/gardu state
+  const [editingTiang, setEditingTiang] = useState<Tiang | null>(null);
+  const [editingGardu, setEditingGardu] = useState<Gardu | null>(null);
+
   // Remember last penghantar for auto-created jalur
   const [lastPenghantar, setLastPenghantar] = useState<{ jenis: string; penampang: string }>({
     jenis: 'A3CS',
@@ -83,10 +90,18 @@ export default function App() {
     sutr: true,
     sutm: true,
     skutm: true,
+    sktm: true,
   });
 
   // Center coordinate for pin placement
   const [centerCoordinate, setCenterCoordinate] = useState<Coordinate | null>(null);
+
+  // Menu and About modal states
+  const [showMenu, setShowMenu] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+
+  // BA Survey form state
+  const [showBASurveyForm, setShowBASurveyForm] = useState(false);
 
   // ==========================================================================
   // EFFECTS
@@ -205,6 +220,32 @@ export default function App() {
     setToolMode('none');
   };
 
+  // Handler for PDF Gambar export (captures map and generates PDF)
+  const handleExportPDFGambar = async () => {
+    if (!mapRef.current || !currentSurvey) {
+      Alert.alert('Error', 'Tidak ada survey aktif');
+      return;
+    }
+
+    // Capture optimal map screenshot
+    const mapBase64 = await mapRef.current.captureOptimalMap();
+    if (!mapBase64) {
+      Alert.alert('Error', 'Gagal capture peta');
+      return;
+    }
+
+    // Generate PDF with map
+    const pdfPath = await generatePdfWithMap(mapBase64, currentSurvey.namaSurvey);
+    if (!pdfPath) {
+      Alert.alert('Error', 'Gagal generate PDF');
+      return;
+    }
+
+    // Share the PDF
+    Alert.alert('✅ Berhasil', 'PDF Gambar berhasil dibuat!');
+    await sharePdf(pdfPath);
+  };
+
   // ==========================================================================
   // FORM SUBMIT HANDLERS
   // ==========================================================================
@@ -219,6 +260,23 @@ export default function App() {
         return;
       }
 
+      // EDIT MODE: Update existing tiang
+      if (editingTiang) {
+        const updated = await tiangService.update(currentSurvey.id, editingTiang.id, data);
+        if (updated) {
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            tiangList: prev.tiangList.map(t => t.id === editingTiang.id ? updated : t),
+          } : null);
+        }
+        setEditingTiang(null);
+        setShowTiangForm(false);
+        setSelectedCoordinate(null);
+        setToolMode('none');
+        return;
+      }
+
+      // CREATE MODE: Add new tiang
       // Remember the jenis jaringan for next tiang
       setLastJenisJaringan(data.jenisJaringan);
 
@@ -388,6 +446,23 @@ export default function App() {
         return;
       }
 
+      // EDIT MODE: Update existing gardu
+      if (editingGardu) {
+        const updated = await garduService.update(currentSurvey.id, editingGardu.id, data);
+        if (updated) {
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            garduList: prev.garduList.map(g => g.id === editingGardu.id ? updated : g),
+          } : null);
+        }
+        setEditingGardu(null);
+        setShowGarduForm(false);
+        setSelectedCoordinate(null);
+        setToolMode('none');
+        return;
+      }
+
+      // CREATE MODE: Add new gardu
       const newGardu = await garduService.add(currentSurvey.id, data);
       if (newGardu) {
         setCurrentSurvey(prev => prev ? {
@@ -459,9 +534,17 @@ export default function App() {
     // Normal mode - show tiang info
     Alert.alert(
       `Tiang ${tiang.nomorUrut}`,
-      `${tiang.konstruksi} - ${tiang.jenisTiang}\nTinggi: ${tiang.tinggiTiang}\nKekuatan: ${tiang.kekuatanTiang}`,
+      `${tiang.konstruksi} - ${tiang.jenisTiang}\nTinggi: ${tiang.tinggiTiang}\nKekuatan: ${tiang.kekuatanTiang}${tiang.status === 'existing' ? '\n(Existing)' : ''}`,
       [
         { text: 'OK' },
+        {
+          text: '✏️ Edit',
+          onPress: () => {
+            setEditingTiang(tiang);
+            setSelectedCoordinate(tiang.koordinat);
+            setShowTiangForm(true);
+          }
+        },
         { text: 'Hapus', style: 'destructive', onPress: () => deleteTiang(tiang.id) },
       ]
     );
@@ -473,6 +556,14 @@ export default function App() {
       `${gardu.jenisGardu}\nKapasitas: ${gardu.kapasitasKVA} kVA`,
       [
         { text: 'OK' },
+        {
+          text: '✏️ Edit',
+          onPress: () => {
+            setEditingGardu(gardu);
+            setSelectedCoordinate(gardu.koordinat);
+            setShowGarduForm(true);
+          }
+        },
         { text: 'Hapus', style: 'destructive', onPress: () => deleteGardu(gardu.id) },
       ]
     );
@@ -643,28 +734,52 @@ export default function App() {
   };
 
   const handleNewSurvey = async () => {
+    // Show BA Survey form instead of creating survey directly
+    setShowBASurveyForm(true);
+    setShowSummary(false);
+    setShowHistory(false);
+  };
+
+  // Handle BA Survey form submission - creates the actual survey
+  const handleBASurveySubmit = async (baData: BASurveyData) => {
     try {
-      // Create a new survey
+      // Generate survey name from BA data
+      const tanggal = baData.tanggalSurvey.toLocaleDateString('id-ID');
+      const surveyName = `${baData.jenisPermohonan} - ${baData.namaPelanggan} (${tanggal})`;
+
       const newSurvey = await surveyService.create({
-        namaSurvey: 'Survey PLN ' + new Date().toLocaleDateString('id-ID'),
-        jenisSurvey: 'Survey Umum',
-        lokasi: 'Lokasi Survey',
-        surveyor: 'Surveyor',
-        tanggalSurvey: new Date(),
+        namaSurvey: surveyName,
+        jenisSurvey: baData.jenisPermohonan,
+        lokasi: baData.alamat,
+        surveyor: session?.user?.email || 'Surveyor',
+        tanggalSurvey: baData.tanggalSurvey,
         tiangList: [],
         garduList: [],
         jalurList: [],
+        // BA specific fields
+        idPelanggan: baData.idPelanggan,
+        namaPelanggan: baData.namaPelanggan,
+        alamatPelanggan: baData.alamat,
+        tarifDaya: baData.tarifDaya,
+        hasilSurvey: baData.hasilSurvey,
+        baChecklist: baData.checklist,
       });
 
       await surveyService.setCurrent(newSurvey.id);
       setCurrentSurvey(newSurvey);
-      setShowSummary(false);
+      setShowBASurveyForm(false);
 
       // Reset remembered values
       setLastJenisJaringan('SUTM');
       setLastPenghantar({ jenis: 'A3CS', penampang: '150mm²' });
 
-      Alert.alert('✅ Survey Baru', 'Survey baru berhasil dibuat!');
+      // Generate BA Survey PDF
+      const pdfPath = await generateBASurveyPdf({ baData });
+      if (pdfPath) {
+        Alert.alert('✅ Survey Baru', `${surveyName}\n\nSurvey berhasil dibuat dan BA PDF telah di-generate!`);
+      } else {
+        Alert.alert('✅ Survey Baru', `${surveyName}\n\nSurvey berhasil dibuat!\n(PDF gagal di-generate)`);
+      }
     } catch (error) {
       console.error('Error creating new survey:', error);
       Alert.alert('Error', 'Gagal membuat survey baru');
@@ -791,6 +906,14 @@ export default function App() {
           >
             <Ionicons name="stats-chart" size={20} color="white" />
           </TouchableOpacity>
+
+          {/* Menu Button */}
+          <TouchableOpacity
+            style={styles.cutoffButton}
+            onPress={() => setShowMenu(true)}
+          >
+            <Ionicons name="menu" size={20} color="white" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -874,10 +997,12 @@ export default function App() {
           onCancel={() => {
             setShowTiangForm(false);
             setSelectedCoordinate(null);
+            setEditingTiang(null);
             setToolMode('none');
           }}
           lastJenisJaringan={lastJenisJaringan}
           lockedStandar={currentSurvey?.standarKonstruksi}
+          initialData={editingTiang || undefined}
         />
       )}
 
@@ -889,8 +1014,10 @@ export default function App() {
           onCancel={() => {
             setShowGarduForm(false);
             setSelectedCoordinate(null);
+            setEditingGardu(null);
             setToolMode('none');
           }}
+          initialData={editingGardu || undefined}
         />
       )}
 
@@ -921,6 +1048,7 @@ export default function App() {
           onClose={() => setShowSummary(false)}
           onSaveAndClose={handleSaveAndClose}
           onNewSurvey={handleNewSurvey}
+          onExportPDFGambar={handleExportPDFGambar}
         />
       )}
 
@@ -933,6 +1061,13 @@ export default function App() {
           handleNewSurvey();
         }}
         onClose={() => setShowHistory(false)}
+      />
+
+      {/* BA Survey Form - New Survey Creation */}
+      <BASurveyForm
+        visible={showBASurveyForm}
+        onClose={() => setShowBASurveyForm(false)}
+        onSubmit={handleBASurveySubmit}
       />
       {/* Layer Control Modal */}
       <Modal
@@ -1040,6 +1175,19 @@ export default function App() {
                   thumbColor={layerVisibility.skutm ? "#00BCD4" : "#f4f3f4"}
                 />
               </View>
+
+              <View style={styles.layerItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="radio-button-on" size={18} color="#9C27B0" style={{ marginRight: 8 }} />
+                  <Text style={styles.layerItemText}>Label SKTM</Text>
+                </View>
+                <Switch
+                  value={layerVisibility.sktm}
+                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sktm: v }))}
+                  trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  thumbColor={layerVisibility.sktm ? "#9C27B0" : "#f4f3f4"}
+                />
+              </View>
             </ScrollView>
 
             <TouchableOpacity
@@ -1063,6 +1211,135 @@ export default function App() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={[styles.layerModalContent, { width: '80%' }]}>
+            <Text style={styles.layerTitle}>Menu</Text>
+
+            {/* User Info */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ backgroundColor: '#1565C0', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+                <Ionicons name="person" size={30} color="white" />
+              </View>
+              <Text style={{ fontSize: 14, color: '#666' }}>{session?.user?.email || 'User'}</Text>
+            </View>
+
+            {/* About Button */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
+              onPress={() => {
+                setShowMenu(false);
+                setShowAbout(true);
+              }}
+            >
+              <Ionicons name="information-circle-outline" size={24} color="#1565C0" style={{ marginRight: 12 }} />
+              <Text style={{ fontSize: 16, color: '#333' }}>Tentang Aplikasi</Text>
+            </TouchableOpacity>
+
+            {/* Logout Button */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
+              onPress={() => {
+                Alert.alert(
+                  'Logout',
+                  'Yakin ingin keluar dari aplikasi?',
+                  [
+                    { text: 'Batal', style: 'cancel' },
+                    {
+                      text: 'Logout',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await supabase.auth.signOut();
+                        setShowMenu(false);
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="log-out-outline" size={24} color="#F44336" style={{ marginRight: 12 }} />
+              <Text style={{ fontSize: 16, color: '#F44336' }}>Logout</Text>
+            </TouchableOpacity>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              style={[styles.layerCloseButton, { marginTop: 20 }]}
+              onPress={() => setShowMenu(false)}
+            >
+              <Text style={styles.layerCloseText}>Tutup</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* About Modal */}
+      <Modal
+        visible={showAbout}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAbout(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={[styles.layerModalContent, { width: '90%', maxHeight: '80%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* App Logo & Version */}
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Ionicons name="location" size={50} color="#1565C0" />
+                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>ASOI by Fikry</Text>
+                <Text style={{ fontSize: 14, color: '#666' }}>Aplikasi Survey Online</Text>
+                <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 1.0.0</Text>
+              </View>
+
+              {/* Developer Info */}
+              <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>👨‍💻 Informasi Pengembang</Text>
+                <Text style={{ fontSize: 13, color: '#555', marginBottom: 5 }}>Aplikasi ini dikembangkan dan dikelola oleh:</Text>
+                <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#1565C0' }}>Fikry Budi H</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const url = 'https://wa.me/6287773068968';
+                    import('react-native').then(({ Linking }) => Linking.openURL(url));
+                  }}
+                  style={{ marginTop: 8 }}
+                >
+                  <Text style={{ fontSize: 13, color: '#25D366', textDecorationLine: 'underline' }}>087773068968</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Legal */}
+              <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>⚖️ Legalitas & Kebijakan</Text>
+                <Text style={{ fontSize: 13, color: '#1565C0', marginBottom: 5 }}>• Ketentuan Layanan</Text>
+                <Text style={{ fontSize: 13, color: '#1565C0', marginBottom: 5 }}>• Kebijakan Privasi</Text>
+                <Text style={{ fontSize: 13, color: '#1565C0' }}>• Lisensi Pihak Ketiga</Text>
+              </View>
+
+              {/* Copyright */}
+              <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 20 }}>
+                <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2024 Fikry. All Rights Reserved.</Text>
+                <Text style={{ fontSize: 11, color: '#aaa', textAlign: 'center', marginTop: 5, fontStyle: 'italic' }}>
+                  Dibuat dengan semangat untuk memudahkan riset digital di Indonesia.
+                </Text>
+              </View>
+            </ScrollView>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.layerCloseButton}
+              onPress={() => setShowAbout(false)}
+            >
+              <Text style={styles.layerCloseText}>Tutup</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

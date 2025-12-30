@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, Platform, PixelRatio } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { captureRef, captureScreen } from 'react-native-view-shot';
@@ -33,6 +33,7 @@ interface SurveyMapProps {
     sutr: boolean;
     sutm: boolean;
     skutm: boolean;
+    sktm: boolean;
   };
   onCenterChange?: (coordinate: Coordinate) => void;
   selectedTiangIds?: string[];
@@ -58,7 +59,8 @@ const generateMapHTML = (
     sutr: boolean;
     sutm: boolean;
     skutm: boolean;
-  } = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true },
+    sktm: boolean;
+  } = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true, sktm: true },
   selectedTiangIds: string[] = [],
   zoomLevel: number = 18
 ) => {
@@ -68,7 +70,12 @@ const generateMapHTML = (
     // Color based on jenis jaringan
     let bgColor = '#2196F3'; // Default SUTM
     let borderColor = '#1565C0';
-    if (t.jenisJaringan === 'SUTR') {
+
+    // Check if existing (gray out)
+    if (t.status === 'existing') {
+      bgColor = '#757575'; // Dark gray for existing
+      borderColor = '#424242';
+    } else if (t.jenisJaringan === 'SUTR') {
       bgColor = '#4CAF50';
       borderColor = '#2E7D32';
     } else if (t.jenisJaringan === 'SKUTM') {
@@ -76,7 +83,7 @@ const generateMapHTML = (
       borderColor = '#00838F';
     }
 
-    // Check if selected
+    // Check if selected (override all)
     const isSelected = selectedTiangIds.includes(t.id);
     if (isSelected) {
       bgColor = '#FFEB3B'; // Yellow warning color
@@ -84,8 +91,8 @@ const generateMapHTML = (
     }
 
     const labelStyle = isSelected
-      ? `background:${bgColor};color:black;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 0 8px #FFC107;border:2px solid ${borderColor};transform:scale(1.1);`
-      : `background:${bgColor};color:white;padding:3px 6px;border-radius:4px;font-size:10px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.3);border:2px solid ${borderColor};`;
+      ? `color:${bgColor};font-size:11px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 4px white;transform:scale(1.1);`
+      : `color:${bgColor};font-size:10px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;`;
 
     // Extract height and strength numbers
     const tinggiNum = t.tinggiTiang ? t.tinggiTiang.replace(/[^0-9]/g, '') : '';
@@ -129,7 +136,7 @@ const generateMapHTML = (
     L.marker([${g.koordinat.latitude}, ${g.koordinat.longitude}], {
       icon: L.divIcon({
         className: 'gardu-icon',
-        html: '<div style="background:#FF9800;color:white;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${g.nomorGardu}<br><span style="font-size:9px;opacity:0.9;">${g.kapasitasKVA}kVA</span></div>',
+        html: '<div style="color:#FF9800;font-weight:bold;font-size:11px;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;">${g.nomorGardu}<br><span style="font-size:9px;">${g.kapasitasKVA}kVA</span></div>',
         iconSize: null,
         iconAnchor: [-5, -5]
       })
@@ -190,7 +197,25 @@ const generateMapHTML = (
     if (j.jenisJaringan === 'SKTM') color = '#9C27B0';
     if (j.jenisJaringan === 'SKUTM') color = '#00BCD4';
     if (j.jenisJaringan === 'SUTR') color = '#4CAF50';
-    const dashArray = j.status === 'planned' ? '10, 5' : '';
+
+    // Dash pattern based on cable type
+    let dashArray = '';
+    switch (j.jenisJaringan) {
+      case 'SUTR':
+        dashArray = '';  // Solid line (no dashes)
+        break;
+      case 'SUTM':
+        dashArray = '12, 4, 3, 4';  // Dash-dot pattern (garis titik garis titik)
+        break;
+      case 'SKTM':
+        dashArray = '2, 4';  // Dotted (titik-titik rapat)
+        break;
+      case 'SKUTM':
+        dashArray = '10, 8';  // Dashed (garis spasi garis spasi)
+        break;
+      default:
+        dashArray = '';
+    }
     const totalDistance = j.panjangMeter >= 1000
       ? (j.panjangMeter / 1000).toFixed(2) + ' km'
       : Math.round(j.panjangMeter) + 'm';
@@ -239,7 +264,7 @@ const generateMapHTML = (
           L.marker([${adjustedMidLat}, ${midLng}], {
             icon: L.divIcon({
               className: 'segment-label segment-label-${j.jenisJaringan}',
-              html: '<div style="background:${color};color:white;padding:2px 5px;border-radius:8px;font-size:8px;font-weight:bold;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.3);opacity:0.9;">${segDistLabel}</div>',
+              html: '<div style="color:${color};font-size:8px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 2px white;">${segDistLabel}</div>',
               iconSize: [40, 16],
               iconAnchor: [20, -4]
             }),
@@ -406,6 +431,7 @@ const generateMapHTML = (
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
     * { margin: 0; padding: 0; }
     html, body, #map { height: 100%; width: 100%; }
@@ -499,7 +525,8 @@ const generateMapHTML = (
   </div>
   <script>
     var map = L.map('map', {
-      zoomControl: true
+      zoomControl: true,
+      preferCanvas: true  // Use Canvas renderer for circles/polylines (html2canvas compatible)
     }).setView([${center.latitude}, ${center.longitude}], ${zoomLevel});
 
     // Create custom pane for Tiang points (above lines, below labels)
@@ -560,6 +587,16 @@ const generateMapHTML = (
       }));
     });
 
+    // Track map center changes to persist position across re-renders
+    map.on('moveend', function() {
+      var center = map.getCenter();
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapCenterChange',
+        lat: center.lat,
+        lng: center.lng
+      }));
+    });
+
     // Helper to update visibility dynamically
     window.updateLayerVisibility = function(layers) {
       var css = '';
@@ -570,6 +607,7 @@ const generateMapHTML = (
       if (!layers.sutr) css += '.segment-label-SUTR { display: none !important; }';
       if (!layers.sutm) css += '.segment-label-SUTM { display: none !important; }';
       if (!layers.skutm) css += '.segment-label-SKUTM { display: none !important; }';
+      if (!layers.sktm) css += '.segment-label-SKTM { display: none !important; }';
       
       
       var styleId = 'dynamic-layer-styles';
@@ -580,6 +618,46 @@ const generateMapHTML = (
         document.head.appendChild(styleEl);
       }
       styleEl.innerHTML = css;
+    };
+
+    // Function to capture map as base64 image (called from React Native)
+    window.captureMapToBase64 = function(bounds) {
+      // First fit bounds if provided
+      if (bounds) {
+        map.fitBounds(bounds, { animate: false, padding: [30, 30] });
+      }
+      
+      // Hide UI elements
+      document.querySelector('.legend').style.display = 'none';
+      document.querySelector('.leaflet-control-zoom').style.display = 'none';
+      var crosshair = document.querySelector('.crosshair');
+      if (crosshair) crosshair.style.display = 'none';
+      
+      // Wait for tiles then capture
+      setTimeout(function() {
+        html2canvas(document.getElementById('map'), {
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          scale: window.devicePixelRatio || 1
+        }).then(function(canvas) {
+          var base64 = canvas.toDataURL('image/png').split(',')[1];
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapCapture',
+            base64: base64
+          }));
+          
+          // Restore UI
+          document.querySelector('.legend').style.display = '';
+          document.querySelector('.leaflet-control-zoom').style.display = '';
+          if (crosshair) crosshair.style.display = '';
+        }).catch(function(err) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapCaptureError',
+            error: err.message
+          }));
+        });
+      }, 1500);
     };
   </script>
 </body>
@@ -593,6 +671,8 @@ const generateMapHTML = (
 
 export interface SurveyMapRef {
   captureMap: () => Promise<string | null>;
+  fitToBounds: () => void;
+  captureOptimalMap: () => Promise<string | null>;
 }
 
 const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
@@ -608,7 +688,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   isDrawingJalur = false,
   currentJalurCoords = [],
   lastTiangCoord,
-  visibleLayers = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true },
+  visibleLayers = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true, sktm: true },
   onCenterChange,
   selectedTiangIds = [],
 }, ref) => {
@@ -622,6 +702,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   const [centerCoordinate, setCenterCoordinate] = useState<Coordinate | null>(null);
   const [liveDistance, setLiveDistance] = useState<number | null>(null);
   const [currentZoom, setCurrentZoom] = useState(18); // Track current zoom level
+  const [mapViewCenter, setMapViewCenter] = useState<Coordinate | null>(null); // Persist user's viewed position
+  const captureResolverRef = useRef<((value: string | null) => void) | null>(null); // For Android WebView capture
 
   // Expose captureMap method via ref
   useImperativeHandle(ref, () => ({
@@ -654,6 +736,141 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         return base64;
       } catch (error) {
         console.error('All capture methods failed:', error);
+        return null;
+      }
+    },
+
+    // Fit map to show all survey points
+    fitToBounds: () => {
+      if (!webviewRef.current) return;
+
+      // Collect all coordinates from tiangs, gardus
+      const allCoords = [
+        ...tiangList.map(t => t.koordinat),
+        ...garduList.map(g => g.koordinat),
+      ];
+
+      if (allCoords.length === 0) return;
+
+      // Calculate bounding box
+      const lats = allCoords.map(c => c.latitude);
+      const lngs = allCoords.map(c => c.longitude);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      // Add padding (10% of range)
+      const latPadding = (maxLat - minLat) * 0.15 || 0.001;
+      const lngPadding = (maxLng - minLng) * 0.15 || 0.001;
+
+      const bounds = [
+        [minLat - latPadding, minLng - lngPadding],
+        [maxLat + latPadding, maxLng + lngPadding]
+      ];
+
+      webviewRef.current.injectJavaScript(`
+        map.fitBounds(${JSON.stringify(bounds)});
+        true;
+      `);
+    },
+
+    // Capture map with optimal zoom for all points
+    captureOptimalMap: async () => {
+      if (!webviewRef.current || !containerRef.current) return null;
+
+      // Collect all coordinates
+      const allCoords = [
+        ...tiangList.map(t => t.koordinat),
+        ...garduList.map(g => g.koordinat),
+      ];
+
+      if (allCoords.length === 0) return null;
+
+      // Calculate bounding box
+      const lats = allCoords.map(c => c.latitude);
+      const lngs = allCoords.map(c => c.longitude);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      const latPadding = (maxLat - minLat) * 0.2 || 0.001;
+      const lngPadding = (maxLng - minLng) * 0.2 || 0.001;
+
+      const bounds = [
+        [minLat - latPadding, minLng - lngPadding],
+        [maxLat + latPadding, maxLng + lngPadding]
+      ];
+
+      console.log('Fitting bounds for capture:', JSON.stringify(bounds));
+
+      // For Android, use in-WebView html2canvas capture to avoid SVG scaling issues
+      if (Platform.OS === 'android') {
+        return new Promise<string | null>((resolve) => {
+          // Store resolver in ref so handleMessage can access it
+          captureResolverRef.current = resolve;
+
+          // Trigger capture in WebView
+          webviewRef.current?.injectJavaScript(`
+            if (window.captureMapToBase64) {
+              window.captureMapToBase64(${JSON.stringify(bounds)});
+            } else {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'mapCaptureError',
+                error: 'captureMapToBase64 not available'
+              }));
+            }
+            true;
+          `);
+
+          // Timeout after 10 seconds
+          setTimeout(() => {
+            if (captureResolverRef.current) {
+              console.warn('WebView capture timeout');
+              captureResolverRef.current(null);
+              captureResolverRef.current = null;
+            }
+          }, 10000);
+        });
+      }
+
+      // iOS: Use standard captureRef approach
+      try {
+        // Inject export mode CSS
+        webviewRef.current.injectJavaScript(`
+          var exportStyle = document.createElement('style');
+          exportStyle.id = 'export-mode-style';
+          exportStyle.innerHTML = \`
+            .legend { display: none !important; }
+            .crosshair { display: none !important; }
+            .leaflet-control-zoom { display: none !important; }
+          \`;
+          document.head.appendChild(exportStyle);
+          map.fitBounds(${JSON.stringify(bounds)}, { animate: false, padding: [30, 30] });
+          map.invalidateSize();
+          true;
+        `);
+
+        await new Promise(resolve => setTimeout(resolve, 2500));
+
+        const base64 = await captureRef(containerRef.current, {
+          format: 'png',
+          quality: 1.0,
+          result: 'base64',
+        });
+        console.log('Optimal map captured successfully (iOS)');
+
+        // Remove export mode CSS
+        webviewRef.current?.injectJavaScript(`
+          var exportStyle = document.getElementById('export-mode-style');
+          if (exportStyle) exportStyle.remove();
+          true;
+        `);
+
+        return base64;
+      } catch (error) {
+        console.error('captureOptimalMap failed:', error);
         return null;
       }
     },
@@ -726,6 +943,23 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         if (jalur && onJalurPress) onJalurPress(jalur);
       } else if (data.type === 'zoomChange') {
         setCurrentZoom(data.zoom);
+      } else if (data.type === 'mapCapture') {
+        // Resolve pending capture promise
+        if (captureResolverRef.current) {
+          console.log('Received map capture from WebView');
+          captureResolverRef.current(data.base64);
+          captureResolverRef.current = null;
+        }
+      } else if (data.type === 'mapCaptureError') {
+        // Resolve pending capture promise with null
+        if (captureResolverRef.current) {
+          console.error('WebView capture error:', data.error);
+          captureResolverRef.current(null);
+          captureResolverRef.current = null;
+        }
+      } else if (data.type === 'mapCenterChange') {
+        // Persist map view position when user pans/zooms
+        setMapViewCenter({ latitude: data.lat, longitude: data.lng });
       }
     } catch (error) {
       console.log('Message parse error:', error);
@@ -734,8 +968,72 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
 
   const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
 
+  // Check if there are any survey points to navigate to (including jalur)
+  const hasSurveyPoints = tiangList.length > 0 || garduList.length > 0 || jalurList.length > 0;
+
+  // Handler: Zoom to fit all survey points (including jalur)
+  const handleZoomToSurvey = () => {
+    if (!webviewRef.current) return;
+
+    // Collect all coordinates from tiang, gardu, AND jalur
+    const allCoords = [
+      ...tiangList.map(t => t.koordinat),
+      ...garduList.map(g => g.koordinat),
+      ...jalurList.flatMap(j => j.koordinat), // Flatten all jalur coordinates
+    ];
+
+    if (allCoords.length === 0) return;
+
+    const lats = allCoords.map(c => c.latitude);
+    const lngs = allCoords.map(c => c.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    const latPadding = (maxLat - minLat) * 0.15 || 0.001;
+    const lngPadding = (maxLng - minLng) * 0.15 || 0.001;
+
+    const bounds = [
+      [minLat - latPadding, minLng - lngPadding],
+      [maxLat + latPadding, maxLng + lngPadding]
+    ];
+
+
+    webviewRef.current.injectJavaScript(`
+      map.fitBounds(${JSON.stringify(bounds)}, { animate: true });
+      true;
+    `);
+  };
+
+  // Handler: Go to current GPS location
+  const handleGoToMyLocation = async () => {
+    if (!webviewRef.current) return;
+
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const newLocation = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      setUserLocation(newLocation);
+
+      webviewRef.current.injectJavaScript(`
+        map.setView([${newLocation.latitude}, ${newLocation.longitude}], 18, { animate: true });
+        true;
+      `);
+    } catch (error) {
+      console.log('Location error:', error);
+    }
+  };
+
+  // Determine map center priority: mapViewCenter (user's viewed position) > centerCoordinate (add mode) > userLocation (GPS)
+  const mapCenter = mapViewCenter || centerCoordinate || userLocation;
+
   const html = generateMapHTML(
-    centerCoordinate || userLocation,
+    mapCenter,
     tiangList,
     garduList,
     jalurList,
@@ -761,6 +1059,28 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       />
 
 
+
+      {/* Navigation Buttons - Zoom to Survey & My Location */}
+      <View style={styles.navButtons}>
+        {hasSurveyPoints && (
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={handleZoomToSurvey}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.navButtonIcon}>🗺️</Text>
+            <Text style={styles.navButtonLabel}>Survey</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={handleGoToMyLocation}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.navButtonIcon}>📍</Text>
+          <Text style={styles.navButtonLabel}>Lokasi</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Stats Overlay (Only showing in Add Mode for context) */}
       {isAddMode && (
@@ -822,5 +1142,33 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  navButtons: {
+    position: 'absolute',
+    left: 10,
+    top: 80,
+    gap: 8,
+  },
+  navButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    minWidth: 56,
+  },
+  navButtonIcon: {
+    fontSize: 20,
+  },
+  navButtonLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 2,
   },
 });

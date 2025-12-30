@@ -25,6 +25,9 @@ export interface Tiang {
     jenisJaringan: 'SUTM' | 'SUTR' | 'SKUTM';
     konstruksi: string; // 'TM-1', 'TM-2', 'TR-1', etc.
 
+    // Status (for existing vs new poles)
+    status?: 'existing' | 'planned';
+
     // Perlengkapan
     perlengkapan: string[];
 
@@ -140,6 +143,29 @@ export interface Survey {
     // Feeder
     namaFeeder?: string;
     namaGarduInduk?: string;
+
+    // BA Survey fields
+    idPelanggan?: string;
+    namaPelanggan?: string;
+    alamatPelanggan?: string;
+    tarifDaya?: string;
+    hasilSurvey?: string;
+    namaPerwakilan?: string;
+    keterangan?: string;
+    appDipasang?: 'Persil' | 'Gardu';
+    konstruksiOleh?: 'Pelanggan' | 'PLN';
+    // Signatures (base64 PNG)
+    signaturePelanggan?: string;
+    signatureSurveyor?: string;
+
+    // BA Checklist
+    baChecklist?: {
+        perluasanJTM: boolean;
+        bangunGardu: boolean;
+        perluasanJTR: boolean;
+        tanamTiang: boolean;
+        dikenakanPFK: boolean;
+    };
 
     // Data survey
     tiangList: Tiang[];

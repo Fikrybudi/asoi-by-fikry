@@ -63,6 +63,7 @@ export default function TiangForm({
 
     const [jenisJaringan, setJenisJaringan] = useState<'SUTM' | 'SUTR' | 'SKUTM'>(initialJenis);
     const [standarKonstruksi, setStandarKonstruksi] = useState<'Nasional' | 'Lokal'>(lockedStandar || 'Nasional');
+    const [statusTiang, setStatusTiang] = useState<'existing' | 'planned'>(initialData?.status || 'planned');
     const [konstruksi, setKonstruksi] = useState(initialData?.konstruksi || defaults.konstruksi);
     const [jenisTiang, setJenisTiang] = useState<'Beton' | 'Besi/Baja' | 'Kayu'>(
         initialData?.jenisTiang || defaults.bahan
@@ -77,6 +78,9 @@ export default function TiangForm({
 
     // Update defaults when jenis jaringan or standard changes
     useEffect(() => {
+        // Skip if in edit mode (initialData provided)
+        if (initialData) return;
+
         const newDefaults = DEFAULT_TIANG[jenisJaringan];
         let initialKonstruksi = newDefaults.konstruksi;
 
@@ -89,7 +93,22 @@ export default function TiangForm({
         setTinggiTiang(newDefaults.tinggi);
         setJenisTiang(newDefaults.bahan);
         setKekuatanTiang(newDefaults.kekuatan);
-    }, [jenisJaringan, standarKonstruksi]);
+    }, [jenisJaringan, standarKonstruksi, initialData]);
+
+    // Reset form when initialData changes (for edit mode)
+    useEffect(() => {
+        if (initialData) {
+            setJenisJaringan(initialData.jenisJaringan || 'SUTM');
+            setStatusTiang(initialData.status || 'planned');
+            setKonstruksi(initialData.konstruksi || '');
+            setJenisTiang(initialData.jenisTiang || 'Beton');
+            setTinggiTiang(initialData.tinggiTiang || '9m');
+            setKekuatanTiang(initialData.kekuatanTiang || '200daN');
+            setSelectedPerlengkapan(initialData.perlengkapan || []);
+            setCatatan(initialData.catatan || '');
+            setFotos(initialData.foto || []);
+        }
+    }, [initialData]);
 
     // Get konstruksi options based on jaringan type
     const getKonstruksiOptions = () => {
@@ -120,6 +139,7 @@ export default function TiangForm({
             perlengkapan: selectedPerlengkapan,
             foto: fotos.length > 0 ? fotos : undefined,
             catatan: catatan || undefined,
+            status: statusTiang,
         }, standarKonstruksi);
     };
 
@@ -185,7 +205,7 @@ export default function TiangForm({
                     <TouchableOpacity onPress={onCancel}>
                         <Text style={styles.cancelButton}>Batal</Text>
                     </TouchableOpacity>
-                    <Text style={styles.title}>Tambah Tiang</Text>
+                    <Text style={styles.title}>{initialData ? 'Edit Tiang' : 'Tambah Tiang'}</Text>
                     <TouchableOpacity onPress={handleSubmit}>
                         <Text style={styles.saveButton}>Simpan</Text>
                     </TouchableOpacity>
@@ -222,6 +242,50 @@ export default function TiangForm({
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+
+                    {/* Status Tiang */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Status Tiang</Text>
+                        <View style={styles.optionRow}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.optionButton,
+                                    statusTiang === 'planned' && styles.optionButtonActive,
+                                ]}
+                                onPress={() => setStatusTiang('planned')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        statusTiang === 'planned' && styles.optionTextActive,
+                                    ]}
+                                >
+                                    🟢 Baru (Planned)
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.optionButton,
+                                    statusTiang === 'existing' && { backgroundColor: '#757575', borderColor: '#757575' },
+                                ]}
+                                onPress={() => setStatusTiang('existing')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        statusTiang === 'existing' && styles.optionTextActive,
+                                    ]}
+                                >
+                                    ⬜ Existing
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        {statusTiang === 'existing' && (
+                            <Text style={{ fontSize: 11, color: '#999', marginTop: 6 }}>
+                                Tiang existing ditampilkan abu-abu dan tidak masuk rekap material.
+                            </Text>
+                        )}
                     </View>
 
                     {/* Standar Konstruksi (Specific for SUTM) */}
