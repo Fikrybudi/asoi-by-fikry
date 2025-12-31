@@ -1,51 +1,133 @@
 // =============================================================================
 // PDF Export with Map Screenshot - ASOI
-// Uses pdf-lib to overlay map image onto blangkogambar.pdf template
+// Dual template support (portrait/landscape) with text overlay
 // =============================================================================
 
-// Use legacy API for readAsStringAsync, writeAsStringAsync, cacheDirectory
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { decode as base64Decode } from 'base64-arraybuffer';
 import { Asset } from 'expo-asset';
+import { Dimensions } from 'react-native';
 
-// A4 Landscape dimensions in points (1 point = 1/72 inch)
-const A4_WIDTH = 842; // ~297mm
-const A4_HEIGHT = 595; // ~210mm
+// =============================================================================
+// TYPES
+// =============================================================================
 
-// Padding in points (1cm = 28.35 points)
-const PADDING_LEFT = 28.35;   // 1cm
-const PADDING_RIGHT = 28.35;  // 1cm
-const PADDING_TOP = 28.35;    // 1cm
-const PADDING_BOTTOM = 113.4; // 4cm
+type Orientation = 'portrait' | 'landscape';
+
+interface SurveyInfo {
+    name: string;
+    location: string;
+}
+
+// =============================================================================
+// LAYOUT CONSTANTS (in points, 1cm = 28.35 points)
+// =============================================================================
+
+// Landscape layout (blangko.pdf)
+const LANDSCAPE_PADDING = {
+    left: 28.35,    // 1cm
+    right: 28.35,   // 1cm
+    top: 28.35,     // 1cm
+    bottom: 113.4,  // 4cm (kop area)
+};
+
+// Portrait layout (blangko_potrait.pdf)
+const PORTRAIT_PADDING = {
+    left: 28.35,    // 1cm
+    right: 28.35,   // 1cm
+    top: 28.35,     // 1cm
+    bottom: 141.75, // 5cm (kop area - taller for portrait)
+};
+
+// Text position offsets from bottom-left corner of page
+// Adjusted for bottom-right positioning
+const TEXT_POSITIONS = {
+    landscape: {
+        projectName: { x: 720, y: 38 },   // Bottom-right area, name on top
+        location: { x: 720, y: 26 },       // Location below name
+    },
+    portrait: {
+        projectName: { x: 470, y: 38 },   // Bottom-right area for portrait
+        location: { x: 470, y: 26 },       // Location below name
+    },
+};
+
+// Text sizes (smaller for cleaner look)
+const TEXT_SIZE = {
+    projectName: 8,
+    location: 7,
+};
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Determine orientation based on current device screen dimensions
+ */
+function detectOrientation(): Orientation {
+    const { width, height } = Dimensions.get('window');
+    console.log(`Device screen: ${width} x ${height}`);
+
+    // If height > width, device is in portrait mode
+    return height > width ? 'portrait' : 'landscape';
+}
+
+/**
+ * Load appropriate template based on orientation
+ */
+async function loadTemplate(orientation: Orientation): Promise<string | null> {
+    try {
+        const templateModule = orientation === 'portrait'
+            ? require('../../assets/blangko_potrait.pdf')
+            : require('../../assets/blangko.pdf');
+
+        const templateAsset = Asset.fromModule(templateModule);
+        await templateAsset.downloadAsync();
+
+        if (!templateAsset.localUri) {
+            console.error(`Failed to load ${orientation} template`);
+            return null;
+        }
+
+        return await FileSystem.readAsStringAsync(templateAsset.localUri, {
+            encoding: 'base64',
+        });
+    } catch (error) {
+        console.error(`Error loading ${orientation} template:`, error);
+        return null;
+    }
+}
+
+// =============================================================================
+// MAIN EXPORT FUNCTION
+// =============================================================================
 
 /**
  * Generate PDF with map screenshot overlaid on template
  * @param mapBase64 - Base64 encoded PNG of the map screenshot
- * @param surveyName - Name of the survey for filename
+ * @param surveyInfo - Survey name and location for text overlay
  * @returns Path to the generated PDF file, or null on failure
  */
 export async function generatePdfWithMap(
     mapBase64: string,
-    surveyName: string
+    surveyInfo: SurveyInfo
 ): Promise<string | null> {
     try {
         console.log('Starting PDF generation...');
 
-        // Load the template PDF from assets
-        const templateAsset = Asset.fromModule(require('../../assets/blangkogambar.pdf'));
-        await templateAsset.downloadAsync();
+        // Determine orientation from current device screen
+        const orientation: Orientation = detectOrientation();
+        console.log(`Using ${orientation} template`);
 
-        if (!templateAsset.localUri) {
-            console.error('Failed to load PDF template');
+        // Load the appropriate template
+        const templateBase64 = await loadTemplate(orientation);
+        if (!templateBase64) {
+            console.error('Failed to load template');
             return null;
         }
-
-        // Read template PDF as base64
-        const templateBase64 = await FileSystem.readAsStringAsync(templateAsset.localUri, {
-            encoding: 'base64',
-        });
 
         // Load PDF with pdf-lib
         const pdfBytes = base64Decode(templateBase64);
@@ -58,6 +140,9 @@ export async function generatePdfWithMap(
 
         console.log(`PDF Page size: ${pageWidth} x ${pageHeight}`);
 
+        // Get padding based on orientation
+        const padding = orientation === 'portrait' ? PORTRAIT_PADDING : LANDSCAPE_PADDING;
+
         // Embed the map image (PNG)
         const mapImageBytes = base64Decode(mapBase64);
         const mapImage = await pdfDoc.embedPng(mapImageBytes);
@@ -68,8 +153,8 @@ export async function generatePdfWithMap(
         const imgAspectRatio = imgWidth / imgHeight;
 
         // Available area in PDF
-        const availableWidth = pageWidth - PADDING_LEFT - PADDING_RIGHT;
-        const availableHeight = pageHeight - PADDING_TOP - PADDING_BOTTOM;
+        const availableWidth = pageWidth - padding.left - padding.right;
+        const availableHeight = pageHeight - padding.top - padding.bottom;
         const areaAspectRatio = availableWidth / availableHeight;
 
         // Calculate scaled dimensions preserving aspect ratio
@@ -87,8 +172,8 @@ export async function generatePdfWithMap(
         }
 
         // Center the image in the available area
-        const imageX = PADDING_LEFT + (availableWidth - finalWidth) / 2;
-        const imageY = PADDING_BOTTOM + (availableHeight - finalHeight) / 2;
+        const imageX = padding.left + (availableWidth - finalWidth) / 2;
+        const imageY = padding.bottom + (availableHeight - finalHeight) / 2;
 
         console.log(`Original image: ${imgWidth}x${imgHeight}, aspect=${imgAspectRatio.toFixed(2)}`);
         console.log(`Final placement: x=${imageX.toFixed(1)}, y=${imageY.toFixed(1)}, w=${finalWidth.toFixed(1)}, h=${finalHeight.toFixed(1)}`);
@@ -101,12 +186,39 @@ export async function generatePdfWithMap(
             height: finalHeight,
         });
 
+        // Add text overlay for project name and location
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const textPositions = TEXT_POSITIONS[orientation];
+
+        // Draw project name (top)
+        if (surveyInfo.name) {
+            firstPage.drawText(surveyInfo.name, {
+                x: textPositions.projectName.x,
+                y: textPositions.projectName.y,
+                size: TEXT_SIZE.projectName,
+                font: fontBold,
+                color: rgb(0, 0, 0),
+            });
+        }
+
+        // Draw location (below name)
+        if (surveyInfo.location) {
+            firstPage.drawText(surveyInfo.location, {
+                x: textPositions.location.x,
+                y: textPositions.location.y,
+                size: TEXT_SIZE.location,
+                font: font,
+                color: rgb(0, 0, 0),
+            });
+        }
+
         // Save modified PDF
         const modifiedPdfBytes = await pdfDoc.save();
         const modifiedPdfBase64 = uint8ArrayToBase64(modifiedPdfBytes);
 
         // Write to file system
-        const filename = `Survey_${surveyName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+        const filename = `Survey_${surveyInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
         const outputPath = `${FileSystem.cacheDirectory}${filename}`;
 
         await FileSystem.writeAsStringAsync(outputPath, modifiedPdfBase64, {
@@ -120,6 +232,24 @@ export async function generatePdfWithMap(
         return null;
     }
 }
+
+// =============================================================================
+// LEGACY FUNCTION (for backward compatibility)
+// =============================================================================
+
+/**
+ * @deprecated Use generatePdfWithMap with SurveyInfo instead
+ */
+export async function generatePdfWithMapLegacy(
+    mapBase64: string,
+    surveyName: string
+): Promise<string | null> {
+    return generatePdfWithMap(mapBase64, { name: surveyName, location: '' });
+}
+
+// =============================================================================
+// SHARE FUNCTION
+// =============================================================================
 
 /**
  * Share the generated PDF file
@@ -140,6 +270,10 @@ export async function sharePdf(filePath: string): Promise<void> {
         console.error('Share failed:', error);
     }
 }
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
 
 /**
  * Convert Uint8Array to Base64 string
@@ -175,4 +309,3 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
     }
     return result;
 }
-

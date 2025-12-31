@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, Platform, PixelRatio } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, Platform, PixelRatio, Modal, ScrollView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { captureRef, captureScreen } from 'react-native-view-shot';
@@ -275,13 +275,15 @@ const generateMapHTML = (
     }
 
     return `
-      // Jalur polyline - ${j.jenisJaringan}
+      // Visual polyline - ${j.jenisJaringan} - with high tolerance from global renderer
       L.polyline([${coords}], {
         color: '${color}',
         weight: 4,
-        dashArray: '${dashArray}'
+        dashArray: '${dashArray}',
+        interactive: true 
       }).addTo(map).bindPopup('${j.jenisJaringan}<br>${j.jenisPenghantar}<br>Total: ${totalDistance}<br>${j.koordinat.length} titik')
-        .on('click', function() {
+        .on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
           window.ReactNativeWebView.postMessage(JSON.stringify({type: 'jalur', id: '${j.id}'}));
         });
       
@@ -438,6 +440,10 @@ const generateMapHTML = (
     .gardu-icon { background: transparent !important; border: none !important; }
     .leaflet-control-attribution { display: none; }
     
+    /* Disable blue/orange tap highlight on Android/iOS */
+    * { -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+    path.leaflet-interactive { -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+    
     /* Dynamic Visibility Styles */
     ${cssInjection}
     
@@ -524,9 +530,14 @@ const generateMapHTML = (
     <div class="legend-item"><div class="legend-line" style="background:#4CAF50;"></div>SUTR</div>
   </div>
   <script>
+    // FIX: Override default Canvas tolerance globally before map init
+    // This allows us to use 'preferCanvas: true' (stable for export) 
+    // while getting the improved click hit-test area.
+    L.Canvas.prototype.options.tolerance = 20;
+
     var map = L.map('map', {
       zoomControl: true,
-      preferCanvas: true  // Use Canvas renderer for circles/polylines (html2canvas compatible)
+      preferCanvas: true  // Export-safe mode
     }).setView([${center.latitude}, ${center.longitude}], ${zoomLevel});
 
     // Create custom pane for Tiang points (above lines, below labels)
@@ -704,6 +715,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   const [currentZoom, setCurrentZoom] = useState(18); // Track current zoom level
   const [mapViewCenter, setMapViewCenter] = useState<Coordinate | null>(null); // Persist user's viewed position
   const captureResolverRef = useRef<((value: string | null) => void) | null>(null); // For Android WebView capture
+  const [jalurModalVisible, setJalurModalVisible] = useState(false); // Jalur list modal
 
   // Expose captureMap method via ref
   useImperativeHandle(ref, () => ({
@@ -1032,8 +1044,26 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   // Determine map center priority: mapViewCenter (user's viewed position) > centerCoordinate (add mode) > userLocation (GPS)
   const mapCenter = mapViewCenter || centerCoordinate || userLocation;
 
-  const html = generateMapHTML(
-    mapCenter,
+  // Memoize HTML to prevent reloading on every pan/zoom
+  // We exclude mapCenter and currentZoom from dependencies to avoid reloads on movement
+  // We'll handle movement updates via useEffect and injectJavaScript
+  const html = React.useMemo(() => {
+    return generateMapHTML(
+      mapCenter, // This will use the CURRENT center at the time of generation (load/refresh)
+      tiangList,
+      garduList,
+      jalurList,
+      currentJalurCoords,
+      isAddingTiang,
+      isAddingGardu,
+      isDrawingJalur,
+      lastTiangCoord,
+      visibleLayers,
+      selectedTiangIds,
+      currentZoom
+    );
+  }, [
+    // Structural changes that REQUIRE HTML regeneration:
     tiangList,
     garduList,
     jalurList,
@@ -1043,9 +1073,39 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     isDrawingJalur,
     lastTiangCoord,
     visibleLayers,
-    selectedTiangIds,
-    currentZoom
-  );
+    selectedTiangIds
+    // Note: mapCenter and currentZoom are EXCLUDED
+  ]);
+
+  // Effect to handle Map Center updates without reloading HTML
+  useEffect(() => {
+    if (webviewRef.current && mapCenter) {
+      // Only update if significantly different to avoid jitter loop
+      // But for now, let's rely on Leaflet's smart setView which animates
+      // We pass animate: false to reduce jitter if it's just a small correction
+
+      // However, if the user is dragging, this effect fires.
+      // We should ideally NOT setView if the user is interacting.
+      // But we don't know if user is interacting easily here.
+
+      // A simple heuristic: if the update comes from App state, it might be from 'moveend'.
+      // If 'moveend' just happened, we are already at that center.
+      // Leaflet setView to current center is a no-op usually.
+
+      webviewRef.current.injectJavaScript(`
+        if (map) {
+          var current = map.getCenter();
+          var dist = Math.sqrt(Math.pow(current.lat - ${mapCenter.latitude}, 2) + Math.pow(current.lng - ${mapCenter.longitude}, 2));
+           // Only move if distance is significant (> 0.000001 deg is approx 10cm)
+           // OR if we are specifically in a mode that demands it
+           if (dist > 0.00001) {
+             map.setView([${mapCenter.latitude}, ${mapCenter.longitude}], ${currentZoom || 'map.getZoom()'}, { animate: false });
+           }
+        }
+        true;
+      `);
+    }
+  }, [mapCenter, currentZoom]);
 
   return (
     <View style={styles.container} ref={containerRef} collapsable={false}>
@@ -1080,6 +1140,16 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
           <Text style={styles.navButtonIcon}>📍</Text>
           <Text style={styles.navButtonLabel}>Lokasi</Text>
         </TouchableOpacity>
+        {jalurList.length > 0 && (
+          <TouchableOpacity
+            style={[styles.navButton, { backgroundColor: 'rgba(233, 30, 99, 0.95)' }]}
+            onPress={() => setJalurModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.navButtonIcon}>✏️</Text>
+            <Text style={[styles.navButtonLabel, { color: '#fff' }]}>Jalur</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Stats Overlay (Only showing in Add Mode for context) */}
@@ -1093,6 +1163,62 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
           </View>
         </View>
       )}
+
+      {/* Jalur List Modal */}
+      <Modal
+        visible={jalurModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setJalurModalVisible(false)}
+      >
+        <View style={styles.jalurModalOverlay}>
+          <View style={styles.jalurModalContent}>
+            <View style={styles.jalurModalHeader}>
+              <Text style={styles.jalurModalTitle}>📋 Daftar Jalur</Text>
+              <TouchableOpacity onPress={() => setJalurModalVisible(false)}>
+                <Text style={styles.jalurModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.jalurList}>
+              {jalurList.map((jalur, index) => {
+                const distLabel = jalur.panjangMeter >= 1000
+                  ? (jalur.panjangMeter / 1000).toFixed(2) + ' km'
+                  : Math.round(jalur.panjangMeter) + ' m';
+                const colorMap: Record<string, string> = {
+                  SUTM: '#E91E63',
+                  SKTM: '#9C27B0',
+                  SKUTM: '#00BCD4',
+                  SUTR: '#4CAF50',
+                  SKTR: '#795548',
+                };
+                const jalurColor = colorMap[jalur.jenisJaringan] || '#666';
+                return (
+                  <TouchableOpacity
+                    key={jalur.id}
+                    style={styles.jalurItem}
+                    onPress={() => {
+                      setJalurModalVisible(false);
+                      if (onJalurPress) onJalurPress(jalur);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.jalurColorBar, { backgroundColor: jalurColor }]} />
+                    <View style={styles.jalurItemContent}>
+                      <Text style={styles.jalurItemTitle}>
+                        {jalur.jenisJaringan} - {jalur.jenisPenghantar}
+                      </Text>
+                      <Text style={styles.jalurItemSub}>
+                        {distLabel} • {jalur.koordinat.length} titik • {jalur.status}
+                      </Text>
+                    </View>
+                    <Text style={styles.jalurItemArrow}>›</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 });
@@ -1170,5 +1296,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginTop: 2,
+  },
+  // Jalur Modal Styles
+  jalurModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  jalurModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '60%',
+    paddingBottom: 20,
+  },
+  jalurModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  jalurModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  jalurModalClose: {
+    fontSize: 24,
+    color: '#999',
+    paddingHorizontal: 8,
+  },
+  jalurList: {
+    paddingHorizontal: 16,
+  },
+  jalurItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  jalurColorBar: {
+    width: 4,
+    height: 40,
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  jalurItemContent: {
+    flex: 1,
+  },
+  jalurItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  jalurItemSub: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
+  },
+  jalurItemArrow: {
+    fontSize: 24,
+    color: '#ccc',
   },
 });

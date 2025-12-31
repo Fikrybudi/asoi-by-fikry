@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { supabase, PHOTO_BUCKET } from './supabaseClient';
-import { Survey, Tiang, Gardu, JalurKabel } from '../types';
+import { Survey, Tiang, Gardu, JalurKabel, SurveyShare } from '../types';
 import * as FileSystem from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 
@@ -25,6 +25,14 @@ interface SurveyRow {
     tanggal_survey: string;
     created_at: string;
     updated_at: string;
+}
+
+interface SurveyShareRow {
+    id: string;
+    survey_id: string;
+    shared_by_user_id: string;
+    shared_with_email: string;
+    created_at: string;
 }
 
 interface TiangRow {
@@ -432,6 +440,88 @@ export const supabaseSurveyService = {
             return !error;
         } catch (error) {
             console.error('Delete survey error:', error);
+            return false;
+        }
+    },
+    /**
+     * Share a survey with an email
+     */
+    async shareSurvey(surveyId: string, email: string): Promise<{ success: boolean; message?: string }> {
+        try {
+            // Trim and validate email
+            const cleanEmail = email.trim().toLowerCase();
+            if (!cleanEmail) return { success: false, message: 'Email tidak boleh kosong' };
+
+            // Check if already shared
+            const { data: existing } = await supabase
+                .from('survey_shares')
+                .select('id')
+                .eq('survey_id', surveyId)
+                .eq('shared_with_email', cleanEmail)
+                .single();
+
+            if (existing) {
+                return { success: false, message: 'Survey sudah dibagikan ke email ini' };
+            }
+
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'User tidak terautentikasi' };
+
+            const { error } = await supabase
+                .from('survey_shares')
+                .insert({
+                    survey_id: surveyId,
+                    shared_with_email: cleanEmail,
+                    shared_by_user_id: user.id // Explicitly set to secure RLS
+                });
+
+            if (error) throw error;
+            return { success: true };
+        } catch (error: any) {
+            console.error('Share survey error:', error);
+            return { success: false, message: error.message || 'Gagal membagikan survey' };
+        }
+    },
+
+    /**
+     * Get list of emails a survey is shared with
+     */
+    async getSurveyShares(surveyId: string): Promise<SurveyShare[]> {
+        try {
+            const { data, error } = await supabase
+                .from('survey_shares')
+                .select('*')
+                .eq('survey_id', surveyId);
+
+            if (error || !data) return [];
+
+            return data.map((row: SurveyShareRow) => ({
+                id: row.id,
+                surveyId: row.survey_id,
+                sharedByUserId: row.shared_by_user_id,
+                sharedWithEmail: row.shared_with_email,
+                createdAt: new Date(row.created_at)
+            }));
+        } catch (error) {
+            console.error('Get shares error:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Remove a share
+     */
+    async removeShare(shareId: string): Promise<boolean> {
+        try {
+            const { error } = await supabase
+                .from('survey_shares')
+                .delete()
+                .eq('id', shareId);
+
+            return !error;
+        } catch (error) {
+            console.error('Remove share error:', error);
             return false;
         }
     },

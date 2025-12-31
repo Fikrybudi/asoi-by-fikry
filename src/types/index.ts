@@ -154,7 +154,7 @@ export interface Survey {
     keterangan?: string;
     appDipasang?: 'Persil' | 'Gardu';
     konstruksiOleh?: 'Pelanggan' | 'PLN';
-    // Signatures (base64 PNG)
+    // URL tanda tangan
     signaturePelanggan?: string;
     signatureSurveyor?: string;
 
@@ -221,4 +221,16 @@ export interface SyncQueueItem {
     data: any;
     createdAt: Date;
     retryCount: number;
+}
+
+// =============================================================================
+// SHARE SURVEY (COLLABORATION)
+// =============================================================================
+
+export interface SurveyShare {
+    id: string;
+    surveyId: string;
+    sharedByUserId: string;
+    sharedWithEmail: string;
+    createdAt: Date;
 }

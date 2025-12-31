@@ -25,6 +25,7 @@ import { surveyService } from '../services/database';
 import { supabaseSurveyService, syncManager } from '../services/supabaseService';
 import { generateBASurveyPdf } from '../utils/baSurveyPdf';
 import SignatureCapture from '../components/Forms/SignatureCapture';
+import ShareSurveyModal from '../components/Forms/ShareSurveyModal';
 import { Image } from 'react-native';
 
 // =============================================================================
@@ -84,6 +85,10 @@ export default function SurveyHistoryScreen({
     const [editSignaturePelanggan, setEditSignaturePelanggan] = useState<string>('');
     const [editSignatureSurveyor, setEditSignatureSurveyor] = useState<string>('');
     const [showSignaturePad, setShowSignaturePad] = useState<'pelanggan' | 'surveyor' | null>(null);
+
+    // Share Modal State
+    const [shareSurveyId, setShareSurveyId] = useState<string | null>(null);
+    const [shareSurveyName, setShareSurveyName] = useState<string>('');
 
     useEffect(() => {
         if (visible) {
@@ -341,6 +346,19 @@ export default function SurveyHistoryScreen({
                             style={styles.editButton}
                         >
                             <Text style={{ fontSize: 16 }}>✏️</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Share Button (Only if Owner and Synced) */}
+                    {!isSelectMode && item.isSynced && (
+                        <TouchableOpacity
+                            onPress={() => {
+                                setShareSurveyId(item.id);
+                                setShareSurveyName(item.namaSurvey);
+                            }}
+                            style={[styles.editButton, { backgroundColor: '#E3F2FD' }]}
+                        >
+                            <Text style={{ fontSize: 16 }}>👥</Text>
                         </TouchableOpacity>
                     )}
 
@@ -796,6 +814,14 @@ export default function SurveyHistoryScreen({
                     setShowSignaturePad(null);
                 }}
                 onCancel={() => setShowSignaturePad(null)}
+            />
+
+            {/* Share Survey Modal */}
+            <ShareSurveyModal
+                visible={!!shareSurveyId}
+                surveyId={shareSurveyId || ''}
+                surveyName={shareSurveyName}
+                onClose={() => setShareSurveyId(null)}
             />
         </SafeAreaView>
     );

@@ -234,8 +234,12 @@ export default function App() {
       return;
     }
 
-    // Generate PDF with map
-    const pdfPath = await generatePdfWithMap(mapBase64, currentSurvey.namaSurvey);
+    // Generate PDF with map and survey info
+    // Orientation is auto-detected from device screen dimensions
+    const pdfPath = await generatePdfWithMap(mapBase64, {
+      name: currentSurvey.namaSurvey,
+      location: currentSurvey.lokasi || '',
+    });
     if (!pdfPath) {
       Alert.alert('Error', 'Gagal generate PDF');
       return;
