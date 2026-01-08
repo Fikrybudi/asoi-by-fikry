@@ -11,6 +11,7 @@ import {
     Modal,
     StyleSheet,
     Dimensions,
+    SafeAreaView,
 } from 'react-native';
 import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas';
 
@@ -58,7 +59,7 @@ export default function SignatureCapture({
             transparent={false}
             onRequestClose={onCancel}
         >
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onCancel}>
                         <Text style={styles.cancelButton}>Batal</Text>
@@ -89,7 +90,7 @@ export default function SignatureCapture({
                         <Text style={styles.clearButtonText}>🗑️ Hapus</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </SafeAreaView>
         </Modal>
     );
 }
