@@ -12,6 +12,8 @@ import {
     StyleSheet,
     Dimensions,
     SafeAreaView,
+    Platform,
+    StatusBar,
 } from 'react-native';
 import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas';
 
@@ -101,6 +103,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     header: {
         flexDirection: 'row',

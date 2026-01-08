@@ -19,6 +19,7 @@ import {
     KeyboardAvoidingView,
     ScrollView,
     Platform,
+    StatusBar,
 } from 'react-native';
 import { Survey } from '../types';
 import { surveyService } from '../services/database';
@@ -842,6 +843,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     header: {
         flexDirection: 'row',
