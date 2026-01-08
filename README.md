@@ -4,7 +4,7 @@
 
 ![App Status](https://img.shields.io/badge/version-v1.1-blue) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green) ![Expo](https://img.shields.io/badge/sdk-Expo%2052-black)
 
-## 🆕 What's New in v1.1
+## 🆕 What's New in v1.4
 
 - **Standar Konstruksi Lokal Banten Selatan**: Standar konstruksi JTM (TM1B, TM2B, dll) dan JTR (TR-1B s/d TR-11B) dengan detail material.
 - **Zoom Persistence**: Zoom level peta tetap tersimpan saat menambah tiang/gardu.
