@@ -544,9 +544,33 @@ const generateMapHTML = (
     map.createPane('tiangPane');
     map.getPane('tiangPane').style.zIndex = 450;
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Google Maps Tile Layers
+    var googleStreets = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       maxZoom: 21,
-    }).addTo(map);
+      attribution: '© Google Maps'
+    });
+    
+    var googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      maxZoom: 21,
+      attribution: '© Google Maps'
+    });
+    
+    var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom: 21,
+      attribution: '© Google Maps'
+    });
+    
+    // Default to streets
+    googleStreets.addTo(map);
+    
+    // Layer control
+    var baseMaps = {
+      "🗺️ Peta": googleStreets,
+      "🛰️ Satelit": googleSatellite,
+      "🌐 Hybrid": googleHybrid
+    };
+    
+    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
     // User location marker
     var userMarker = L.circleMarker([${center.latitude}, ${center.longitude}], {
