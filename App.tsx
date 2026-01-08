@@ -255,8 +255,7 @@ export default function App() {
   // ==========================================================================
 
   const handleTiangSubmit = async (
-    data: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'>,
-    standarUsed: 'Nasional' | 'Lokal'
+    data: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'>
   ) => {
     try {
       if (!currentSurvey) {
@@ -290,13 +289,9 @@ export default function App() {
       if (newTiang) {
         const updatedTiangList = [...currentSurvey.tiangList, newTiang];
 
-        // Lock standarKonstruksi on first SUTM tiang
-        const shouldLockStandar = !currentSurvey.standarKonstruksi && data.jenisJaringan === 'SUTM';
-
         setCurrentSurvey(prev => prev ? {
           ...prev,
           tiangList: updatedTiangList,
-          ...(shouldLockStandar && { standarKonstruksi: standarUsed }),
         } : null);
 
         // If this is tiang #2 or more, offer to auto-connect with previous tiang
@@ -866,7 +861,7 @@ export default function App() {
           <View style={styles.headerContent}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="location" size={16} color="white" style={{ marginRight: 4 }} />
-              <Text style={styles.headerTitle}>ASOI by Fikry</Text>
+              <Text style={styles.headerTitle}>ASOI</Text>
             </View>
             <Text style={styles.headerSubtitle}>Aplikasi Survey Online</Text>
             <Text style={styles.headerStats}>
@@ -1005,7 +1000,6 @@ export default function App() {
             setToolMode('none');
           }}
           lastJenisJaringan={lastJenisJaringan}
-          lockedStandar={currentSurvey?.standarKonstruksi}
           initialData={editingTiang || undefined}
         />
       )}
@@ -1296,7 +1290,7 @@ export default function App() {
               {/* App Logo & Version */}
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
                 <Ionicons name="location" size={50} color="#1565C0" />
-                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>ASOI by Fikry</Text>
+                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>ASOI</Text>
                 <Text style={{ fontSize: 14, color: '#666' }}>Aplikasi Survey Online</Text>
                 <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 1.0.0</Text>
               </View>

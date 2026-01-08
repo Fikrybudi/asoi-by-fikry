@@ -1,9 +1,10 @@
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║  PLN SURVEY APP - Standar Konstruksi Nasional (SPLN)                     ║
+// ║  PLN SURVEY APP - Standar Konstruksi Lokal Area Banten Selatan           ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 // =============================================================================
 // KONSTRUKSI SUTM/JTM - SALURAN UDARA TEGANGAN MENENGAH (20 kV)
+// Standar Lokal Area Banten Selatan
 // =============================================================================
 
 export interface KonstruksiTM {
@@ -14,202 +15,234 @@ export interface KonstruksiTM {
 }
 
 export const KONSTRUKSI_TM: Record<string, KonstruksiTM> = {
-    'TM-1': {
-        kode: 'TM-1',
-        nama: 'Tiang Penyangga',
-        keterangan: 'Jaringan lurus atau sudut ≤5°',
-        isolator: 'Pin Insulator'
-    },
-    'TM-2': {
-        kode: 'TM-2',
-        nama: 'Tiang Sudut Kecil',
-        keterangan: 'Sudut 5° - 30°, double cross arm',
-        isolator: 'Pin Insulator'
-    },
-    'TM-3': {
-        kode: 'TM-3',
-        nama: 'Tiang Penegang (Asfan)',
-        keterangan: 'Dipasang setiap 10-15 gawang, pakai Asfan',
-        isolator: 'Suspension/Asfan Insulator'
-    },
-    'TM-3D': {
-        kode: 'TM-3D',
-        nama: 'Tiang Penegang DC',
-        keterangan: 'Penegang Double Circuit (4 travers)',
-        isolator: 'Suspension + Pin Insulator'
-    },
-    'TM-4': {
-        kode: 'TM-4',
-        nama: 'Tiang Awal/Akhir',
-        keterangan: 'Di awal/akhir penarikan, dengan schoor',
-        isolator: 'Suspension Insulator'
-    },
-    'TM-5': {
-        kode: 'TM-5',
-        nama: 'Tiang Penegang Standar',
-        keterangan: 'Tiang penegang SUTM standar',
-        isolator: 'Suspension Insulator'
-    },
-    'TM-5D': {
-        kode: 'TM-5D',
-        nama: 'Tiang Penegang DC Standar',
-        keterangan: 'Penegang DC dengan double schoor',
-        isolator: 'Suspension Insulator'
-    },
-    'TM-6': {
-        kode: 'TM-6',
-        nama: 'Tiang Sudut 30°-60°',
-        keterangan: 'Sudut besar, perlu guy wire',
-        isolator: 'Suspension Insulator'
-    },
-    'TM-7': {
-        kode: 'TM-7',
-        nama: 'Tiang Sudut 90°',
-        keterangan: 'Belokan siku/tegak lurus',
-        isolator: 'Suspension Insulator'
-    },
-    'TM-8': {
-        kode: 'TM-8',
-        nama: 'Tiang Percabangan',
-        keterangan: 'Titik cabang jaringan TM',
-        isolator: 'Pin + Suspension'
-    },
-    'TM-9': {
-        kode: 'TM-9',
-        nama: 'Tiang Under Crossing',
-        keterangan: 'Under crossing dengan jaringan lain',
-        isolator: 'Pin atau Suspension'
-    },
-    'TM-10': {
-        kode: 'TM-10',
-        nama: 'Tiang Over Crossing',
-        keterangan: 'Over crossing SUTT/jembatan',
-        isolator: 'Suspension Insulator'
-    },
-    'TM-11': {
-        kode: 'TM-11',
-        nama: 'Tiang Portal',
-        keterangan: 'Lokasi gardu/portal trafo',
-        isolator: 'Pin Insulator'
-    },
-};
-
-export const KONSTRUKSI_TM_LOKAL: Record<string, KonstruksiTM> = {
     'TM1B': {
         kode: 'TM1B',
         nama: 'Tiang Penyangga',
-        keterangan: 'Jaringan lurus atau sudut ≤5° (Nasional: TM-1)',
+        keterangan: 'Jaringan lurus atau sudut ≤5°',
         isolator: 'Pin Insulator'
     },
     'TM2B': {
         kode: 'TM2B',
         nama: 'Tiang Sudut Kecil',
-        keterangan: 'Sudut 5° - 30°, double cross arm (Nasional: TM-2)',
+        keterangan: 'Sudut 5° - 30°, double cross arm',
         isolator: 'Pin Insulator'
-    },
-    'TM4B': {
-        kode: 'TM4B',
-        nama: 'Tiang Penegang (Asfan)',
-        keterangan: 'Dipasang setiap 10-15 gawang, pakai Asfan (Nasional: TM-3)',
-        isolator: 'Suspension/Asfan Insulator'
-    },
-    'TM14B': {
-        kode: 'TM14B',
-        nama: 'Tiang Akhir',
-        keterangan: 'Tiang akhir tanpa kabel naik (Nasional: TM-4)',
-        isolator: 'Suspension Insulator'
-    },
-    'TM11B': {
-        kode: 'TM11B',
-        nama: 'Tiang Awal',
-        keterangan: 'Tiang awal dengan kabel naik outdoor (Nasional: TM-4)',
-        isolator: 'Suspension Insulator'
     },
     'TM3B': {
         kode: 'TM3B',
         nama: 'Tiang Penegang DC',
-        keterangan: 'Penegang Double Circuit (4 travers) (Nasional: TM-3D)',
+        keterangan: 'Penegang Double Circuit (4 travers)',
         isolator: 'Suspension + Pin Insulator'
+    },
+    'TM4B': {
+        kode: 'TM4B',
+        nama: 'Tiang Penegang (Asfan)',
+        keterangan: 'Dipasang setiap 10-15 gawang, pakai Asfan',
+        isolator: 'Suspension/Asfan Insulator'
+    },
+    'TM5B': {
+        kode: 'TM5B',
+        nama: 'Tiang Portal',
+        keterangan: 'Lokasi gardu/portal trafo',
+        isolator: 'Pin Insulator'
     },
     'TM7B': {
         kode: 'TM7B',
         nama: 'Tiang Sudut 90°',
-        keterangan: 'Belokan siku/tegak lurus (Nasional: TM-7)',
+        keterangan: 'Belokan siku/tegak lurus',
         isolator: 'Suspension Insulator'
     },
     'TM8B': {
         kode: 'TM8B',
         nama: 'Tiang Percabangan',
-        keterangan: 'Titik cabang jaringan TM (Nasional: TM-8)',
+        keterangan: 'Titik cabang jaringan TM',
         isolator: 'Pin + Suspension'
     },
-    'TM5B': {
-        kode: 'TM5B',
-        nama: 'Tiang Portal',
-        keterangan: 'Lokasi gardu/portal trafo (Nasional: TM-11)',
-        isolator: 'Pin Insulator'
+    'TM11B': {
+        kode: 'TM11B',
+        nama: 'Tiang Awal',
+        keterangan: 'Tiang awal dengan kabel naik outdoor',
+        isolator: 'Suspension Insulator'
+    },
+    'TM14B': {
+        kode: 'TM14B',
+        nama: 'Tiang Akhir',
+        keterangan: 'Tiang akhir tanpa kabel naik',
+        isolator: 'Suspension Insulator'
     },
 };
 
 // =============================================================================
 // KONSTRUKSI JTR/SUTR - SALURAN UDARA TEGANGAN RENDAH (220/380 V)
+// Standar Lokal Area Banten Selatan
 // =============================================================================
+
+export interface MaterialTR {
+    nama: string;
+    jumlah: string;  // e.g. "1,5 M", "2 BH", "1 SET"
+}
 
 export interface KonstruksiTR {
     kode: string;
     nama: string;
     keterangan: string;
-    assembly: string;
+    material: MaterialTR[];
 }
 
 export const KONSTRUKSI_TR: Record<string, KonstruksiTR> = {
-    'TR-1': {
-        kode: 'TR-1',
-        nama: 'Tiang Penyangga',
-        keterangan: 'Jaringan lurus atau sudut ≤15°',
-        assembly: 'Suspension Small Angle'
+    'TR-1B': {
+        kode: 'TR-1B',
+        nama: 'Penyangga/Suspension',
+        keterangan: 'Konstruksi penyangga JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '1,5 M' },
+            { nama: 'Stoping Buckle', jumlah: '2 BH' },
+            { nama: 'Suspension Ass', jumlah: '1 SET' },
+            { nama: 'Pole Bracket', jumlah: '1 BH' },
+            { nama: 'Plastic Strip', jumlah: '2 BH' },
+        ]
     },
-    'TR-2': {
-        kode: 'TR-2',
-        nama: 'Tiang Sudut',
-        keterangan: 'Sudut >15° hingga 90°, perlu guy wire',
-        assembly: 'Dead End / Large Angle'
+    'TR-2B': {
+        kode: 'TR-2B',
+        nama: 'Tumpu Akhir Ganda',
+        keterangan: 'Konstruksi tumpu akhir ganda JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '1,5 M' },
+            { nama: 'Stoping Buckle', jumlah: '2 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '2 BH' },
+            { nama: 'Pole Bracket', jumlah: '1 BH' },
+            { nama: 'Plastic Strip', jumlah: '2 BH' },
+        ]
     },
-    'TR-3': {
-        kode: 'TR-3',
-        nama: 'Tiang Awal/Akhir',
-        keterangan: 'Di awal/akhir jaringan (di gardu)',
-        assembly: 'Dead End'
+    'TR-3B': {
+        kode: 'TR-3B',
+        nama: 'Sudut/Penegang',
+        keterangan: 'Konstruksi sudut atau penegang JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '1,5 M' },
+            { nama: 'Stoping Buckle', jumlah: '2 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '2 BH' },
+            { nama: 'Pole Bracket', jumlah: '2 BH' },
+            { nama: 'Plastic Strip', jumlah: '4 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '1 BH' },
+        ]
     },
-    'TR-4': {
-        kode: 'TR-4',
-        nama: 'Tiang Persimpangan',
-        keterangan: 'Di persimpangan/silangan jaringan',
-        assembly: 'Suspension Small Angle'
+    'TR-4B': {
+        kode: 'TR-4B',
+        nama: 'Percabangan/Tee-off',
+        keterangan: 'Konstruksi percabangan/tee-off JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '3 M' },
+            { nama: 'Stoping Buckle', jumlah: '4 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '1 SET' },
+            { nama: 'Pole Bracket', jumlah: '2 BH' },
+            { nama: 'Plastic Strip', jumlah: '5 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '1 BH' },
+            { nama: 'Suspension Ass', jumlah: '1 SET' },
+            { nama: 'CCO 70-70 / 70-35 mm', jumlah: '5 BH' },
+        ]
     },
-    'TR-5': {
-        kode: 'TR-5',
-        nama: 'Tiang Pencabangan',
-        keterangan: 'Titik cabang jaringan TR',
-        assembly: 'Suspension + Dead End'
+    'TR-5B': {
+        kode: 'TR-5B',
+        nama: 'Percabangan dengan Stey Set',
+        keterangan: 'Konstruksi percabangan dengan stey set JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '3 M' },
+            { nama: 'Stoping Buckle', jumlah: '4 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '3 BH' },
+            { nama: 'Pole Bracket', jumlah: '2 BH' },
+            { nama: 'Plastic Strip', jumlah: '4 BH' },
+            { nama: 'CCO 70-70 / 70-35 mm', jumlah: '5 BH' },
+            { nama: 'Stey Set TR', jumlah: '1 SET' },
+        ]
     },
-    'TR-6': {
-        kode: 'TR-6',
-        nama: 'Tiang Penegang',
-        keterangan: 'Setiap 200m atau 10 gawang',
-        assembly: 'Dead End'
+    'TR-6B': {
+        kode: 'TR-6B',
+        nama: 'Penegang Tengah dengan Stey Set',
+        keterangan: 'Konstruksi penegang tengah dengan stey set JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '3 M' },
+            { nama: 'Stoping Buckle', jumlah: '4 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '3 BH' },
+            { nama: 'Pole Bracket', jumlah: '2 BH' },
+            { nama: 'Plastic Strip', jumlah: '4 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '1 BH' },
+            { nama: 'Stey Set TR', jumlah: '1 SET' },
+            { nama: 'CCO 70-70 / 70-35 mm', jumlah: '5 BH' },
+        ]
     },
-    'TR-7': {
-        kode: 'TR-7',
-        nama: 'Tiang Under Crossing',
-        keterangan: 'Under crossing dengan jaringan lain',
-        assembly: 'Dead End'
+    'TR-7B': {
+        kode: 'TR-7B',
+        nama: 'Kombinasi Suspension & Dead End',
+        keterangan: 'Konstruksi kombinasi suspension dan dead end JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '3 M' },
+            { nama: 'Stoping Buckle', jumlah: '4 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '2 BH' },
+            { nama: 'Pole Bracket', jumlah: '2 BH' },
+            { nama: 'Plastic Strip', jumlah: '5 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '1 BH' },
+            { nama: 'Suspension Ass', jumlah: '1 BH' },
+            { nama: 'CCO 70-70 / 70-35 mm', jumlah: '5 BH' },
+        ]
     },
-    'TR-8': {
-        kode: 'TR-8',
-        nama: 'Tiang APP/SR',
-        keterangan: 'Lokasi pemasangan APP/SR',
-        assembly: 'Suspension'
+    'TR-8B': {
+        kode: 'TR-8B',
+        nama: 'Dead End Ganda',
+        keterangan: 'Konstruksi dead end ganda JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '3 M' },
+            { nama: 'Stoping Buckle', jumlah: '4 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '4 BH' },
+            { nama: 'Pole Bracket', jumlah: '2 BH' },
+            { nama: 'Plastic Strip', jumlah: '4 BH' },
+            { nama: 'CCO 70-70 / 70-35 mm', jumlah: '5 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '1 BH' },
+        ]
+    },
+    'TR-9B': {
+        kode: 'TR-9B',
+        nama: 'Persimpangan/Cross',
+        keterangan: 'Konstruksi persimpangan/cross JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '1,5 M' },
+            { nama: 'Stoping Buckle', jumlah: '2 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '4 BH' },
+            { nama: 'Pole Bracket', jumlah: '4 BH' },
+            { nama: 'Plastic Strip', jumlah: '4 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '2 BH' },
+            { nama: 'CCO 70-70 / 70-35 mm', jumlah: '10 BH' },
+        ]
+    },
+    'TR-10B': {
+        kode: 'TR-10B',
+        nama: 'Akhir Jaringan & Proteksi',
+        keterangan: 'Konstruksi akhir jaringan dengan proteksi JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '3 M' },
+            { nama: 'Stoping Buckle', jumlah: '4 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '1 BH' },
+            { nama: 'Pole Bracket', jumlah: '1 BH' },
+            { nama: 'Plastic Strip', jumlah: '2 BH' },
+            { nama: 'Turn Buckle / Span Scroof', jumlah: '1 BH' },
+            { nama: 'Elektrical Protek', jumlah: '1 SET' },
+            { nama: 'Stey Set TR', jumlah: '1 SET' },
+            { nama: 'Link 25 X 50', jumlah: '2 BH' },
+        ]
+    },
+    'TR-11B': {
+        kode: 'TR-11B',
+        nama: 'Tiang Awal/Risers',
+        keterangan: 'Konstruksi tiang awal/risers JTR',
+        material: [
+            { nama: 'Stainless Steel', jumlah: '6 M' },
+            { nama: 'Stoping Buckle', jumlah: '7 BH' },
+            { nama: 'Fixed Dead End Ass', jumlah: '1 BH' },
+            { nama: 'Pole Bracket', jumlah: '1 BH' },
+            { nama: 'Plastic Strip', jumlah: '2 BH' },
+            { nama: 'Pipa Air 3" X 3000 MM', jumlah: '1 BH' },
+            { nama: 'Stey Set TR', jumlah: '1 SET' },
+            { nama: 'Link 25 X 50', jumlah: '5 BH' },
+        ]
     },
 };
 
@@ -334,13 +367,13 @@ export interface TiangDefaults {
 
 export const DEFAULT_TIANG: Record<'SUTM' | 'SUTR' | 'SKUTM', TiangDefaults> = {
     'SUTM': {
-        konstruksi: 'TM-1',
+        konstruksi: 'TM1B',
         tinggi: '12m',
         bahan: 'Beton',
         kekuatan: '200 daN',
     },
     'SUTR': {
-        konstruksi: 'TR-1',
+        konstruksi: 'TR-1B',
         tinggi: '9m',
         bahan: 'Beton',
         kekuatan: '200 daN',

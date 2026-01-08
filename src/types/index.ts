@@ -23,7 +23,7 @@ export interface Tiang {
 
     // Konstruksi
     jenisJaringan: 'SUTM' | 'SUTR' | 'SKUTM';
-    konstruksi: string; // 'TM-1', 'TM-2', 'TR-1', etc.
+    konstruksi: string; // 'TM1B', 'TM2B', 'TR-1B', etc. (Standar Lokal Banten Selatan)
 
     // Status (for existing vs new poles)
     status?: 'existing' | 'planned';
@@ -172,8 +172,7 @@ export interface Survey {
     garduList: Gardu[];
     jalurList: JalurKabel[];
 
-    // Construction standard (locked after first tiang is added)
-    standarKonstruksi?: 'Nasional' | 'Lokal';
+
 
     // Rencana teknik summary
     rencanaTeknik?: RencanaTeknik;

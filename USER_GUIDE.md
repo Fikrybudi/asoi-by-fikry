@@ -19,10 +19,9 @@ Dokumen ini berisi panduan lengkap cara menggunakan aplikasi ASOI untuk keperlua
 3.  Pilih Jenis Jaringan:
     *   **SUTR** (Tegangan Rendah): Tiang Besi/Beton 9m, 11m.
     *   **SUTM** (Tegangan Menengah): Tiang Beton 11m, 12m, 14m.
-4.  **(Khusus SUTM)** Pilih **Standar Konstruksi**:
-    *   **Nasional**: TM-1, TM-2, TM-3, dst (SPLN).
-    *   **Lokal**: TM1B, TM2B, TM4B, dst (standar daerah).
-    *   ⚠️ Standar akan terkunci setelah tiang pertama ditambahkan.
+4.  Pilih **Konstruksi** berdasarkan standar lokal Area Banten Selatan:
+    *   **SUTM**: TM1B, TM2B, TM3B, TM4B, TM5B, TM7B, TM8B, TM11B, TM14B.
+    *   **SUTR**: TR-1B s/d TR-11B (lengkap dengan detail material).
 5.  Isi data konstruksi dan keterangan.
 6.  Tekan **"Simpan"**. Marker tiang akan muncul di peta.
 

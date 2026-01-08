@@ -1,4 +1,4 @@
-# 🗺️ ASOI (Aplikasi Survey Online) by Fikry
+# 🗺️ ASOI (Aplikasi Survey Online)
 
 **ASOI** adalah aplikasi mobile berbasis **React Native (Expo)** yang dirancang untuk mempermudah proses survey lapangan aset PLN (Tiang, Gardu, dan Jalur Kabel). Aplikasi ini bekerja secara **Offline-First**, memungkinkan surveyor bekerja di area tanpa sinyal dan menyinkronkan data ke Cloud (Supabase) saat kembali online.
 
@@ -6,7 +6,7 @@
 
 ## 🆕 What's New in v1.1
 
-- **Standar Konstruksi Lokal/Nasional**: Toggle antara standar SPLN (TM-1, TM-2) dan standar lokal (TM1B, TM2B).
+- **Standar Konstruksi Lokal Banten Selatan**: Standar konstruksi JTM (TM1B, TM2B, dll) dan JTR (TR-1B s/d TR-11B) dengan detail material.
 - **Zoom Persistence**: Zoom level peta tetap tersimpan saat menambah tiang/gardu.
 - **Marker Gardu Baru**: Titik bulat orange untuk gardu, terpisah dari tiang.
 - **Layer Control Lengkap**: Toggle visibility untuk label + titik tiang/gardu.
@@ -23,7 +23,7 @@
 *   **🛠️ Tools Lengkap**:
     *   Layer Control (menyembunyikan/menampilkan label & titik aset).
     *   Snap-to-Location (Pasang titik survey di lokasi saat ini).
-    *   Standar Konstruksi Nasional/Lokal (SUTM).
+    *   Standar Konstruksi Lokal Area Banten Selatan (SUTM & SUTR).
     *   Zoom level persists across map updates.
     *   Edit Survey & History Management.
 *   **📸 Dokumentasi**: Foto aset langsung dari aplikasi.

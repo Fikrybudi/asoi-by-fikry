@@ -19,11 +19,9 @@ import Constants from 'expo-constants';
 import { Coordinate, Tiang } from '../../types';
 import {
     KONSTRUKSI_TM,
-    KONSTRUKSI_TM_LOKAL,
     KONSTRUKSI_TR,
     KONSTRUKSI_SKUTM,
     JENIS_TIANG,
-    PERLENGKAPAN_JARINGAN,
     DEFAULT_TIANG,
 } from '../../utils/plnStandards';
 import { formatCoordinate } from '../../utils/geoUtils';
@@ -35,13 +33,11 @@ import { formatCoordinate } from '../../utils/geoUtils';
 interface TiangFormProps {
     visible: boolean;
     koordinat: Coordinate;
-    onSubmit: (data: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'>, standarUsed: 'Nasional' | 'Lokal') => void;
+    onSubmit: (data: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'>) => void;
     onCancel: () => void;
     initialData?: Partial<Tiang>;
     // Remember last selection from previous tiang
     lastJenisJaringan?: 'SUTM' | 'SUTR' | 'SKUTM';
-    // Lock construction standard if survey already has tiangs
-    lockedStandar?: 'Nasional' | 'Lokal';
 }
 
 // =============================================================================
@@ -55,14 +51,12 @@ export default function TiangForm({
     onCancel,
     initialData,
     lastJenisJaringan,
-    lockedStandar,
 }: TiangFormProps) {
     // Determine initial jenis jaringan from lastJenisJaringan or default to SUTM
     const initialJenis = lastJenisJaringan || initialData?.jenisJaringan || 'SUTM';
     const defaults = DEFAULT_TIANG[initialJenis];
 
     const [jenisJaringan, setJenisJaringan] = useState<'SUTM' | 'SUTR' | 'SKUTM'>(initialJenis);
-    const [standarKonstruksi, setStandarKonstruksi] = useState<'Nasional' | 'Lokal'>(lockedStandar || 'Nasional');
     const [statusTiang, setStatusTiang] = useState<'existing' | 'planned'>(initialData?.status || 'planned');
     const [konstruksi, setKonstruksi] = useState(initialData?.konstruksi || defaults.konstruksi);
     const [jenisTiang, setJenisTiang] = useState<'Beton' | 'Besi/Baja' | 'Kayu'>(
@@ -76,24 +70,17 @@ export default function TiangForm({
     const [catatan, setCatatan] = useState(initialData?.catatan || '');
     const [fotos, setFotos] = useState<string[]>(initialData?.foto || []);
 
-    // Update defaults when jenis jaringan or standard changes
+    // Update defaults when jenis jaringan changes
     useEffect(() => {
         // Skip if in edit mode (initialData provided)
         if (initialData) return;
 
         const newDefaults = DEFAULT_TIANG[jenisJaringan];
-        let initialKonstruksi = newDefaults.konstruksi;
-
-        // Special case for local SUTM defaults
-        if (jenisJaringan === 'SUTM' && standarKonstruksi === 'Lokal') {
-            initialKonstruksi = 'TM1B'; // Default for local
-        }
-
-        setKonstruksi(initialKonstruksi);
+        setKonstruksi(newDefaults.konstruksi);
         setTinggiTiang(newDefaults.tinggi);
         setJenisTiang(newDefaults.bahan);
         setKekuatanTiang(newDefaults.kekuatan);
-    }, [jenisJaringan, standarKonstruksi, initialData]);
+    }, [jenisJaringan, initialData]);
 
     // Reset form when initialData changes (for edit mode)
     useEffect(() => {
@@ -118,11 +105,7 @@ export default function TiangForm({
         if (jenisJaringan === 'SKUTM') {
             return Object.values(KONSTRUKSI_SKUTM);
         }
-
-        // SUTM - handle based on selected standard
-        if (standarKonstruksi === 'Lokal') {
-            return Object.values(KONSTRUKSI_TM_LOKAL);
-        }
+        // SUTM - standar lokal Area Banten Selatan
         return Object.values(KONSTRUKSI_TM);
     };
 
@@ -140,7 +123,7 @@ export default function TiangForm({
             foto: fotos.length > 0 ? fotos : undefined,
             catatan: catatan || undefined,
             status: statusTiang,
-        }, standarKonstruksi);
+        });
     };
 
     const togglePerlengkapan = (item: string) => {
@@ -288,40 +271,13 @@ export default function TiangForm({
                         )}
                     </View>
 
-                    {/* Standar Konstruksi (Specific for SUTM) */}
+                    {/* Standar Konstruksi - Lokal Area Banten Selatan */}
                     {jenisJaringan === 'SUTM' && (
                         <View style={styles.section}>
-                            <Text style={styles.label}>
-                                Standar Konstruksi {lockedStandar && '🔒'}
+                            <Text style={styles.label}>Standar Konstruksi</Text>
+                            <Text style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
+                                📍 Standar Lokal Area Banten Selatan
                             </Text>
-                            {lockedStandar && (
-                                <Text style={{ fontSize: 11, color: '#999', marginBottom: 6 }}>
-                                    Dikunci ke standar {lockedStandar} (survey ini sudah punya tiang)
-                                </Text>
-                            )}
-                            <View style={styles.optionRow}>
-                                {(['Nasional', 'Lokal'] as const).map((standar) => (
-                                    <TouchableOpacity
-                                        key={standar}
-                                        style={[
-                                            styles.optionButton,
-                                            standarKonstruksi === standar && styles.optionButtonActive,
-                                            lockedStandar && standarKonstruksi !== standar && { opacity: 0.4 },
-                                        ]}
-                                        onPress={() => !lockedStandar && setStandarKonstruksi(standar)}
-                                        disabled={!!lockedStandar}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.optionText,
-                                                standarKonstruksi === standar && styles.optionTextActive,
-                                            ]}
-                                        >
-                                            {standar}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
                         </View>
                     )}
 
