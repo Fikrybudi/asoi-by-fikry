@@ -69,6 +69,12 @@ export const KONSTRUKSI_TM: Record<string, KonstruksiTM> = {
         keterangan: 'Tiang akhir tanpa kabel naik',
         isolator: 'Suspension Insulator'
     },
+    'M21': {
+        kode: 'M21',
+        nama: 'Tiang TM dengan Travers V',
+        keterangan: 'Konstruksi TM dengan cross arm bentuk V',
+        isolator: 'Pin Insulator'
+    },
 };
 
 // =============================================================================

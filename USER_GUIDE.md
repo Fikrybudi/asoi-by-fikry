@@ -1,4 +1,4 @@
-# 📖 Panduan Penggunaan ASOI v1.4
+# 📖 Panduan Penggunaan ASOI v1.5
 
 **ASOI** (Aplikasi Survey Online) adalah aplikasi mobile untuk survey lapangan aset PLN (Tiang, Gardu, dan Jalur Kabel). Aplikasi ini bekerja secara **Offline-First** dan menggunakan standar konstruksi lokal **Area Banten Selatan**.
 
@@ -19,7 +19,8 @@
 11. [Sinkronisasi Cloud](#11-sinkronisasi-cloud)
 12. [Export Laporan](#12-export-laporan)
 13. [Berita Acara Survey](#13-berita-acara-survey-ba)
-14. [Tips & Troubleshooting](#14-tips--troubleshooting)
+14. [Fitur Undo](#14-fitur-undo)
+15. [Tips & Troubleshooting](#15-tips--troubleshooting)
 
 ---
 
@@ -277,9 +278,11 @@ Tekan tombol **"📋"** atau akses dari menu untuk melihat daftar survey.
 1. Dari halaman peta, tekan tombol **"📝"** (Selesai) di pojok kanan atas.
 2. Halaman **Ringkasan Survey** akan muncul.
 3. Review data:
-   - Total Tiang per jenis
+   - Total Tiang per **Konstruksi** (M1, M4, M21, TR-1B, dll)
+   - Total Tiang per **Ukuran** (Tinggi / Kekuatan)
    - Total Gardu per kapasitas
    - Total Panjang Kabel per jenis
+   - **Material Tambahan** (Travers V jika ada konstruksi M21)
 4. Pilih format export:
 
 ### Format Export
@@ -321,7 +324,29 @@ Untuk membuat Berita Acara Survey:
 
 ---
 
-## 14. Tips & Troubleshooting
+## 14. Fitur Undo
+
+Aplikasi memiliki tombol **Undo** untuk membatalkan aksi terakhir.
+
+### Cara Menggunakan
+1. Setelah menambah/menghapus/mengedit tiang/gardu/jalur, tombol **🔙 Undo** muncul di pojok kiri bawah (warna orange).
+2. Tombol menampilkan jumlah aksi yang bisa di-undo: `Undo (3)`
+3. Tekan tombol untuk membatalkan aksi terakhir.
+
+### Yang Bisa Di-Undo
+| Aksi | Hasil Undo |
+|------|------------|
+| Tambah Tiang | Tiang dihapus |
+| Hapus Tiang | Tiang dikembalikan |
+| Edit Tiang | Data dikembalikan ke sebelumnya |
+| Tambah/Hapus/Edit Gardu | Sama seperti tiang |
+| Tambah/Hapus/Edit Jalur | Sama seperti tiang |
+
+> **Catatan**: Maksimal 20 aksi terakhir disimpan dalam history undo.
+
+---
+
+## 15. Tips & Troubleshooting
 
 ### Tips Survey
 - ✅ **Aktifkan GPS** sebelum memulai survey untuk akurasi terbaik.
@@ -355,5 +380,5 @@ Untuk bantuan atau laporan bug, hubungi:
 
 ---
 
-**Versi Dokumen**: 1.4  
+**Versi Dokumen**: 1.5  
 **Terakhir Diperbarui**: Januari 2026

@@ -103,6 +103,19 @@ export default function App() {
   // BA Survey form state
   const [showBASurveyForm, setShowBASurveyForm] = useState(false);
 
+  // Undo history stack (max 20 actions)
+  type UndoAction =
+    | { type: 'add-tiang'; data: Tiang }
+    | { type: 'delete-tiang'; data: Tiang }
+    | { type: 'edit-tiang'; oldData: Tiang; newData: Tiang }
+    | { type: 'add-gardu'; data: Gardu }
+    | { type: 'delete-gardu'; data: Gardu }
+    | { type: 'edit-gardu'; oldData: Gardu; newData: Gardu }
+    | { type: 'add-jalur'; data: JalurKabel }
+    | { type: 'delete-jalur'; data: JalurKabel }
+    | { type: 'edit-jalur'; oldData: JalurKabel; newData: JalurKabel };
+  const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
+
   // ==========================================================================
   // EFFECTS
   // ==========================================================================
@@ -265,6 +278,12 @@ export default function App() {
 
       // EDIT MODE: Update existing tiang
       if (editingTiang) {
+        // Save old data for undo before updating
+        setUndoStack(prev => [...prev.slice(-19), {
+          type: 'edit-tiang',
+          oldData: editingTiang,
+          newData: { ...editingTiang, ...data } as Tiang
+        }]);
         const updated = await tiangService.update(currentSurvey.id, editingTiang.id, data);
         if (updated) {
           setCurrentSurvey(prev => prev ? {
@@ -288,6 +307,9 @@ export default function App() {
 
       if (newTiang) {
         const updatedTiangList = [...currentSurvey.tiangList, newTiang];
+
+        // Push to undo stack (limit to 20 actions)
+        setUndoStack(prev => [...prev.slice(-19), { type: 'add-tiang', data: newTiang }]);
 
         setCurrentSurvey(prev => prev ? {
           ...prev,
@@ -447,6 +469,12 @@ export default function App() {
 
       // EDIT MODE: Update existing gardu
       if (editingGardu) {
+        // Save old data for undo before updating
+        setUndoStack(prev => [...prev.slice(-19), {
+          type: 'edit-gardu',
+          oldData: editingGardu,
+          newData: { ...editingGardu, ...data } as Gardu
+        }]);
         const updated = await garduService.update(currentSurvey.id, editingGardu.id, data);
         if (updated) {
           setCurrentSurvey(prev => prev ? {
@@ -464,6 +492,8 @@ export default function App() {
       // CREATE MODE: Add new gardu
       const newGardu = await garduService.add(currentSurvey.id, data);
       if (newGardu) {
+        // Push to undo stack
+        setUndoStack(prev => [...prev.slice(-19), { type: 'add-gardu', data: newGardu }]);
         setCurrentSurvey(prev => prev ? {
           ...prev,
           garduList: [...prev.garduList, newGardu],
@@ -492,6 +522,8 @@ export default function App() {
       const newJalur = await jalurService.add(currentSurvey.id, data);
 
       if (newJalur) {
+        // Push to undo stack
+        setUndoStack(prev => [...prev.slice(-19), { type: 'add-jalur', data: newJalur }]);
         setCurrentSurvey(prev => prev ? {
           ...prev,
           jalurList: [...prev.jalurList, newJalur],
@@ -602,6 +634,13 @@ export default function App() {
         penampang: data.penampangMM,
       });
 
+      // Save old data for undo before updating
+      setUndoStack(prev => [...prev.slice(-19), {
+        type: 'edit-jalur',
+        oldData: editingJalur,
+        newData: { ...editingJalur, ...data } as JalurKabel
+      }]);
+
       const updatedJalur = await jalurService.update(currentSurvey.id, editingJalur.id, data);
 
       if (updatedJalur) {
@@ -626,6 +665,11 @@ export default function App() {
 
   const deleteTiang = async (id: string) => {
     if (!currentSurvey) return;
+    // Save to undo stack before deleting
+    const tiangToDelete = currentSurvey.tiangList.find(t => t.id === id);
+    if (tiangToDelete) {
+      setUndoStack(prev => [...prev.slice(-19), { type: 'delete-tiang', data: tiangToDelete }]);
+    }
     await tiangService.delete(currentSurvey.id, id);
     setCurrentSurvey(prev => prev ? {
       ...prev,
@@ -635,6 +679,11 @@ export default function App() {
 
   const deleteGardu = async (id: string) => {
     if (!currentSurvey) return;
+    // Save to undo stack before deleting
+    const garduToDelete = currentSurvey.garduList.find(g => g.id === id);
+    if (garduToDelete) {
+      setUndoStack(prev => [...prev.slice(-19), { type: 'delete-gardu', data: garduToDelete }]);
+    }
     await garduService.delete(currentSurvey.id, id);
     setCurrentSurvey(prev => prev ? {
       ...prev,
@@ -644,11 +693,106 @@ export default function App() {
 
   const deleteJalur = async (id: string) => {
     if (!currentSurvey) return;
+    // Save to undo stack before deleting
+    const jalurToDelete = currentSurvey.jalurList.find(j => j.id === id);
+    if (jalurToDelete) {
+      setUndoStack(prev => [...prev.slice(-19), { type: 'delete-jalur', data: jalurToDelete }]);
+    }
     await jalurService.delete(currentSurvey.id, id);
     setCurrentSurvey(prev => prev ? {
       ...prev,
       jalurList: prev.jalurList.filter(j => j.id !== id),
     } : null);
+  };
+
+  // Handle undo action
+  const handleUndo = async () => {
+    if (!currentSurvey || undoStack.length === 0) return;
+
+    const lastAction = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+
+    try {
+      switch (lastAction.type) {
+        case 'add-tiang':
+          // Undo adding = delete the tiang (no re-push to undo stack)
+          await tiangService.delete(currentSurvey.id, lastAction.data.id);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            tiangList: prev.tiangList.filter(t => t.id !== lastAction.data.id),
+          } : null);
+          break;
+        case 'delete-tiang':
+          // Undo deleting = re-add the tiang
+          const restoredTiang = await tiangService.add(currentSurvey.id, lastAction.data);
+          if (restoredTiang) {
+            setCurrentSurvey(prev => prev ? {
+              ...prev,
+              tiangList: [...prev.tiangList, { ...lastAction.data, id: restoredTiang.id }],
+            } : null);
+          }
+          break;
+        case 'add-gardu':
+          await garduService.delete(currentSurvey.id, lastAction.data.id);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            garduList: prev.garduList.filter(g => g.id !== lastAction.data.id),
+          } : null);
+          break;
+        case 'delete-gardu':
+          const restoredGardu = await garduService.add(currentSurvey.id, lastAction.data);
+          if (restoredGardu) {
+            setCurrentSurvey(prev => prev ? {
+              ...prev,
+              garduList: [...prev.garduList, { ...lastAction.data, id: restoredGardu.id }],
+            } : null);
+          }
+          break;
+        case 'add-jalur':
+          await jalurService.delete(currentSurvey.id, lastAction.data.id);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            jalurList: prev.jalurList.filter(j => j.id !== lastAction.data.id),
+          } : null);
+          break;
+        case 'delete-jalur':
+          const restoredJalur = await jalurService.add(currentSurvey.id, lastAction.data);
+          if (restoredJalur) {
+            setCurrentSurvey(prev => prev ? {
+              ...prev,
+              jalurList: [...prev.jalurList, { ...lastAction.data, id: restoredJalur.id }],
+            } : null);
+          }
+          break;
+        case 'edit-tiang':
+          // Undo editing = restore old data
+          await tiangService.update(currentSurvey.id, lastAction.oldData.id, lastAction.oldData);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            tiangList: prev.tiangList.map(t => t.id === lastAction.oldData.id ? lastAction.oldData : t),
+          } : null);
+          break;
+        case 'edit-gardu':
+          // Undo editing = restore old data
+          await garduService.update(currentSurvey.id, lastAction.oldData.id, lastAction.oldData);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            garduList: prev.garduList.map(g => g.id === lastAction.oldData.id ? lastAction.oldData : g),
+          } : null);
+          break;
+        case 'edit-jalur':
+          // Undo editing = restore old data
+          await jalurService.update(currentSurvey.id, lastAction.oldData.id, lastAction.oldData);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            jalurList: prev.jalurList.map(j => j.id === lastAction.oldData.id ? lastAction.oldData : j),
+          } : null);
+          break;
+      }
+    } catch (error) {
+      console.error('Undo failed:', error);
+      Alert.alert('Error', 'Gagal melakukan undo');
+    }
   };
 
   // ==========================================================================
@@ -969,6 +1113,34 @@ export default function App() {
             </Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Floating Undo Button */}
+      {undoStack.length > 0 && !uiHidden && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            left: 16,
+            bottom: 90,
+            backgroundColor: '#FF5722',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderRadius: 25,
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+          onPress={handleUndo}
+        >
+          <Ionicons name="arrow-undo" size={20} color="white" style={{ marginRight: 6 }} />
+          <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>
+            Undo ({undoStack.length})
+          </Text>
+        </TouchableOpacity>
       )}
 
       {/* Toolbar */}

@@ -49,6 +49,8 @@ export default function SurveySummaryScreen({
 
     // Calculate statistics
     const totalTiang = survey.tiangList.length;
+    const tiangBaru = survey.tiangList.filter(t => t.status !== 'existing').length;
+    const tiangEksisting = survey.tiangList.filter(t => t.status === 'existing').length;
     const totalGardu = survey.garduList.length;
     const totalJalur = survey.jalurList.length;
 
@@ -61,9 +63,10 @@ export default function SurveySummaryScreen({
         return acc;
     }, {} as Record<string, number>);
 
-    // Helper to group and count
-    const groupAndCount = (data: any[], key: string) => {
-        const counts = data.reduce((acc: any, item: any) => {
+    // Helper to group and count (only count tiang baru for summary)
+    const groupAndCount = (data: any[], key: string, filterFn?: (item: any) => boolean) => {
+        const filteredData = filterFn ? data.filter(filterFn) : data;
+        const counts = filteredData.reduce((acc: any, item: any) => {
             const val = item[key] || 'Lainnya';
             acc[val] = (acc[val] || 0) + 1;
             return acc;
@@ -71,8 +74,37 @@ export default function SurveySummaryScreen({
         return Object.entries(counts).map(([label, count]) => ({ label, count: count as number }));
     };
 
-    // Summaries
-    const tiangSummary = groupAndCount(survey.tiangList, 'jenisTiang');
+    // Summaries by konstruksi (not jenisTiang)
+    const tiangBaruSummary = groupAndCount(survey.tiangList, 'konstruksi', t => t.status !== 'existing');
+    const tiangEksistingSummary = groupAndCount(survey.tiangList, 'konstruksi', t => t.status === 'existing');
+
+    // Group tiang by ukuran (tinggi/kekuatan) - only for tiang baru
+    const tiangBaruByUkuran = survey.tiangList
+        .filter(t => t.status !== 'existing')
+        .reduce((acc: Record<string, number>, t) => {
+            const key = `${t.tinggiTiang} / ${t.kekuatanTiang || '-'}`;
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+    const tiangBaruUkuranList = Object.entries(tiangBaruByUkuran)
+        .map(([ukuran, count]) => ({ ukuran, count }))
+        .sort((a, b) => b.count - a.count);
+
+    // Group tiang eksisting by ukuran
+    const tiangEksistingByUkuran = survey.tiangList
+        .filter(t => t.status === 'existing')
+        .reduce((acc: Record<string, number>, t) => {
+            const key = `${t.tinggiTiang} / ${t.kekuatanTiang || '-'}`;
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+    const tiangEksistingUkuranList = Object.entries(tiangEksistingByUkuran)
+        .map(([ukuran, count]) => ({ ukuran, count }))
+        .sort((a, b) => b.count - a.count);
+
+    // Count M21 construction for Travers V material (baru + eksisting)
+    const m21Count = survey.tiangList.filter(t => t.konstruksi === 'M21').length;
+
     const garduSummary = survey.garduList.map(g => ({ kapasitas: g.kapasitasKVA, jumlah: 1 }))
         .reduce((acc: any[], curr) => {
             const existing = acc.find(x => x.kapasitas === curr.kapasitas);
@@ -254,11 +286,11 @@ export default function SurveySummaryScreen({
                         </Text>
                     </View>
 
-                    {/* Quick Stats */}
+                    {/* Quick Stats - Tiang Baru only */}
                     <View style={styles.statsGrid}>
                         <View style={[styles.statCard, { backgroundColor: '#E3F2FD' }]}>
-                            <Text style={styles.statValue}>{totalTiang}</Text>
-                            <Text style={styles.statLabel}>Tiang</Text>
+                            <Text style={styles.statValue}>{tiangBaru}</Text>
+                            <Text style={styles.statLabel}>Tiang Baru</Text>
                         </View>
                         <View style={[styles.statCard, { backgroundColor: '#FFF3E0' }]}>
                             <Text style={styles.statValue}>{totalGardu}</Text>
@@ -353,18 +385,21 @@ export default function SurveySummaryScreen({
                         </View>
                     )}
 
-                    {/* Rekap Tiang */}
-                    {tiangSummary.length > 0 && (
+                    {/* Rekap Tiang Baru */}
+                    {tiangBaruSummary.length > 0 && (
                         <View style={styles.section}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                <Ionicons name="construct" size={18} color="#333" style={{ marginRight: 8 }} />
-                                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Rekap Tiang</Text>
+                                <Ionicons name="add-circle" size={18} color="#4CAF50" style={{ marginRight: 8 }} />
+                                <Text style={[styles.sectionTitle, { marginBottom: 0, color: '#4CAF50' }]}>Rekap Tiang Baru</Text>
                             </View>
+
+                            {/* Per Konstruksi */}
+                            <Text style={{ fontSize: 12, color: '#666', marginBottom: 6, fontWeight: '600' }}>Per Konstruksi:</Text>
                             <View style={styles.tableHeader}>
-                                <Text style={[styles.tableCell, { flex: 2 }]}>Jenis Tiang</Text>
+                                <Text style={[styles.tableCell, { flex: 2 }]}>Konstruksi</Text>
                                 <Text style={[styles.tableCell, { flex: 1 }]}>Jumlah</Text>
                             </View>
-                            {tiangSummary.map((item, index) => (
+                            {tiangBaruSummary.map((item: { label: string; count: number }, index: number) => (
                                 <View key={index} style={styles.tableRow}>
                                     <Text style={[styles.tableCell, styles.tableCellText, { flex: 2 }]}>
                                         {item.label}
@@ -374,12 +409,109 @@ export default function SurveySummaryScreen({
                                     </Text>
                                 </View>
                             ))}
+
+                            {/* Per Ukuran (Tinggi/Kekuatan) */}
+                            <Text style={{ fontSize: 12, color: '#666', marginBottom: 6, marginTop: 16, fontWeight: '600' }}>Per Ukuran (Tinggi / Kekuatan):</Text>
+                            <View style={styles.tableHeader}>
+                                <Text style={[styles.tableCell, { flex: 2 }]}>Tinggi / Kekuatan</Text>
+                                <Text style={[styles.tableCell, { flex: 1 }]}>Jumlah</Text>
+                            </View>
+                            {tiangBaruUkuranList.map((item, index) => (
+                                <View key={`ukuran-${index}`} style={styles.tableRow}>
+                                    <Text style={[styles.tableCell, styles.tableCellText, { flex: 2 }]}>
+                                        {item.ukuran}
+                                    </Text>
+                                    <Text style={[styles.tableCell, styles.tableCellBold, { flex: 1, textAlign: 'center' }]}>
+                                        {item.count}
+                                    </Text>
+                                </View>
+                            ))}
+
                             <View style={styles.tableTotalRow}>
-                                <Text style={[styles.tableCell, styles.tableTotalLabel, { flex: 2 }]}>
-                                    TOTAL TIANG
+                                <Text style={[styles.tableCell, styles.tableTotalLabel, { flex: 2, color: '#4CAF50' }]}>
+                                    TOTAL TIANG BARU
                                 </Text>
-                                <Text style={[styles.tableCell, styles.tableTotalValue, { flex: 1, textAlign: 'center' }]}>
-                                    {totalTiang}
+                                <Text style={[styles.tableCell, styles.tableTotalValue, { flex: 1, textAlign: 'center', color: '#4CAF50' }]}>
+                                    {tiangBaru}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Rekap Tiang Eksisting */}
+                    {tiangEksistingSummary.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <Ionicons name="checkmark-circle" size={18} color="#757575" style={{ marginRight: 8 }} />
+                                <Text style={[styles.sectionTitle, { marginBottom: 0, color: '#757575' }]}>Rekap Tiang Eksisting</Text>
+                            </View>
+
+                            {/* Per Konstruksi */}
+                            <Text style={{ fontSize: 12, color: '#666', marginBottom: 6, fontWeight: '600' }}>Per Konstruksi:</Text>
+                            <View style={styles.tableHeader}>
+                                <Text style={[styles.tableCell, { flex: 2 }]}>Konstruksi</Text>
+                                <Text style={[styles.tableCell, { flex: 1 }]}>Jumlah</Text>
+                            </View>
+                            {tiangEksistingSummary.map((item: { label: string; count: number }, index: number) => (
+                                <View key={index} style={styles.tableRow}>
+                                    <Text style={[styles.tableCell, styles.tableCellText, { flex: 2 }]}>
+                                        {item.label}
+                                    </Text>
+                                    <Text style={[styles.tableCell, styles.tableCellBold, { flex: 1, textAlign: 'center' }]}>
+                                        {item.count}
+                                    </Text>
+                                </View>
+                            ))}
+
+                            {/* Per Ukuran (Tinggi/Kekuatan) */}
+                            {tiangEksistingUkuranList.length > 0 && (
+                                <>
+                                    <Text style={{ fontSize: 12, color: '#666', marginBottom: 6, marginTop: 16, fontWeight: '600' }}>Per Ukuran (Tinggi / Kekuatan):</Text>
+                                    <View style={styles.tableHeader}>
+                                        <Text style={[styles.tableCell, { flex: 2 }]}>Tinggi / Kekuatan</Text>
+                                        <Text style={[styles.tableCell, { flex: 1 }]}>Jumlah</Text>
+                                    </View>
+                                    {tiangEksistingUkuranList.map((item, index) => (
+                                        <View key={`ukuran-eks-${index}`} style={styles.tableRow}>
+                                            <Text style={[styles.tableCell, styles.tableCellText, { flex: 2 }]}>
+                                                {item.ukuran}
+                                            </Text>
+                                            <Text style={[styles.tableCell, styles.tableCellBold, { flex: 1, textAlign: 'center' }]}>
+                                                {item.count}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </>
+                            )}
+
+                            <View style={styles.tableTotalRow}>
+                                <Text style={[styles.tableCell, styles.tableTotalLabel, { flex: 2, color: '#757575' }]}>
+                                    TOTAL TIANG EKSISTING
+                                </Text>
+                                <Text style={[styles.tableCell, styles.tableTotalValue, { flex: 1, textAlign: 'center', color: '#757575' }]}>
+                                    {tiangEksisting}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Rekap Material Tambahan - Travers V */}
+                    {m21Count > 0 && (
+                        <View style={styles.section}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <Ionicons name="cube" size={18} color="#FF9800" style={{ marginRight: 8 }} />
+                                <Text style={[styles.sectionTitle, { marginBottom: 0, color: '#FF9800' }]}>Rekap Material Tambahan</Text>
+                            </View>
+                            <View style={styles.tableHeader}>
+                                <Text style={[styles.tableCell, { flex: 2 }]}>Material</Text>
+                                <Text style={[styles.tableCell, { flex: 1 }]}>Jumlah</Text>
+                            </View>
+                            <View style={styles.tableRow}>
+                                <Text style={[styles.tableCell, styles.tableCellText, { flex: 2 }]}>
+                                    Travers V (untuk konstruksi M21)
+                                </Text>
+                                <Text style={[styles.tableCell, styles.tableCellBold, { flex: 1, textAlign: 'center' }]}>
+                                    {m21Count} SET
                                 </Text>
                             </View>
                         </View>

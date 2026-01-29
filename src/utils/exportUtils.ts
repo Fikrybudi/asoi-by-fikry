@@ -58,18 +58,25 @@ const generatePDFHtml = (survey: Survey): string => {
 
     // Calculate totals
     const totalJalurLength = survey.jalurList.reduce((sum, j) => sum + j.panjangMeter, 0);
+    const tiangBaru = survey.tiangList.filter(t => t.status !== 'existing').length;
+    const tiangEksisting = survey.tiangList.filter(t => t.status === 'existing').length;
 
-    // Generate tiang rows
-    const tiangRows = survey.tiangList.map((t) => `
+    // Generate tiang rows with status indicator
+    const tiangRows = survey.tiangList.map((t) => {
+        const statusLabel = t.status === 'existing' ? 'EKSISTING' : 'BARU';
+        const statusColor = t.status === 'existing' ? '#757575' : '#4CAF50';
+        return `
         <tr>
             <td>${t.nomorUrut}</td>
             <td>${t.konstruksi}</td>
             <td>${t.jenisTiang}</td>
             <td>${t.tinggiTiang}</td>
             <td>${t.kekuatanTiang || '-'}</td>
+            <td style="color: ${statusColor}; font-weight: bold;">${statusLabel}</td>
             <td>${t.koordinat.latitude.toFixed(6)}, ${t.koordinat.longitude.toFixed(6)}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 
     // Generate gardu rows
     const garduRows = survey.garduList.map((g, i) => `
@@ -107,15 +114,18 @@ const generatePDFHtml = (survey: Survey): string => {
             .header { border-bottom: 3px solid #1976D2; padding-bottom: 10px; margin-bottom: 15px; }
             .meta { color: #666; font-size: 11px; }
             .summary { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-            .summary-grid { display: flex; gap: 30px; }
+            .summary-grid { display: flex; gap: 20px; }
             .summary-item { flex: 1; }
             .summary-label { color: #666; font-size: 10px; }
             .summary-value { font-size: 18px; font-weight: bold; color: #333; }
+            .summary-sub { font-size: 10px; color: #666; margin-top: 2px; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th { background: #1976D2; color: white; padding: 8px; text-align: left; font-size: 11px; }
             td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px; }
             tr:nth-child(even) { background: #f9f9f9; }
             .footer { margin-top: 30px; text-align: center; color: #999; font-size: 10px; }
+            .status-baru { color: #4CAF50; font-weight: bold; }
+            .status-eksisting { color: #757575; font-weight: bold; }
         </style>
     </head>
     <body>
@@ -132,8 +142,9 @@ const generatePDFHtml = (survey: Survey): string => {
         <div class="summary">
             <div class="summary-grid">
                 <div class="summary-item">
-                    <div class="summary-label">TIANG</div>
-                    <div class="summary-value">${survey.tiangList.length}</div>
+                    <div class="summary-label">TIANG BARU</div>
+                    <div class="summary-value" style="color: #4CAF50;">${tiangBaru}</div>
+                    ${tiangEksisting > 0 ? `<div class="summary-sub">+ ${tiangEksisting} eksisting</div>` : ''}
                 </div>
                 <div class="summary-item">
                     <div class="summary-label">GARDU</div>
@@ -151,7 +162,7 @@ const generatePDFHtml = (survey: Survey): string => {
         </div>
 
         ${survey.tiangList.length > 0 ? `
-        <h2>Data Tiang (${survey.tiangList.length})</h2>
+        <h2>Data Tiang (${tiangBaru} Baru${tiangEksisting > 0 ? ` + ${tiangEksisting} Eksisting` : ''})</h2>
         <table>
             <tr>
                 <th>No</th>
@@ -159,11 +170,31 @@ const generatePDFHtml = (survey: Survey): string => {
                 <th>Jenis</th>
                 <th>Tinggi</th>
                 <th>Kekuatan</th>
+                <th>Status</th>
                 <th>Koordinat</th>
             </tr>
             ${tiangRows}
         </table>
         ` : ''}
+
+        ${(() => {
+            const m21Count = survey.tiangList.filter(t => t.konstruksi === 'M21').length;
+            return m21Count > 0 ? `
+        <h2 style="color: #FF9800;">Material Tambahan</h2>
+        <table>
+            <tr>
+                <th>Material</th>
+                <th>Jumlah</th>
+                <th>Keterangan</th>
+            </tr>
+            <tr>
+                <td>Travers V</td>
+                <td style="font-weight: bold;">${m21Count} SET</td>
+                <td>Untuk konstruksi M21</td>
+            </tr>
+        </table>
+        ` : '';
+        })()}
 
         ${survey.garduList.length > 0 ? `
         <h2>Data Gardu (${survey.garduList.length})</h2>
@@ -244,22 +275,26 @@ const generateKML = (survey: Survey): string => {
         });
     };
 
-    // Generate tiang placemarks
-    const tiangPlacemarks = survey.tiangList.map(t => `
+    // Generate tiang placemarks with status
+    const tiangPlacemarks = survey.tiangList.map(t => {
+        const statusLabel = t.status === 'existing' ? 'EKSISTING' : 'BARU';
+        return `
         <Placemark>
-            <name>Tiang ${t.nomorUrut}</name>
+            <name>Tiang ${t.nomorUrut} (${statusLabel})</name>
             <description><![CDATA[
+                <b>Status:</b> ${statusLabel}<br/>
                 <b>Konstruksi:</b> ${t.konstruksi}<br/>
                 <b>Jenis:</b> ${t.jenisTiang}<br/>
                 <b>Tinggi:</b> ${t.tinggiTiang}<br/>
                 <b>Kekuatan:</b> ${t.kekuatanTiang || '-'}<br/>
                 <b>Jaringan:</b> ${t.jenisJaringan}
             ]]></description>
-            <styleUrl>#tiang-style</styleUrl>
+            <styleUrl>#tiang-${t.status === 'existing' ? 'eksisting' : 'baru'}-style</styleUrl>
             <Point>
                 <coordinates>${t.koordinat.longitude},${t.koordinat.latitude},0</coordinates>
             </Point>
-        </Placemark>`).join('\n');
+        </Placemark>`;
+    }).join('\n');
 
     // Generate gardu placemarks
     const garduPlacemarks = survey.garduList.map(g => `
@@ -305,13 +340,22 @@ const generateKML = (survey: Survey): string => {
     <name>${escapeXml(survey.namaSurvey)}</name>
     <description>Survey: ${escapeXml(survey.jenisSurvey)} - Lokasi: ${escapeXml(survey.lokasi)} - Surveyor: ${escapeXml(survey.surveyor)}</description>
     
-    <Style id="tiang-style">
+    <Style id="tiang-baru-style">
         <IconStyle>
-            <color>ffff7800</color>
-            <scale>0.8</scale>
+            <color>ff00aa00</color>
+            <scale>0.9</scale>
             <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
         </IconStyle>
         <LabelStyle><scale>0.7</scale></LabelStyle>
+    </Style>
+    
+    <Style id="tiang-eksisting-style">
+        <IconStyle>
+            <color>ff757575</color>
+            <scale>0.7</scale>
+            <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+        </IconStyle>
+        <LabelStyle><scale>0.6</scale></LabelStyle>
     </Style>
     
     <Style id="gardu-style">
@@ -402,22 +446,23 @@ export const exportToKML = async (survey: Survey): Promise<boolean> => {
 
 export const exportToCSV = async (survey: Survey): Promise<boolean> => {
     try {
-        // Create CSV Header
-        let csvContent = "Nama,Tipe,Latitude,Longitude,Deskripsi,Detail\n";
+        // Create CSV Header with Status column
+        let csvContent = "Nama,Tipe,Status,Latitude,Longitude,Deskripsi,Detail\n";
 
-        // Add Tiang Data
+        // Add Tiang Data with status
         survey.tiangList.forEach(t => {
+            const statusLabel = t.status === 'existing' ? 'EKSISTING' : 'BARU';
             const desc = `Konstruksi: ${t.konstruksi} | Tinggi: ${t.tinggiTiang} | Jaringan: ${t.jenisJaringan}`;
             // Escape quotes in description if needed
             const cleanDesc = desc.replace(/"/g, '""');
-            csvContent += `Tiang ${t.nomorUrut},Tiang,${t.koordinat.latitude},${t.koordinat.longitude},"${cleanDesc}",${t.jenisTiang}\n`;
+            csvContent += `Tiang ${t.nomorUrut},Tiang,${statusLabel},${t.koordinat.latitude},${t.koordinat.longitude},"${cleanDesc}",${t.jenisTiang}\n`;
         });
 
-        // Add Gardu Data
+        // Add Gardu Data (no status for gardu)
         survey.garduList.forEach(g => {
             const desc = `Kapasitas: ${g.kapasitasKVA}kVA | Merek: ${g.merekTrafo || '-'}`;
             const cleanDesc = desc.replace(/"/g, '""');
-            csvContent += `${g.nomorGardu},Gardu,${g.koordinat.latitude},${g.koordinat.longitude},"${cleanDesc}",${g.jenisGardu}\n`;
+            csvContent += `${g.nomorGardu},Gardu,-,${g.koordinat.latitude},${g.koordinat.longitude},"${cleanDesc}",${g.jenisGardu}\n`;
         });
 
         const safeName = survey.namaSurvey.replace(/[^a-zA-Z0-9]/g, '_');

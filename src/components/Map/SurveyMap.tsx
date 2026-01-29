@@ -90,25 +90,169 @@ const generateMapHTML = (
       borderColor = '#FF9800'; // Orange border
     }
 
-    const labelStyle = isSelected
-      ? `color:${bgColor};font-size:11px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 4px white;transform:scale(1.1);`
-      : `color:${bgColor};font-size:10px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;`;
+    // Extract height and strength numbers for display
+    const tinggiNum = t.tinggiTiang ? t.tinggiTiang.replace(/[^0-9]/g, '') : '-';
+    const kekuatanNum = t.kekuatanTiang ? t.kekuatanTiang.replace(/[^0-9]/g, '') : '-';
+    // Two-line format: tinggi on top, kekuatan below
+    const ukuranLabel = tinggiNum + '/<br>' + kekuatanNum;
+    const konstruksiLabel = t.konstruksi || '-';
+    const nomorLabel = t.nomorUrut || '-';
 
-    // Extract height and strength numbers
-    const tinggiNum = t.tinggiTiang ? t.tinggiTiang.replace(/[^0-9]/g, '') : '';
-    const kekuatanNum = t.kekuatanTiang ? t.kekuatanTiang.replace(/[^0-9]/g, '') : '';
-    const labelText = tinggiNum && kekuatanNum
-      ? `${t.konstruksi} ${tinggiNum}/${kekuatanNum}`
-      : `${t.nomorUrut}. ${t.konstruksi}`;
+    // Circle label size
+    const circleSize = isSelected ? 48 : 44;
+    const fontSize = isSelected ? 8 : 7;
+    const ukuranFontSize = isSelected ? 6 : 5; // Smaller font for ukuran tiang (9/200)
+
+    // =========================================================================
+    // IMPROVED SMART LABEL PLACEMENT
+    // More accurate jalur detection + closer label positioning
+    // =========================================================================
+
+    const tiangLat = t.koordinat.latitude;
+    const tiangLng = t.koordinat.longitude;
+
+    // Tighter tolerance for more accurate jalur matching (~2m instead of 5m)
+    const tolerance = 0.00002;
+
+    // Collect all angles where jalur segments exist (directions to avoid)
+    const occupiedAngles: number[] = [];
+
+    jalurList.forEach(j => {
+      // Check each coordinate in the jalur
+      for (let idx = 0; idx < j.koordinat.length; idx++) {
+        const coord = j.koordinat[idx];
+
+        // Check if this jalur point matches the tiang location
+        const latDiff = Math.abs(coord.latitude - tiangLat);
+        const lngDiff = Math.abs(coord.longitude - tiangLng);
+        const isMatch = latDiff < tolerance && lngDiff < tolerance;
+
+        if (isMatch) {
+          // Calculate angle TO the previous point (if exists)
+          if (idx > 0) {
+            const prev = j.koordinat[idx - 1];
+            const angle = Math.atan2(
+              prev.latitude - tiangLat,
+              prev.longitude - tiangLng
+            ) * 180 / Math.PI;
+            occupiedAngles.push(angle);
+          }
+
+          // Calculate angle TO the next point (if exists)
+          if (idx < j.koordinat.length - 1) {
+            const next = j.koordinat[idx + 1];
+            const angle = Math.atan2(
+              next.latitude - tiangLat,
+              next.longitude - tiangLng
+            ) * 180 / Math.PI;
+            occupiedAngles.push(angle);
+          }
+        }
+      }
+    });
+
+    // Also check if any jalur segment passes NEAR this tiang (not just at vertices)
+    jalurList.forEach(j => {
+      for (let i = 0; i < j.koordinat.length - 1; i++) {
+        const p1 = j.koordinat[i];
+        const p2 = j.koordinat[i + 1];
+
+        // Check if tiang is close to this line segment
+        // Using perpendicular distance approximation
+        const dx = p2.longitude - p1.longitude;
+        const dy = p2.latitude - p1.latitude;
+        const len = Math.sqrt(dx * dx + dy * dy);
+
+        if (len > 0) {
+          // Project tiang onto line segment
+          const t_proj = Math.max(0, Math.min(1,
+            ((tiangLng - p1.longitude) * dx + (tiangLat - p1.latitude) * dy) / (len * len)
+          ));
+
+          const projLng = p1.longitude + t_proj * dx;
+          const projLat = p1.latitude + t_proj * dy;
+
+          const distToLine = Math.sqrt(
+            Math.pow(tiangLng - projLng, 2) + Math.pow(tiangLat - projLat, 2)
+          );
+
+          // If tiang is very close to this segment (within ~3m)
+          if (distToLine < 0.00003) {
+            // Add angle of the line direction
+            const lineAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+            occupiedAngles.push(lineAngle);
+            occupiedAngles.push(lineAngle + 180); // Both directions
+          }
+        }
+      }
+    });
+
+    // Normalize all angles to -180 to 180 range
+    const normalizedAngles = occupiedAngles.map(a => {
+      while (a > 180) a -= 360;
+      while (a < -180) a += 360;
+      return a;
+    });
+
+    // Define 8 quadrants with their label offset directions
+    // angle = direction where jalur goes, offset = where to put label (opposite)
+    const quadrants = [
+      { angle: 0, offsetX: -1, offsetY: 0 },   // Jalur East → Label West
+      { angle: 45, offsetX: -1, offsetY: -1 },  // Jalur NE → Label SW
+      { angle: 90, offsetX: 0, offsetY: -1 },  // Jalur North → Label South
+      { angle: 135, offsetX: 1, offsetY: -1 },  // Jalur NW → Label SE
+      { angle: 180, offsetX: 1, offsetY: 0 },   // Jalur West → Label East
+      { angle: -135, offsetX: 1, offsetY: 1 },   // Jalur SW → Label NE
+      { angle: -90, offsetX: 0, offsetY: 1 },   // Jalur South → Label North (default)
+      { angle: -45, offsetX: -1, offsetY: 1 },   // Jalur SE → Label NW
+    ];
+
+    // Find best quadrant (furthest from any occupied angle)
+    let bestQuadrant = quadrants[6]; // Default: South (label goes North/above)
+    let maxMinDist = -1;
+
+    if (normalizedAngles.length > 0) {
+      for (const q of quadrants) {
+        let minDist = 180;
+
+        for (const occAngle of normalizedAngles) {
+          let diff = Math.abs(q.angle - occAngle);
+          if (diff > 180) diff = 360 - diff;
+          if (diff < minDist) minDist = diff;
+        }
+
+        if (minDist > maxMinDist) {
+          maxMinDist = minDist;
+          bestQuadrant = q;
+        }
+      }
+    }
+
+    // Calculate anchor offset (CLOSER to tiang - only 8px offset)
+    const offsetPx = 8;
+    const anchorX = (circleSize / 2) - (bestQuadrant.offsetX * offsetPx);
+    const anchorY = (circleSize + 10) - (bestQuadrant.offsetY * offsetPx);
+
+    // Create circular label HTML with 3 sections
+    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + borderColor + ';border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
+      '<div style="display:flex;flex:1;border-bottom:1px solid ' + borderColor + ';">' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + bgColor + ';border-right:1px solid ' + borderColor + ';">' + nomorLabel + '</div>' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + ukuranFontSize + 'px;font-weight:bold;color:#333;">' + ukuranLabel + '</div>' +
+      '</div>' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;font-weight:bold;color:' + bgColor + ';">' + konstruksiLabel + '</div>' +
+      '</div>';
+
+    // Escape double quotes for embedding in JS string
+    const escapedHtml = circleLabelHtml.replace(/"/g, '\\"');
 
     return `
-    // Tiang marker
+    // Tiang marker with Smart Label Placement
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       icon: L.divIcon({
         className: 'tiang-icon',
-        html: '<div style="${labelStyle}">${labelText}</div>',
-        iconSize: null,
-        iconAnchor: [0, 30]
+        html: "${escapedHtml}",
+        iconSize: [${circleSize}, ${circleSize}],
+        iconAnchor: [${anchorX}, ${anchorY}]
       })
     }).addTo(map).bindPopup('<b>Tiang ${t.nomorUrut}</b><br>${t.konstruksi}<br>${t.jenisTiang} ${t.tinggiTiang}/${t.kekuatanTiang}')
       .on('click', function() {
