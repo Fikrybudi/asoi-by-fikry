@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
-import SurveyMap, { SurveyMapRef } from './src/components/Map/SurveyMap';
+import SurveyMap, { SurveyMapRef, BoundaryMarker } from './src/components/Map/SurveyMap';
 import Toolbar, { ToolMode } from './src/components/Toolbar/Toolbar';
 import TiangForm from './src/components/Forms/TiangForm';
 import GarduForm from './src/components/Forms/GarduForm';
@@ -16,8 +16,8 @@ import SurveySummaryScreen from './src/screens/SurveySummaryScreen';
 import SurveyHistoryScreen from './src/screens/SurveyHistoryScreen';
 import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, Survey } from './src/types';
 import { surveyService, tiangService, garduService, jalurService, jembatanKabelService } from './src/services/database';
-import { calculateDistance, generatePointsAlongPolyline } from './src/utils/geoUtils';
-import { generatePdfWithMap, sharePdf } from './src/utils/pdfExport';
+import { calculateDistance, generatePointsAlongPolyline, groupTiangBySegment, calculateBoundsForGroup, SegmentMode } from './src/utils/geoUtils';
+import { generatePdfWithMap, generateMultiPagePdf, sharePdf, PageMeta } from './src/utils/pdfExport';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './src/services/supabaseClient';
 import LoginScreen from './src/screens/LoginScreen';
@@ -72,6 +72,9 @@ export default function App() {
 
   // History screen state
   const [showHistory, setShowHistory] = useState(false);
+
+  // Export progress state (null = not exporting)
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
 
   // Underbuild SUTR state
   const [underbuildTiangIds, setUnderbuildTiangIds] = useState<string[]>([]);
@@ -240,35 +243,181 @@ export default function App() {
     setToolMode('none');
   };
 
-  // Handler for PDF Gambar export (captures map and generates PDF)
+  // Handler untuk memilih mode export PDF Gambar
   const handleExportPDFGambar = async () => {
     if (!mapRef.current || !currentSurvey) {
       Alert.alert('Error', 'Tidak ada survey aktif');
       return;
     }
 
-    // Capture optimal map screenshot
-    const mapBase64 = await mapRef.current.captureOptimalMap();
-    if (!mapBase64) {
-      Alert.alert('Error', 'Gagal capture peta');
+    const tiangList = currentSurvey.tiangList;
+    const hasEnoughForSegment =
+      tiangList.length > 8 ||
+      tiangList.reduce((acc, t, i, arr) =>
+        i > 0 ? acc + calculateDistance(arr[i - 1].koordinat, t.koordinat) : acc, 0) > 400;
+
+    if (!hasEnoughForSegment) {
+      // Survey kecil: langsung export satu halaman seperti biasa
+      await doExportSinglePage();
       return;
     }
 
-    // Generate PDF with map and survey info
-    // Orientation is auto-detected from device screen dimensions
-    const pdfPath = await generatePdfWithMap(mapBase64, {
-      name: currentSurvey.namaSurvey,
-      location: currentSurvey.lokasi || '',
-    });
-    if (!pdfPath) {
-      Alert.alert('Error', 'Gagal generate PDF');
-      return;
-    }
-
-    // Share the PDF
-    Alert.alert('✅ Berhasil', 'PDF Gambar berhasil dibuat!');
-    await sharePdf(pdfPath);
+    // Survey besar: tawarkan pilihan mode
+    Alert.alert(
+      '📄 Export PDF Gambar',
+      'Pilih mode segmentasi halaman PDF:',
+      [
+        {
+          text: '8 Tiang TM/Hal',
+          onPress: () => doExportMultiPage('tm8'),
+        },
+        {
+          text: '10 Tiang TR/Hal',
+          onPress: () => doExportMultiPage('tr10'),
+        },
+        {
+          text: 'Per 400m',
+          onPress: () => doExportMultiPage('dist400'),
+        },
+        {
+          text: '1 Halaman',
+          onPress: () => doExportSinglePage(),
+        },
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+      ]
+    );
   };
+
+  // Export single-page PDF (perilaku lama)
+  const doExportSinglePage = async () => {
+    if (!mapRef.current || !currentSurvey) return;
+    setExportProgress('Mengambil gambar peta...');
+    try {
+      const mapBase64 = await mapRef.current.captureOptimalMap();
+      if (!mapBase64) {
+        Alert.alert('Error', 'Gagal capture peta');
+        return;
+      }
+      setExportProgress('Membuat PDF...');
+      const pdfPath = await generatePdfWithMap(mapBase64, {
+        name: currentSurvey.namaSurvey,
+        location: currentSurvey.lokasi || '',
+      });
+      if (!pdfPath) {
+        Alert.alert('Error', 'Gagal generate PDF');
+        return;
+      }
+      Alert.alert('✅ Berhasil', 'PDF Gambar berhasil dibuat!');
+      await sharePdf(pdfPath);
+    } finally {
+      setExportProgress(null);
+    }
+  };
+
+  // Export multi-page PDF (segmented)
+  const doExportMultiPage = async (mode: SegmentMode) => {
+    if (!mapRef.current || !currentSurvey) return;
+
+    const tiangList = currentSurvey.tiangList;
+    if (tiangList.length === 0) {
+      Alert.alert('Error', 'Tidak ada tiang dalam survey ini');
+      return;
+    }
+
+    try {
+      // Segmentasi tiang
+      const segments = groupTiangBySegment(tiangList, mode);
+      const totalPages = segments.length;
+
+      const mapBase64s: string[] = [];
+      const pageMetas: PageMeta[] = [];
+
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        setExportProgress(`Mengambil gambar halaman ${i + 1} dari ${totalPages}...`);
+
+        // Anchor koordinat untuk seamless tiling
+        const prevSegment = i > 0 ? segments[i - 1] : null;
+        const nextSegment = i < segments.length - 1 ? segments[i + 1] : null;
+        const prevAnchor = prevSegment
+          ? prevSegment.tiangList[prevSegment.tiangList.length - 1].koordinat
+          : undefined;
+        const nextAnchor = nextSegment
+          ? nextSegment.tiangList[0].koordinat
+          : undefined;
+
+        const bounds = calculateBoundsForGroup(seg.tiangList, prevAnchor, nextAnchor);
+
+        // Hitung boundary markers huruf (A, B, C...) di titik potong segmen
+        // Titik potong N terletak di antara segmen N dan N+1
+        // Label: A = titik potong antara seg 0 & 1, B = antara seg 1 & 2, dst.
+        const boundaryMarkers: BoundaryMarker[] = [];
+        if (prevSegment && prevAnchor) {
+          // Titik batas kiri halaman ini = huruf ke-(i-1) = chr(65 + i - 1)
+          const label = String.fromCharCode(65 + i - 1); // A=0, B=1, ...
+          boundaryMarkers.push({
+            label,
+            lat: prevAnchor.latitude,
+            lng: prevAnchor.longitude,
+          });
+        }
+        if (nextSegment && nextAnchor) {
+          // Titik batas kanan halaman ini = huruf ke-i = chr(65 + i)
+          const label = String.fromCharCode(65 + i);
+          boundaryMarkers.push({
+            label,
+            lat: nextAnchor.latitude,
+            lng: nextAnchor.longitude,
+          });
+        }
+
+        const base64 = await mapRef.current.captureSegment(bounds, boundaryMarkers);
+
+        if (!base64) {
+          Alert.alert('Error', `Gagal capture halaman ${i + 1}`);
+          setExportProgress(null);
+          return;
+        }
+
+        mapBase64s.push(base64);
+        pageMetas.push({
+          pageNumber: seg.pageNumber,
+          totalPages: seg.totalPages,
+          firstNomor: seg.firstNomor,
+          lastNomor: seg.lastNomor,
+          panjangMeter: seg.panjangMeter,
+        });
+
+        // Delay agar WebView reset state sebelum capture berikutnya
+        if (i < segments.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      setExportProgress(`Membuat PDF ${totalPages} halaman...`);
+      const pdfPath = await generateMultiPagePdf(mapBase64s, {
+        name: currentSurvey.namaSurvey,
+        location: currentSurvey.lokasi || '',
+      }, pageMetas);
+
+      if (!pdfPath) {
+        Alert.alert('Error', 'Gagal generate PDF multi-halaman');
+        return;
+      }
+
+      Alert.alert('✅ Berhasil', `PDF ${totalPages} halaman berhasil dibuat!`);
+      await sharePdf(pdfPath);
+    } catch (error) {
+      console.error('doExportMultiPage error:', error);
+      Alert.alert('Error', 'Terjadi kesalahan: ' + String(error));
+    } finally {
+      setExportProgress(null);
+    }
+  };
+
 
   // ==========================================================================
   // FORM SUBMIT HANDLERS
@@ -1517,6 +1666,43 @@ export default function App() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Export Progress Overlay */}
+      {exportProgress !== null && (
+        <View style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.65)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999,
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 16,
+            padding: 28,
+            width: '75%',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 10,
+          }}>
+            <ActivityIndicator size="large" color="#1565C0" />
+            <Text style={{ marginTop: 16, fontSize: 15, fontWeight: '600', color: '#1565C0', textAlign: 'center' }}>
+              Mengekspor PDF...
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 13, color: '#555', textAlign: 'center' }}>
+              {exportProgress}
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 11, color: '#999', textAlign: 'center' }}>
+              Mohon tunggu, jangan tutup aplikasi
+            </Text>
+          </View>
+        </View>
+      )}
+
 
       {/* Menu Modal */}
       <Modal

@@ -2,7 +2,7 @@
 // PLN SURVEY APP - Geo Utilities
 // =============================================================================
 
-import { Coordinate } from '../types';
+import { Coordinate, Tiang } from '../types';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -166,3 +166,150 @@ export function formatCoordinate(coord: Coordinate): string {
 
     return `${Math.abs(coord.latitude).toFixed(6)}°${latDir}, ${Math.abs(coord.longitude).toFixed(6)}°${lonDir}`;
 }
+
+// =============================================================================
+// MULTI-PAGE PDF SEGMENTATION HELPERS
+// =============================================================================
+
+export type SegmentMode = 'tm8' | 'tr10' | 'dist400' | 'full';
+
+export interface TiangSegment {
+    tiangList: Tiang[];
+    /** Index urut pertama tiang (nomorUrut) */
+    firstNomor: number;
+    /** Index urut terakhir tiang (nomorUrut) */
+    lastNomor: number;
+    /** Total jarak dalam segmen (meter) */
+    panjangMeter: number;
+    /** Nomor halaman (1-based) */
+    pageNumber: number;
+    /** Total halaman */
+    totalPages: number;
+}
+
+/**
+ * Kelompokkan tiang menjadi segmen-segmen untuk multi-page PDF.
+ * Setiap tiang hanya masuk ke SATU segmen (tidak overlap data).
+ * Untuk seamless tiling, gunakan calculateBoundsForGroup dengan anchor parameter.
+ */
+export function groupTiangBySegment(tiangList: Tiang[], mode: SegmentMode): TiangSegment[] {
+    if (tiangList.length === 0) return [];
+
+    if (mode === 'full') {
+        const panjang = tiangList.length >= 2
+            ? tiangList.slice(0, -1).reduce((acc, t, i) => acc + calculateDistance(t.koordinat, tiangList[i + 1].koordinat), 0)
+            : 0;
+        return [{
+            tiangList,
+            firstNomor: tiangList[0].nomorUrut,
+            lastNomor: tiangList[tiangList.length - 1].nomorUrut,
+            panjangMeter: panjang,
+            pageNumber: 1,
+            totalPages: 1,
+        }];
+    }
+
+    const maxPoles = mode === 'tm8' ? 8 : mode === 'tr10' ? 10 : Infinity;
+    const maxMeters = mode === 'dist400' ? 400 : Infinity;
+
+    const segments: Omit<TiangSegment, 'totalPages'>[] = [];
+    let currentGroup: Tiang[] = [];
+    let currentPanjang = 0;
+
+    for (let i = 0; i < tiangList.length; i++) {
+        const tiang = tiangList[i];
+
+        if (currentGroup.length === 0) {
+            currentGroup.push(tiang);
+            continue;
+        }
+
+        const dist = calculateDistance(currentGroup[currentGroup.length - 1].koordinat, tiang.koordinat);
+        const newPanjang = currentPanjang + dist;
+
+        const wouldExceedPoles = currentGroup.length >= maxPoles;
+        const wouldExceedMeters = newPanjang > maxMeters;
+
+        if (wouldExceedPoles || wouldExceedMeters) {
+            segments.push({
+                tiangList: [...currentGroup],
+                firstNomor: currentGroup[0].nomorUrut,
+                lastNomor: currentGroup[currentGroup.length - 1].nomorUrut,
+                panjangMeter: currentPanjang,
+                pageNumber: segments.length + 1,
+            });
+            // No overlap in data — each tiang belongs to one segment only
+            currentGroup = [tiang];
+            currentPanjang = 0;
+        } else {
+            currentGroup.push(tiang);
+            currentPanjang = newPanjang;
+        }
+    }
+
+    if (currentGroup.length > 0) {
+        segments.push({
+            tiangList: [...currentGroup],
+            firstNomor: currentGroup[0].nomorUrut,
+            lastNomor: currentGroup[currentGroup.length - 1].nomorUrut,
+            panjangMeter: currentPanjang,
+            pageNumber: segments.length + 1,
+        });
+    }
+
+    const totalPages = segments.length;
+    return segments.map(s => ({ ...s, totalPages }));
+}
+
+/**
+ * Hitung bounding box Leaflet [[minLat, minLng], [maxLat, maxLng]] untuk satu segmen.
+ *
+ * Untuk seamless tiling antar halaman:
+ * - prevAnchor: koordinat tiang terakhir dari segmen SEBELUMNYA
+ *   → digunakan sebagai batas kiri/atas tanpa padding tambahan
+ * - nextAnchor: koordinat tiang pertama dari segmen BERIKUTNYA
+ *   → digunakan sebagai batas kanan/bawah tanpa padding tambahan
+ *
+ * Hasilnya: batas kanan halaman N = batas kiri halaman N+1 (seamless).
+ */
+export function calculateBoundsForGroup(
+    tiangList: Tiang[],
+    prevAnchor?: Coordinate,   // last coord of prev segment → left boundary
+    nextAnchor?: Coordinate,   // first coord of next segment → right boundary
+    paddingFactor = 0.2
+): [[number, number], [number, number]] {
+    if (tiangList.length === 0) {
+        return [[-6.22, 106.83], [-6.20, 106.85]];
+    }
+
+    // Garis besar: ambil semua koordinat tiang di segmen ini
+    const allCoords: Coordinate[] = tiangList.map(t => t.koordinat);
+
+    // Tambahkan anchor coords ke dalam pool agar bounds mencakup tiang boundary
+    if (prevAnchor) allCoords.push(prevAnchor);
+    if (nextAnchor) allCoords.push(nextAnchor);
+
+    const lats = allCoords.map(c => c.latitude);
+    const lngs = allCoords.map(c => c.longitude);
+
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    // Padding untuk semua sisi
+    const latPad = (maxLat - minLat) * paddingFactor || 0.001;
+    const lngPad = (maxLng - minLng) * paddingFactor || 0.001;
+
+    // Sisi yang ada anchor → padding diperkecil (agar tepi halaman sejajar)
+    const padMinLat = prevAnchor ? latPad * 0.05 : latPad;
+    const padMaxLat = nextAnchor ? latPad * 0.05 : latPad;
+    const padMinLng = prevAnchor ? lngPad * 0.05 : lngPad;
+    const padMaxLng = nextAnchor ? lngPad * 0.05 : lngPad;
+
+    return [
+        [minLat - padMinLat, minLng - padMinLng],
+        [maxLat + padMaxLat, maxLng + padMaxLng],
+    ];
+}
+

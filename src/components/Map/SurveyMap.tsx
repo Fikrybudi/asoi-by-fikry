@@ -867,20 +867,41 @@ const generateMapHTML = (
       styleEl.innerHTML = css;
     };
 
+
+    // Flag to prevent double-capture
+    var isCapturing = false;
+
     // Function to capture map as base64 image (called from React Native)
     window.captureMapToBase64 = function(bounds) {
+      // Guard: prevent concurrent captures
+      if (isCapturing) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'mapCaptureError',
+          error: 'capture already in progress'
+        }));
+        return;
+      }
+      isCapturing = true;
+
       // First fit bounds if provided
       if (bounds) {
         map.fitBounds(bounds, { animate: false, padding: [30, 30] });
+        map.invalidateSize();
+      }
+      
+      // Helper null-safe hide/show
+      function setDisplay(sel, val) {
+        var el = document.querySelector(sel);
+        if (el) el.style.display = val;
       }
       
       // Hide UI elements
-      document.querySelector('.legend').style.display = 'none';
-      document.querySelector('.leaflet-control-zoom').style.display = 'none';
-      var crosshair = document.querySelector('.crosshair');
-      if (crosshair) crosshair.style.display = 'none';
+      setDisplay('.legend', 'none');
+      setDisplay('.leaflet-control-zoom', 'none');
+      setDisplay('.crosshair', 'none');
+      setDisplay('.leaflet-control-layers', 'none');
       
-      // Wait for tiles then capture
+      // Wait for tiles to render (3000ms — cukup untuk segmen baru)
       setTimeout(function() {
         html2canvas(document.getElementById('map'), {
           useCORS: true,
@@ -895,16 +916,55 @@ const generateMapHTML = (
           }));
           
           // Restore UI
-          document.querySelector('.legend').style.display = '';
-          document.querySelector('.leaflet-control-zoom').style.display = '';
-          if (crosshair) crosshair.style.display = '';
+          setDisplay('.legend', '');
+          setDisplay('.leaflet-control-zoom', '');
+          setDisplay('.crosshair', '');
+          setDisplay('.leaflet-control-layers', '');
+          isCapturing = false;
         }).catch(function(err) {
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'mapCaptureError',
-            error: err.message
+            error: err.message || 'html2canvas failed'
           }));
+          isCapturing = false;
         });
-      }, 1500);
+      }, 3000);
+    };
+
+    window._segBoundaryMarkers = [];
+
+    // Tambah marker huruf (A, B, C...) di titik batas segmen PDF
+    window.addSegmentBoundaryMarkers = function(markers) {
+      if (!markers || markers.length === 0) return;
+      markers.forEach(function(m) {
+        var html = [
+          '<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">',
+            '<div style="background:#D32F2F;color:white;font-weight:bold;font-size:13px;',
+              'width:24px;height:24px;border-radius:4px;display:flex;align-items:center;',
+              'justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.5);border:2px solid white;">',
+              m.label,
+            '</div>',
+            '<div style="width:3px;height:28px;background:#D32F2F;"></div>',
+            '<div style="width:14px;height:3px;background:#D32F2F;"></div>',
+          '</div>'
+        ].join('');
+        var icon = L.divIcon({
+          html: html,
+          className: '',
+          iconAnchor: [12, 55],
+          iconSize: [24, 55]
+        });
+        var marker = L.marker([m.lat, m.lng], {icon: icon, interactive: false, zIndexOffset: 9999}).addTo(map);
+        window._segBoundaryMarkers.push(marker);
+      });
+    };
+
+    // Hapus semua marker batas segmen
+    window.removeSegmentBoundaryMarkers = function() {
+      window._segBoundaryMarkers.forEach(function(m) {
+        try { map.removeLayer(m); } catch(e) {}
+      });
+      window._segBoundaryMarkers = [];
     };
   </script>
 </body>
@@ -920,6 +980,18 @@ export interface SurveyMapRef {
   captureMap: () => Promise<string | null>;
   fitToBounds: () => void;
   captureOptimalMap: () => Promise<string | null>;
+  /** Capture peta pada bounds tertentu (untuk multi-page PDF) */
+  captureSegment: (
+    bounds: [[number, number], [number, number]],
+    boundaryMarkers?: BoundaryMarker[]
+  ) => Promise<string | null>;
+}
+
+/** Marker huruf pembatas segmen (A, B, C...) yang ditampilkan di peta saat capture */
+export interface BoundaryMarker {
+  label: string;        // 'A', 'B', 'C', ...
+  lat: number;
+  lng: number;
 }
 
 const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
@@ -1124,6 +1196,103 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         return null;
       }
     },
+
+    // Capture peta pada bounds tertentu (untuk multi-page segmented PDF)
+    captureSegment: async (
+      bounds: [[number, number], [number, number]],
+      boundaryMarkers?: BoundaryMarker[]
+    ) => {
+      if (!webviewRef.current || !containerRef.current) return null;
+
+      // Inject marker huruf batas segmen (memanggil fungsi di WebView — aman dari escaping issue)
+      const markersJson = JSON.stringify(boundaryMarkers ?? []);
+      const injectMarkersJS = `
+        if (window.addSegmentBoundaryMarkers) {
+          window.addSegmentBoundaryMarkers(${markersJson});
+        }
+        true;
+      `;
+      const removeMarkersJS = `
+        if (window.removeSegmentBoundaryMarkers) {
+          window.removeSegmentBoundaryMarkers();
+        }
+        true;
+      `;
+
+      // Inject markers sebelum capture (jika ada)
+      if (boundaryMarkers && boundaryMarkers.length > 0) {
+        webviewRef.current.injectJavaScript(injectMarkersJS);
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+
+      // Android: gunakan html2canvas via WebView
+      if (Platform.OS === 'android') {
+        return new Promise<string | null>((resolve) => {
+          captureResolverRef.current = (result: string | null) => {
+            webviewRef.current?.injectJavaScript(removeMarkersJS);
+            resolve(result);
+          };
+          webviewRef.current?.injectJavaScript(`
+            if (typeof isCapturing !== 'undefined') { isCapturing = false; }
+            if (window.captureMapToBase64) {
+              window.captureMapToBase64(${JSON.stringify(bounds)});
+            } else {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'mapCaptureError',
+                error: 'captureMapToBase64 not available'
+              }));
+            }
+            true;
+          `);
+          setTimeout(() => {
+            if (captureResolverRef.current) {
+              console.warn('captureSegment timeout');
+              webviewRef.current?.injectJavaScript(removeMarkersJS);
+              captureResolverRef.current = null;
+              resolve(null);
+            }
+          }, 15000);
+        });
+      }
+
+      // iOS: captureRef approach
+      try {
+        webviewRef.current.injectJavaScript(`
+          var exportStyle = document.getElementById('export-mode-style');
+          if (!exportStyle) {
+            exportStyle = document.createElement('style');
+            exportStyle.id = 'export-mode-style';
+            document.head.appendChild(exportStyle);
+          }
+          exportStyle.innerHTML = \`
+            .legend { display: none !important; }
+            .crosshair { display: none !important; }
+            .leaflet-control-zoom { display: none !important; }
+          \`;
+          map.fitBounds(${JSON.stringify(bounds)}, { animate: false, padding: [10, 10] });
+          map.invalidateSize();
+          true;
+        `);
+        await new Promise(resolve => setTimeout(resolve, 3500));
+        const base64 = await captureRef(containerRef.current, {
+          format: 'png',
+          quality: 1.0,
+          result: 'base64',
+        });
+        webviewRef.current?.injectJavaScript(removeMarkersJS);
+        webviewRef.current?.injectJavaScript(`
+          var s = document.getElementById('export-mode-style');
+          if (s) s.remove();
+          true;
+        `);
+        return base64;
+      } catch (error) {
+        console.error('captureSegment failed:', error);
+        webviewRef.current?.injectJavaScript(removeMarkersJS);
+        return null;
+      }
+    },
+
   }));
 
   useEffect(() => {
