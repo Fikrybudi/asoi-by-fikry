@@ -11,11 +11,12 @@ import Toolbar, { ToolMode } from './src/components/Toolbar/Toolbar';
 import TiangForm from './src/components/Forms/TiangForm';
 import GarduForm from './src/components/Forms/GarduForm';
 import JalurForm from './src/components/Forms/JalurForm';
+import JembatanKabelForm from './src/components/Forms/JembatanKabelForm';
 import SurveySummaryScreen from './src/screens/SurveySummaryScreen';
 import SurveyHistoryScreen from './src/screens/SurveyHistoryScreen';
-import { Coordinate, Tiang, Gardu, JalurKabel, Survey } from './src/types';
-import { surveyService, tiangService, garduService, jalurService } from './src/services/database';
-import { calculateDistance } from './src/utils/geoUtils';
+import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, Survey } from './src/types';
+import { surveyService, tiangService, garduService, jalurService, jembatanKabelService } from './src/services/database';
+import { calculateDistance, generatePointsAlongPolyline } from './src/utils/geoUtils';
 import { generatePdfWithMap, sharePdf } from './src/utils/pdfExport';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './src/services/supabaseClient';
@@ -40,6 +41,7 @@ export default function App() {
   const [showTiangForm, setShowTiangForm] = useState(false);
   const [showGarduForm, setShowGarduForm] = useState(false);
   const [showJalurForm, setShowJalurForm] = useState(false);
+  const [showJembatanForm, setShowJembatanForm] = useState(false);
 
   // Selected coordinate for new marker
   const [selectedCoordinate, setSelectedCoordinate] = useState<Coordinate | null>(null);
@@ -206,7 +208,7 @@ export default function App() {
     } else if (toolMode === 'add-gardu') {
       setSelectedCoordinate(coordinate);
       setShowGarduForm(true);
-    } else if (toolMode === 'draw-jalur') {
+    } else if (toolMode === 'draw-jalur' || toolMode === 'draw-jembatan') {
       setDrawingCoords(prev => [...prev, coordinate]);
       setIsDrawing(true);
     }
@@ -214,7 +216,8 @@ export default function App() {
 
   const handleModeChange = (mode: ToolMode) => {
     // If switching away from draw mode, cancel drawing
-    if (toolMode === 'draw-jalur' && mode !== 'draw-jalur') {
+    if ((toolMode === 'draw-jalur' || toolMode === 'draw-jembatan') &&
+      mode !== 'draw-jalur' && mode !== 'draw-jembatan') {
       setDrawingCoords([]);
       setIsDrawing(false);
     }
@@ -223,7 +226,11 @@ export default function App() {
 
   const handleFinishDrawing = () => {
     if (drawingCoords.length >= 2) {
-      setShowJalurForm(true);
+      if (toolMode === 'draw-jembatan') {
+        setShowJembatanForm(true);
+      } else {
+        setShowJalurForm(true);
+      }
     }
   };
 
@@ -524,11 +531,48 @@ export default function App() {
       if (newJalur) {
         // Push to undo stack
         setUndoStack(prev => [...prev.slice(-19), { type: 'add-jalur', data: newJalur }]);
+
+        let updatedTiangList = [...currentSurvey.tiangList];
+        let jointingCount = 0;
+
+        // Auto-generate jointing points for SKTM jalur every 240m
+        if (data.jenisJaringan === 'SKTM' && data.panjangMeter >= 240) {
+          const jointingPoints = generatePointsAlongPolyline(data.koordinat, 240);
+
+          // Create Tiang markers for each jointing point
+          for (let i = 0; i < jointingPoints.length; i++) {
+            const point = jointingPoints[i];
+            const jointingTiang: Omit<Tiang, 'id' | 'nomorUrut' | 'createdAt' | 'updatedAt' | 'isSynced'> = {
+              koordinat: point.coordinate,
+              jenisTiang: 'Beton', // Jointing tidak butuh tiang fisik, ini hanya marker
+              tinggiTiang: '0m',
+              jenisJaringan: 'SKUTM', // Use SKUTM for jointing marker
+              konstruksi: `JOINTING-${i + 1}`, // Special marker
+              status: 'planned',
+              perlengkapan: ['Jointing SKTM'],
+              catatan: `Titik Jointing SKTM @ ${point.distanceFromStart.toFixed(0)}m`,
+            };
+
+            const newTiang = await tiangService.add(currentSurvey.id, jointingTiang);
+            if (newTiang) {
+              updatedTiangList.push(newTiang);
+              jointingCount++;
+            }
+          }
+        }
+
         setCurrentSurvey(prev => prev ? {
           ...prev,
           jalurList: [...prev.jalurList, newJalur],
+          tiangList: updatedTiangList,
         } : null);
-        Alert.alert('Sukses', `Jalur disimpan!\n${data.jenisJaringan} - ${(data.panjangMeter).toFixed(0)}m`);
+
+        // Show success message with jointing count if applicable
+        if (jointingCount > 0) {
+          Alert.alert('Sukses', `Jalur SKTM disimpan!\n${(data.panjangMeter).toFixed(0)}m\n\n🔗 ${jointingCount} titik jointing otomatis dibuat (@ 240m interval)`);
+        } else {
+          Alert.alert('Sukses', `Jalur disimpan!\n${data.jenisJaringan} - ${(data.panjangMeter).toFixed(0)}m`);
+        }
       } else {
         Alert.alert('Error', 'Gagal menyimpan jalur');
       }
@@ -539,6 +583,38 @@ export default function App() {
       setToolMode('none');
     } catch (error) {
       console.error('Error saving jalur:', error);
+      Alert.alert('Error', 'Terjadi kesalahan: ' + String(error));
+    }
+  };
+
+  // Handle jembatan kabel form submission
+  const handleJembatanSubmit = async (data: Omit<JembatanKabel, 'id' | 'createdAt' | 'updatedAt' | 'isSynced'>) => {
+    try {
+      if (!currentSurvey) {
+        Alert.alert('Error', 'Survey belum dimuat');
+        return;
+      }
+
+      console.log('Saving jembatan kabel:', data);
+      const newJembatan = await jembatanKabelService.add(currentSurvey.id, data);
+
+      if (newJembatan) {
+        const existingList = currentSurvey.jembatanKabelList || [];
+        setCurrentSurvey(prev => prev ? {
+          ...prev,
+          jembatanKabelList: [...existingList, newJembatan],
+        } : null);
+        Alert.alert('Sukses', `Jembatan Kabel disimpan!\n${data.jenisJaringan} - ${(data.panjangMeter).toFixed(0)}m`);
+      } else {
+        Alert.alert('Error', 'Gagal menyimpan jembatan kabel');
+      }
+
+      setShowJembatanForm(false);
+      setDrawingCoords([]);
+      setIsDrawing(false);
+      setToolMode('none');
+    } catch (error) {
+      console.error('Error saving jembatan kabel:', error);
       Alert.alert('Error', 'Terjadi kesalahan: ' + String(error));
     }
   };
@@ -579,6 +655,34 @@ export default function App() {
         { text: 'Hapus', style: 'destructive', onPress: () => deleteTiang(tiang.id) },
       ]
     );
+  };
+
+  // Handle tiang label shift (tap to cycle through 8 positions)
+  const handleTiangLabelShift = async (tiangId: string, newPosition: number) => {
+    if (!currentSurvey) return;
+
+    try {
+      const tiang = currentSurvey.tiangList.find(t => t.id === tiangId);
+      if (!tiang) return;
+
+      // Update tiang with new label position
+      const updated = await tiangService.update(currentSurvey.id, tiangId, {
+        labelPosition: newPosition,
+      });
+
+      if (updated) {
+        setCurrentSurvey(prev => prev ? {
+          ...prev,
+          tiangList: prev.tiangList.map(t => t.id === tiangId ? updated : t),
+        } : null);
+
+        // Show brief feedback
+        const directions = ['↑ Atas', '↗ Kanan Atas', '→ Kanan', '↘ Kanan Bawah', '↓ Bawah', '↙ Kiri Bawah', '← Kiri', '↖ Kiri Atas'];
+        console.log(`Label Tiang ${tiang.nomorUrut} → ${directions[newPosition]}`);
+      }
+    } catch (error) {
+      console.error('Error shifting tiang label:', error);
+    }
   };
 
   const handleGarduPress = (gardu: Gardu) => {
@@ -1067,18 +1171,20 @@ export default function App() {
           tiangList={currentSurvey?.tiangList || []}
           garduList={currentSurvey?.garduList || []}
           jalurList={currentSurvey?.jalurList || []}
+          jembatanKabelList={currentSurvey?.jembatanKabelList || []}
           onMapPress={handleMapPress}
           onTiangPress={handleTiangPress}
           onGarduPress={handleGarduPress}
           onJalurPress={handleJalurPress}
           isAddingTiang={toolMode === 'add-tiang'}
           isAddingGardu={toolMode === 'add-gardu'}
-          isDrawingJalur={toolMode === 'draw-jalur'}
+          isDrawingJalur={toolMode === 'draw-jalur' || toolMode === 'draw-jembatan'}
           currentJalurCoords={drawingCoords}
           lastTiangCoord={currentSurvey?.tiangList.length ? currentSurvey.tiangList[currentSurvey.tiangList.length - 1].koordinat : undefined}
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}
           selectedTiangIds={underbuildTiangIds}
+          onTiangLabelShift={handleTiangLabelShift}
         />
       </View>
 
@@ -1110,6 +1216,21 @@ export default function App() {
             <Ionicons name="add-circle" size={20} color="white" style={{ marginRight: 8 }} />
             <Text style={styles.placePinText}>
               {drawingCoords.length === 0 ? 'Mulai Jalur Disini' : `Tambah Titik (${drawingCoords.length})`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Floating Action Button for Jembatan Kabel Drawing */}
+      {toolMode === 'draw-jembatan' && centerCoordinate !== null && !uiHidden && (
+        <View style={styles.placePinContainer}>
+          <TouchableOpacity
+            style={[styles.placePinButton, { backgroundColor: '#00BCD4' }]}
+            onPress={() => handleMapPress(centerCoordinate)}
+          >
+            <Ionicons name="add-circle" size={20} color="white" style={{ marginRight: 8 }} />
+            <Text style={styles.placePinText}>
+              {drawingCoords.length === 0 ? 'Mulai Jembatan Disini' : `Tambah Titik (${drawingCoords.length})`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1207,6 +1328,21 @@ export default function App() {
           editMode={isEditMode}
           initialData={editingJalur || undefined}
           lastPenghantar={lastPenghantar}
+        />
+      )}
+
+      {/* Jembatan Kabel Form */}
+      {drawingCoords.length >= 2 && (
+        <JembatanKabelForm
+          visible={showJembatanForm}
+          koordinat={drawingCoords}
+          onSubmit={handleJembatanSubmit}
+          onCancel={() => {
+            setShowJembatanForm(false);
+            setDrawingCoords([]);
+            setIsDrawing(false);
+            setToolMode('none');
+          }}
         />
       )}
 

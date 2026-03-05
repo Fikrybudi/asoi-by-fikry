@@ -4,7 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import { Survey, Tiang, Gardu, JalurKabel, SyncQueueItem } from '../types';
+import { Survey, Tiang, Gardu, JalurKabel, JembatanKabel, SyncQueueItem } from '../types';
 import { supabaseSurveyService, syncManager } from './supabaseService';
 
 // Generate UUID using expo-crypto
@@ -80,6 +80,7 @@ export const surveyService = {
             tiangList: [],
             garduList: [],
             jalurList: [],
+            jembatanKabelList: [],
         };
 
         surveys.push(newSurvey);
@@ -330,6 +331,62 @@ export const jalurService = {
         if (filtered.length === survey.jalurList.length) return false;
 
         await surveyService.update(surveyId, { jalurList: filtered });
+        return true;
+    },
+};
+
+// =============================================================================
+// JEMBATAN KABEL OPERATIONS (within a survey)
+// =============================================================================
+
+export const jembatanKabelService = {
+    async add(surveyId: string, jembatan: Omit<JembatanKabel, 'id' | 'createdAt' | 'updatedAt' | 'isSynced'>): Promise<JembatanKabel | null> {
+        const survey = await surveyService.getById(surveyId);
+        if (!survey) return null;
+
+        const newJembatan: JembatanKabel = {
+            ...jembatan,
+            id: generateUUID(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isSynced: false,
+        };
+
+        const list = survey.jembatanKabelList || [];
+        list.push(newJembatan);
+        await surveyService.update(surveyId, { jembatanKabelList: list });
+
+        return newJembatan;
+    },
+
+    async update(surveyId: string, jembatanId: string, updates: Partial<JembatanKabel>): Promise<JembatanKabel | null> {
+        const survey = await surveyService.getById(surveyId);
+        if (!survey) return null;
+
+        const list = survey.jembatanKabelList || [];
+        const index = list.findIndex(j => j.id === jembatanId);
+        if (index === -1) return null;
+
+        list[index] = {
+            ...list[index],
+            ...updates,
+            updatedAt: new Date(),
+            isSynced: false,
+        };
+
+        await surveyService.update(surveyId, { jembatanKabelList: list });
+        return list[index];
+    },
+
+    async delete(surveyId: string, jembatanId: string): Promise<boolean> {
+        const survey = await surveyService.getById(surveyId);
+        if (!survey) return false;
+
+        const list = survey.jembatanKabelList || [];
+        const filtered = list.filter(j => j.id !== jembatanId);
+        if (filtered.length === list.length) return false;
+
+        await surveyService.update(surveyId, { jembatanKabelList: filtered });
         return true;
     },
 };

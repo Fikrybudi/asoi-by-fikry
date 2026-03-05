@@ -48,11 +48,22 @@ export default function SurveySummaryScreen({
     const [isExportingGambar, setIsExportingGambar] = useState(false);
 
     // Calculate statistics
-    const totalTiang = survey.tiangList.length;
-    const tiangBaru = survey.tiangList.filter(t => t.status !== 'existing').length;
-    const tiangEksisting = survey.tiangList.filter(t => t.status === 'existing').length;
+    // Count jointing points (special markers with konstruksi starting with 'JOINTING-')
+    const jointingPoints = survey.tiangList.filter(t => t.konstruksi?.startsWith('JOINTING-'));
+    const jointingCount = jointingPoints.length;
+
+    // Regular tiang (excluding jointing markers)
+    const regularTiang = survey.tiangList.filter(t => !t.konstruksi?.startsWith('JOINTING-'));
+    const totalTiang = regularTiang.length;
+    const tiangBaru = regularTiang.filter(t => t.status !== 'existing').length;
+    const tiangEksisting = regularTiang.filter(t => t.status === 'existing').length;
     const totalGardu = survey.garduList.length;
     const totalJalur = survey.jalurList.length;
+
+    // Jembatan Kabel stats
+    const jembatanKabelList = survey.jembatanKabelList || [];
+    const totalJembatan = jembatanKabelList.length;
+    const totalPanjangJembatan = jembatanKabelList.reduce((acc, jk) => acc + (jk.panjangMeter || 0), 0);
 
     // Calculate total length
     const totalPanjangJalur = survey.jalurList.reduce((acc, jalur) => acc + jalur.panjangMeter, 0);
@@ -74,12 +85,12 @@ export default function SurveySummaryScreen({
         return Object.entries(counts).map(([label, count]) => ({ label, count: count as number }));
     };
 
-    // Summaries by konstruksi (not jenisTiang)
-    const tiangBaruSummary = groupAndCount(survey.tiangList, 'konstruksi', t => t.status !== 'existing');
-    const tiangEksistingSummary = groupAndCount(survey.tiangList, 'konstruksi', t => t.status === 'existing');
+    // Summaries by konstruksi (not jenisTiang) - using regularTiang to exclude jointing
+    const tiangBaruSummary = groupAndCount(regularTiang, 'konstruksi', t => t.status !== 'existing');
+    const tiangEksistingSummary = groupAndCount(regularTiang, 'konstruksi', t => t.status === 'existing');
 
-    // Group tiang by ukuran (tinggi/kekuatan) - only for tiang baru
-    const tiangBaruByUkuran = survey.tiangList
+    // Group tiang by ukuran (tinggi/kekuatan) - only for tiang baru, using regularTiang
+    const tiangBaruByUkuran = regularTiang
         .filter(t => t.status !== 'existing')
         .reduce((acc: Record<string, number>, t) => {
             const key = `${t.tinggiTiang} / ${t.kekuatanTiang || '-'}`;
@@ -90,8 +101,8 @@ export default function SurveySummaryScreen({
         .map(([ukuran, count]) => ({ ukuran, count }))
         .sort((a, b) => b.count - a.count);
 
-    // Group tiang eksisting by ukuran
-    const tiangEksistingByUkuran = survey.tiangList
+    // Group tiang eksisting by ukuran - using regularTiang
+    const tiangEksistingByUkuran = regularTiang
         .filter(t => t.status === 'existing')
         .reduce((acc: Record<string, number>, t) => {
             const key = `${t.tinggiTiang} / ${t.kekuatanTiang || '-'}`;
@@ -102,8 +113,8 @@ export default function SurveySummaryScreen({
         .map(([ukuran, count]) => ({ ukuran, count }))
         .sort((a, b) => b.count - a.count);
 
-    // Count M21 construction for Travers V material (baru + eksisting)
-    const m21Count = survey.tiangList.filter(t => t.konstruksi === 'M21').length;
+    // Count M21 construction for Travers V material (baru + eksisting) - using regularTiang
+    const m21Count = regularTiang.filter(t => t.konstruksi === 'M21').length;
 
     const garduSummary = survey.garduList.map(g => ({ kapasitas: g.kapasitasKVA, jumlah: 1 }))
         .reduce((acc: any[], curr) => {
@@ -304,6 +315,18 @@ export default function SurveySummaryScreen({
                             <Text style={styles.statValue}>{formatPanjang(totalPanjangJalur)}</Text>
                             <Text style={styles.statLabel}>Total</Text>
                         </View>
+                        {jointingCount > 0 && (
+                            <View style={[styles.statCard, { backgroundColor: '#F3E5F5', marginTop: 12, width: '48%' }]}>
+                                <Text style={styles.statValue}>🔗 {jointingCount}</Text>
+                                <Text style={styles.statLabel}>Jointing SKTM</Text>
+                            </View>
+                        )}
+                        {totalJembatan > 0 && (
+                            <View style={[styles.statCard, { backgroundColor: '#E0F7FA', marginTop: 12, width: '48%' }]}>
+                                <Text style={styles.statValue}>🌉 {totalJembatan}</Text>
+                                <Text style={styles.statLabel}>Jembatan {formatPanjang(totalPanjangJembatan)}</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Total Panjang Per Jaringan */}

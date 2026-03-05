@@ -35,6 +35,10 @@ export interface Tiang {
     foto?: string[];
     catatan?: string;
 
+    // Label position override (0-7 for 8 directions: N, NE, E, SE, S, SW, W, NW)
+    // If undefined, use automatic Smart Label Placement
+    labelPosition?: number;
+
     // Metadata
     createdAt: Date;
     updatedAt: Date;
@@ -109,6 +113,32 @@ export interface JalurKabel {
 }
 
 // =============================================================================
+// JEMBATAN KABEL (CABLE BRIDGE)
+// =============================================================================
+
+export interface JembatanKabel {
+    id: string;
+    namaJembatan?: string;
+
+    // Koordinat jembatan (polyline - start to end)
+    koordinat: Coordinate[];
+
+    // Jenis jaringan (inherit from jalur)
+    jenisJaringan: 'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR';
+
+    // Panjang jembatan (meter)
+    panjangMeter: number;
+
+    // Dokumentasi
+    catatan?: string;
+
+    // Metadata
+    createdAt: Date;
+    updatedAt: Date;
+    isSynced: boolean;
+}
+
+// =============================================================================
 // SURVEY PROJECT
 // =============================================================================
 
@@ -171,6 +201,7 @@ export interface Survey {
     tiangList: Tiang[];
     garduList: Gardu[];
     jalurList: JalurKabel[];
+    jembatanKabelList?: JembatanKabel[];
 
 
 

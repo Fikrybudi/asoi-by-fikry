@@ -49,10 +49,11 @@ export default function SignatureCapture({
         // Do nothing if empty
     };
 
-    const style = `.m-signature-pad { box-shadow: none; border: none; }
-                   .m-signature-pad--body { border: none; }
+    const style = `.m-signature-pad { box-shadow: none; border: none; background-color: white; }
+                   .m-signature-pad--body { border: none; background-color: white; }
                    .m-signature-pad--footer { display: none; margin: 0px; }
-                   body,html { width: 100%; height: 100%; }`;
+                   body,html { width: 100%; height: 100%; background-color: white; margin: 0; padding: 0; }
+                   canvas { background-color: white !important; }`;
 
     return (
         <Modal
@@ -84,6 +85,8 @@ export default function SignatureCapture({
                         webStyle={style}
                         backgroundColor="white"
                         penColor="black"
+                        trimWhitespace={false}
+                        autoClear={false}
                     />
                 </View>
 

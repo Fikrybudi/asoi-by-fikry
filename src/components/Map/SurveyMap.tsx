@@ -7,7 +7,7 @@ import { StyleSheet, View, TouchableOpacity, Text, Platform, PixelRatio, Modal, 
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { captureRef, captureScreen } from 'react-native-view-shot';
-import { Coordinate, Tiang, Gardu, JalurKabel } from '../../types';
+import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel } from '../../types';
 import { formatDistance, calculatePolylineLength, formatCoordinate, calculateDistance } from '../../utils/geoUtils';
 
 // =============================================================================
@@ -18,6 +18,7 @@ interface SurveyMapProps {
   tiangList: Tiang[];
   garduList: Gardu[];
   jalurList: JalurKabel[];
+  jembatanKabelList?: JembatanKabel[];
   onMapPress?: (coordinate: Coordinate) => void;
   onTiangPress?: (tiang: Tiang) => void;
   onGarduPress?: (gardu: Gardu) => void;
@@ -37,6 +38,7 @@ interface SurveyMapProps {
   };
   onCenterChange?: (coordinate: Coordinate) => void;
   selectedTiangIds?: string[];
+  onTiangLabelShift?: (tiangId: string, newPosition: number) => void;
 }
 
 // =============================================================================
@@ -48,6 +50,7 @@ const generateMapHTML = (
   tiangList: Tiang[],
   garduList: Gardu[],
   jalurList: JalurKabel[],
+  jembatanKabelList: JembatanKabel[] = [],
   currentJalurCoords: Coordinate[],
   isAddingTiang: boolean,
   isAddingGardu: boolean,
@@ -195,35 +198,44 @@ const generateMapHTML = (
     });
 
     // Define 8 quadrants with their label offset directions
-    // angle = direction where jalur goes, offset = where to put label (opposite)
+    // Position indices: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
     const quadrants = [
-      { angle: 0, offsetX: -1, offsetY: 0 },   // Jalur East → Label West
-      { angle: 45, offsetX: -1, offsetY: -1 },  // Jalur NE → Label SW
-      { angle: 90, offsetX: 0, offsetY: -1 },  // Jalur North → Label South
-      { angle: 135, offsetX: 1, offsetY: -1 },  // Jalur NW → Label SE
-      { angle: 180, offsetX: 1, offsetY: 0 },   // Jalur West → Label East
-      { angle: -135, offsetX: 1, offsetY: 1 },   // Jalur SW → Label NE
-      { angle: -90, offsetX: 0, offsetY: 1 },   // Jalur South → Label North (default)
-      { angle: -45, offsetX: -1, offsetY: 1 },   // Jalur SE → Label NW
+      { angle: -90, offsetX: 0, offsetY: 1 },   // 0: N - Label North (above)
+      { angle: -45, offsetX: -1, offsetY: 1 },   // 1: NE - Label NorthEast
+      { angle: 0, offsetX: -1, offsetY: 0 },     // 2: E - Label East (right)
+      { angle: 45, offsetX: -1, offsetY: -1 },   // 3: SE - Label SouthEast
+      { angle: 90, offsetX: 0, offsetY: -1 },   // 4: S - Label South (below)
+      { angle: 135, offsetX: 1, offsetY: -1 },   // 5: SW - Label SouthWest
+      { angle: 180, offsetX: 1, offsetY: 0 },   // 6: W - Label West (left)
+      { angle: -135, offsetX: 1, offsetY: 1 },   // 7: NW - Label NorthWest
     ];
 
-    // Find best quadrant (furthest from any occupied angle)
-    let bestQuadrant = quadrants[6]; // Default: South (label goes North/above)
-    let maxMinDist = -1;
+    // Check if user has manually set label position
+    let bestQuadrant;
+    const currentLabelPos = t.labelPosition;
 
-    if (normalizedAngles.length > 0) {
-      for (const q of quadrants) {
-        let minDist = 180;
+    if (typeof currentLabelPos === 'number' && currentLabelPos >= 0 && currentLabelPos <= 7) {
+      // Use user-defined position
+      bestQuadrant = quadrants[currentLabelPos];
+    } else {
+      // Auto-detect: Find best quadrant (furthest from any occupied angle)
+      bestQuadrant = quadrants[0]; // Default: North (above)
+      let maxMinDist = -1;
 
-        for (const occAngle of normalizedAngles) {
-          let diff = Math.abs(q.angle - occAngle);
-          if (diff > 180) diff = 360 - diff;
-          if (diff < minDist) minDist = diff;
-        }
+      if (normalizedAngles.length > 0) {
+        for (const q of quadrants) {
+          let minDist = 180;
 
-        if (minDist > maxMinDist) {
-          maxMinDist = minDist;
-          bestQuadrant = q;
+          for (const occAngle of normalizedAngles) {
+            let diff = Math.abs(q.angle - occAngle);
+            if (diff > 180) diff = 360 - diff;
+            if (diff < minDist) minDist = diff;
+          }
+
+          if (minDist > maxMinDist) {
+            maxMinDist = minDist;
+            bestQuadrant = q;
+          }
         }
       }
     }
@@ -254,9 +266,12 @@ const generateMapHTML = (
         iconSize: [${circleSize}, ${circleSize}],
         iconAnchor: [${anchorX}, ${anchorY}]
       })
-    }).addTo(map).bindPopup('<b>Tiang ${t.nomorUrut}</b><br>${t.konstruksi}<br>${t.jenisTiang} ${t.tinggiTiang}/${t.kekuatanTiang}')
+    }).addTo(map).bindPopup('<b>Tiang ${t.nomorUrut}</b><br>${t.konstruksi}<br>${t.jenisTiang} ${t.tinggiTiang}/${t.kekuatanTiang}<br><i>Tap label untuk geser</i>')
       .on('click', function() {
-        window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiang', id: '${t.id}'}));
+        // Send label shift message with current position
+        var currentPos = ${typeof t.labelPosition === 'number' ? t.labelPosition : -1};
+        var nextPos = (currentPos + 1) % 8;  // Cycle 0-7
+        window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiangLabelShift', id: '${t.id}', newPosition: nextPos}));
       });
     
     // Small dot at exact location
@@ -443,6 +458,56 @@ const generateMapHTML = (
         dashArray: '5, 5'
       }).addTo(map);`
     : '';
+
+  // Jembatan Kabel polylines (cable bridges - cyan color, thick line)
+  const jembatanPolylines = jembatanKabelList.map(jk => {
+    const coords = jk.koordinat.map(c => `[${c.latitude}, ${c.longitude}]`).join(',');
+    const totalDistance = jk.panjangMeter >= 1000
+      ? (jk.panjangMeter / 1000).toFixed(2) + ' km'
+      : Math.round(jk.panjangMeter) + 'm';
+    const nameLabel = jk.namaJembatan ? jk.namaJembatan + ' - ' : '';
+
+    // Calculate midpoint for label
+    let midLat = 0, midLng = 0;
+    if (jk.koordinat.length >= 2) {
+      midLat = jk.koordinat.reduce((sum, c) => sum + c.latitude, 0) / jk.koordinat.length;
+      midLng = jk.koordinat.reduce((sum, c) => sum + c.longitude, 0) / jk.koordinat.length;
+    }
+
+    return `
+      // Jembatan Kabel - thick cyan line with border
+      L.polyline([${coords}], {
+        color: '#00838F',
+        weight: 8,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map);
+      
+      L.polyline([${coords}], {
+        color: '#00BCD4',
+        weight: 5,
+        opacity: 1,
+        dashArray: '',
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map).bindPopup('🌉 Jembatan Kabel<br>${nameLabel}${totalDistance}<br>${jk.jenisJaringan}')
+        .on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+        });
+      
+      // Bridge icon marker at center
+      L.marker([${midLat}, ${midLng}], {
+        icon: L.divIcon({
+          className: 'jembatan-label',
+          html: '<div style="color:#00838F;font-size:14px;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;">🌉 ${totalDistance}</div>',
+          iconSize: [60, 20],
+          iconAnchor: [30, 10]
+        }),
+        interactive: false
+      }).addTo(map);
+    `;
+  }).join('\n');
 
   const currentJalurMarkers = currentJalurCoords.map((c, i) => `
     L.circleMarker([${c.latitude}, ${c.longitude}], {
@@ -742,6 +807,9 @@ const generateMapHTML = (
     // Jalur polylines
     ${jalurPolylines}
 
+    // Jembatan Kabel polylines
+    ${jembatanPolylines}
+
     // Current drawing
     ${currentJalurLine}
     ${currentJalurMarkers}
@@ -858,6 +926,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   tiangList,
   garduList,
   jalurList,
+  jembatanKabelList = [],
   onMapPress,
   onTiangPress,
   onGarduPress,
@@ -870,6 +939,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   visibleLayers = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true, sktm: true },
   onCenterChange,
   selectedTiangIds = [],
+  onTiangLabelShift,
 }, ref) => {
   const webviewRef = useRef<WebView>(null);
   const containerRef = useRef<View>(null);
@@ -1112,6 +1182,11 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         const newCenter = { latitude: data.lat, longitude: data.lng };
         setCenterCoordinate(newCenter);
         if (onCenterChange) onCenterChange(newCenter);
+      } else if (data.type === 'tiangLabelShift') {
+        // Handle label shift: cycle through 8 positions
+        if (onTiangLabelShift) {
+          onTiangLabelShift(data.id, data.newPosition);
+        }
       } else if (data.type === 'tiang') {
         const tiang = tiangList.find(t => t.id === data.id);
         if (tiang && onTiangPress) onTiangPress(tiang);
@@ -1221,6 +1296,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       tiangList,
       garduList,
       jalurList,
+      jembatanKabelList || [],
       currentJalurCoords,
       isAddingTiang,
       isAddingGardu,

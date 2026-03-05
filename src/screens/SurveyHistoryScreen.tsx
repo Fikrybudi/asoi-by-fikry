@@ -586,6 +586,7 @@ export default function SurveyHistoryScreen({
                                     value={editName}
                                     onChangeText={setEditName}
                                     placeholder="Contoh: Survey Jalan Raya"
+                                    placeholderTextColor="#999"
                                     selectTextOnFocus
                                 />
 
@@ -595,6 +596,7 @@ export default function SurveyHistoryScreen({
                                     value={editLokasi}
                                     onChangeText={setEditLokasi}
                                     placeholder="Contoh: Kecamatan X"
+                                    placeholderTextColor="#999"
                                     selectTextOnFocus
                                 />
 
@@ -609,6 +611,7 @@ export default function SurveyHistoryScreen({
                                     value={editIdPelanggan}
                                     onChangeText={setEditIdPelanggan}
                                     placeholder="ID PLN jika ada"
+                                    placeholderTextColor="#999"
                                 />
 
                                 <Text style={styles.label}>Nama Pelanggan</Text>
@@ -617,6 +620,7 @@ export default function SurveyHistoryScreen({
                                     value={editNamaPelanggan}
                                     onChangeText={setEditNamaPelanggan}
                                     placeholder="Contoh: PT. Mekarjaya"
+                                    placeholderTextColor="#999"
                                 />
 
                                 <Text style={styles.label}>Tarif / Daya</Text>
@@ -625,6 +629,7 @@ export default function SurveyHistoryScreen({
                                     value={editTarifDaya}
                                     onChangeText={setEditTarifDaya}
                                     placeholder="Contoh: R3 / 197kVA"
+                                    placeholderTextColor="#999"
                                 />
 
                                 <Text style={styles.label}>Hasil Survey</Text>
@@ -633,6 +638,7 @@ export default function SurveyHistoryScreen({
                                     value={editHasilSurvey}
                                     onChangeText={setEditHasilSurvey}
                                     placeholder="Contoh: Survei Perencanaan"
+                                    placeholderTextColor="#999"
                                 />
 
                                 <Text style={styles.label}>Keterangan Sketsa</Text>
@@ -641,6 +647,7 @@ export default function SurveyHistoryScreen({
                                     value={editKeterangan}
                                     onChangeText={setEditKeterangan}
                                     placeholder="Contoh: Kebutuhan tiang 2 btg..."
+                                    placeholderTextColor="#999"
                                     multiline
                                 />
 
@@ -710,6 +717,7 @@ export default function SurveyHistoryScreen({
                                     value={editNamaPerwakilan}
                                     onChangeText={setEditNamaPerwakilan}
                                     placeholder="Yang menandatangani"
+                                    placeholderTextColor="#999"
                                 />
                                 {/* Signature Pelanggan */}
                                 <TouchableOpacity
@@ -729,6 +737,7 @@ export default function SurveyHistoryScreen({
                                     value={editSurveyor}
                                     onChangeText={setEditSurveyor}
                                     placeholder="Nama Surveyor"
+                                    placeholderTextColor="#999"
                                     selectTextOnFocus
                                 />
                                 {/* Signature Surveyor */}
@@ -761,48 +770,46 @@ export default function SurveyHistoryScreen({
                                     </TouchableOpacity>
                                 </View>
 
-                                {/* Regenerate PDF BA Button */}
-                                {editingSurvey?.namaPelanggan && (
-                                    <TouchableOpacity
-                                        style={[styles.modalButton, { backgroundColor: '#FF9800', marginTop: 12 }]}
-                                        onPress={async () => {
-                                            if (!editingSurvey) return;
-                                            try {
-                                                await generateBASurveyPdf({
-                                                    baData: {
-                                                        jenisPermohonan: editingSurvey.jenisSurvey || 'Pasang Baru',
-                                                        tarifDaya: editingSurvey.tarifDaya || 'R1 / 1300VA',
-                                                        idPelanggan: editingSurvey.idPelanggan || '',
-                                                        namaPelanggan: editingSurvey.namaPelanggan || '',
-                                                        alamat: editingSurvey.alamatPelanggan || editingSurvey.lokasi || '',
-                                                        tanggalSurvey: new Date(editingSurvey.tanggalSurvey),
-                                                        hasilSurvey: editingSurvey.hasilSurvey || 'Survei Perencanaan',
-                                                        namaSurveyor: editingSurvey.surveyor || '',
-                                                        namaPerwakilan: editingSurvey.namaPerwakilan || '',
-                                                        keterangan: editingSurvey.keterangan || '',
-                                                        appDipasang: editingSurvey.appDipasang || 'Persil',
-                                                        konstruksiOleh: editingSurvey.konstruksiOleh || 'Pelanggan',
-                                                        checklist: editingSurvey.baChecklist || {
-                                                            perluasanJTM: false,
-                                                            bangunGardu: false,
-                                                            perluasanJTR: false,
-                                                            tanamTiang: false,
-                                                            dikenakanPFK: false,
-                                                        },
-                                                        signaturePelanggan: editingSurvey.signaturePelanggan,
-                                                        signatureSurveyor: editingSurvey.signatureSurveyor,
-                                                    }
-                                                });
-                                                Alert.alert('✅ PDF BA', 'PDF Berita Acara Survey berhasil di-generate!');
-                                            } catch (error) {
-                                                console.error(error);
-                                                Alert.alert('Error', 'Gagal generate PDF BA');
-                                            }
-                                        }}
-                                    >
-                                        <Text style={styles.saveButtonText}>📄 Regenerate PDF BA</Text>
-                                    </TouchableOpacity>
-                                )}
+                                {/* Regenerate PDF BA Button - Always visible */}
+                                <TouchableOpacity
+                                    style={[styles.modalButton, { backgroundColor: '#FF9800', marginTop: 12 }]}
+                                    onPress={async () => {
+                                        if (!editingSurvey) return;
+                                        try {
+                                            await generateBASurveyPdf({
+                                                baData: {
+                                                    jenisPermohonan: editingSurvey.jenisSurvey || 'Pasang Baru',
+                                                    tarifDaya: editTarifDaya || 'R1 / 1300VA',
+                                                    idPelanggan: editIdPelanggan || '',
+                                                    namaPelanggan: editNamaPelanggan || '',
+                                                    alamat: editLokasi || editingSurvey.alamatPelanggan || '',
+                                                    tanggalSurvey: new Date(editingSurvey.tanggalSurvey),
+                                                    hasilSurvey: editHasilSurvey || 'Survei Perencanaan',
+                                                    namaSurveyor: editSurveyor || '',
+                                                    namaPerwakilan: editNamaPerwakilan || '',
+                                                    keterangan: editKeterangan || '',
+                                                    appDipasang: editAppDipasang || 'Persil',
+                                                    konstruksiOleh: editKonstruksiOleh || 'Pelanggan',
+                                                    checklist: editChecklist || {
+                                                        perluasanJTM: false,
+                                                        bangunGardu: false,
+                                                        perluasanJTR: false,
+                                                        tanamTiang: false,
+                                                        dikenakanPFK: false,
+                                                    },
+                                                    signaturePelanggan: editSignaturePelanggan,
+                                                    signatureSurveyor: editSignatureSurveyor,
+                                                }
+                                            });
+                                            Alert.alert('✅ PDF BA', 'PDF Berita Acara Survey berhasil di-generate!');
+                                        } catch (error) {
+                                            console.error(error);
+                                            Alert.alert('Error', 'Gagal generate PDF BA');
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.saveButtonText}>📄 Regenerate PDF BA</Text>
+                                </TouchableOpacity>
                             </ScrollView>
                         </View>
                     </KeyboardAvoidingView>

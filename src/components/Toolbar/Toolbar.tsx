@@ -9,7 +9,7 @@ import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 // TYPES
 // =============================================================================
 
-export type ToolMode = 'none' | 'add-tiang' | 'add-gardu' | 'draw-jalur' | 'underbuild-sutr';
+export type ToolMode = 'none' | 'add-tiang' | 'add-gardu' | 'draw-jalur' | 'draw-jembatan' | 'underbuild-sutr';
 
 interface ToolbarProps {
     currentMode: ToolMode;
@@ -90,12 +90,13 @@ export default function Toolbar({
     // RENDER DRAWING CONTROLS
     // ==========================================================================
 
-    if (isDrawing && currentMode === 'draw-jalur') {
+    if (isDrawing && (currentMode === 'draw-jalur' || currentMode === 'draw-jembatan')) {
+        const isJembatan = currentMode === 'draw-jembatan';
         return (
             <View style={styles.drawingToolbar}>
                 <View style={styles.drawingInfo}>
-                    <Text style={styles.drawingInfoText}>
-                        ✏️ Menggambar jalur ({drawingPointsCount} titik)
+                    <Text style={[styles.drawingInfoText, isJembatan && { color: '#00BCD4' }]}>
+                        {isJembatan ? '🌉' : '✏️'} Menggambar {isJembatan ? 'jembatan kabel' : 'jalur'} ({drawingPointsCount} titik)
                     </Text>
                 </View>
                 <View style={styles.drawingActions}>
@@ -205,6 +206,25 @@ export default function Toolbar({
                 </Text>
             </TouchableOpacity>
 
+            {/* Add Jembatan Kabel Button */}
+            <TouchableOpacity
+                style={[
+                    styles.toolButton,
+                    currentMode === 'draw-jembatan' && styles.toolButtonActiveCyan,
+                ]}
+                onPress={() => toggleMode('draw-jembatan')}
+            >
+                <Text style={styles.toolIcon}>🌉</Text>
+                <Text
+                    style={[
+                        styles.toolLabel,
+                        currentMode === 'draw-jembatan' && styles.toolLabelActiveCyan,
+                    ]}
+                >
+                    JK
+                </Text>
+            </TouchableOpacity>
+
             {/* Finish/Summary Button */}
             <TouchableOpacity
                 style={[styles.toolButton, styles.finishSurveyButton]}
@@ -308,6 +328,13 @@ const styles = StyleSheet.create({
     },
     toolLabelActiveGreen: {
         color: '#4CAF50',
+        fontWeight: '600',
+    },
+    toolButtonActiveCyan: {
+        backgroundColor: '#E0F7FA',
+    },
+    toolLabelActiveCyan: {
+        color: '#00BCD4',
         fontWeight: '600',
     },
     underbuildToolbar: {

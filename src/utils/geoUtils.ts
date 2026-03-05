@@ -46,6 +46,59 @@ function toRad(deg: number): number {
 }
 
 /**
+ * Interpolate a point along a line segment at a given fraction (0-1)
+ */
+function interpolatePoint(start: Coordinate, end: Coordinate, fraction: number): Coordinate {
+    return {
+        latitude: start.latitude + (end.latitude - start.latitude) * fraction,
+        longitude: start.longitude + (end.longitude - start.longitude) * fraction,
+    };
+}
+
+/**
+ * Generate points along a polyline at specified interval
+ * @param coordinates - The polyline coordinates
+ * @param intervalMeters - Distance between points (e.g., 240m for SKTM jointing)
+ * @returns Array of coordinates at the specified intervals with distance from start
+ */
+export function generatePointsAlongPolyline(
+    coordinates: Coordinate[],
+    intervalMeters: number
+): { coordinate: Coordinate; distanceFromStart: number }[] {
+    if (coordinates.length < 2 || intervalMeters <= 0) return [];
+
+    const result: { coordinate: Coordinate; distanceFromStart: number }[] = [];
+    let accumulatedDistance = 0;
+    let nextPointDistance = intervalMeters; // First point at interval distance
+
+    for (let i = 0; i < coordinates.length - 1; i++) {
+        const segmentStart = coordinates[i];
+        const segmentEnd = coordinates[i + 1];
+        const segmentLength = calculateDistance(segmentStart, segmentEnd);
+
+        // Check if we need to place points within this segment
+        while (accumulatedDistance + segmentLength >= nextPointDistance) {
+            // Calculate how far along this segment the point should be
+            const distanceIntoSegment = nextPointDistance - accumulatedDistance;
+            const fraction = distanceIntoSegment / segmentLength;
+
+            // Interpolate the point
+            const point = interpolatePoint(segmentStart, segmentEnd, fraction);
+            result.push({
+                coordinate: point,
+                distanceFromStart: nextPointDistance,
+            });
+
+            nextPointDistance += intervalMeters;
+        }
+
+        accumulatedDistance += segmentLength;
+    }
+
+    return result;
+}
+
+/**
  * Format distance for display
  */
 export function formatDistance(meters: number): string {
