@@ -234,6 +234,151 @@ export async function generatePdfWithMap(
 }
 
 // =============================================================================
+// MULTI-PAGE PDF EXPORT
+// =============================================================================
+
+export interface PageMeta {
+    pageNumber: number;
+    totalPages: number;
+    firstNomor: number;
+    lastNomor: number;
+    panjangMeter: number;
+}
+
+/**
+ * Generate multi-page PDF: setiap elemen mapBase64s menjadi satu halaman.
+ * @param mapBase64s - Array screenshot base64, satu per segmen
+ * @param surveyInfo - Nama & lokasi survey
+ * @param pageMetas - Metadata per halaman (nomor tiang, panjang segmen, dll)
+ * @returns Path ke file PDF multi-halaman, atau null jika gagal
+ */
+export async function generateMultiPagePdf(
+    mapBase64s: string[],
+    surveyInfo: SurveyInfo,
+    pageMetas: PageMeta[]
+): Promise<string | null> {
+    try {
+        console.log(`Starting multi-page PDF: ${mapBase64s.length} pages`);
+
+        const orientation: Orientation = detectOrientation();
+        const templateBase64 = await loadTemplate(orientation);
+        if (!templateBase64) {
+            console.error('Failed to load template for multi-page PDF');
+            return null;
+        }
+
+        const font = await (async () => {
+            // We'll embed fonts once we have the doc
+            return null;
+        })();
+
+        // Load template to get page size
+        const templateBytes = base64Decode(templateBase64);
+        const templateDoc = await PDFDocument.load(templateBytes);
+        const templatePage = templateDoc.getPages()[0];
+        const { width: pageWidth, height: pageHeight } = templatePage.getSize();
+
+        // Create a fresh PDFDocument for the output
+        const outputDoc = await PDFDocument.create();
+        const embeddedFont = await outputDoc.embedFont(StandardFonts.Helvetica);
+        const embeddedFontBold = await outputDoc.embedFont(StandardFonts.HelveticaBold);
+
+        const padding = orientation === 'portrait' ? PORTRAIT_PADDING : LANDSCAPE_PADDING;
+        const textPositions = TEXT_POSITIONS[orientation];
+
+        for (let i = 0; i < mapBase64s.length; i++) {
+            const mapBase64 = mapBase64s[i];
+            const meta = pageMetas[i];
+
+            // Copy a fresh template page into output doc
+            const [copiedPage] = await outputDoc.copyPages(
+                await PDFDocument.load(templateBytes),
+                [0]
+            );
+            const page = outputDoc.addPage(copiedPage);
+
+            // Embed map image
+            const mapImageBytes = base64Decode(mapBase64);
+            const mapImage = await outputDoc.embedPng(mapImageBytes);
+
+            const imgAspectRatio = mapImage.width / mapImage.height;
+            const availableWidth = pageWidth - padding.left - padding.right;
+            const availableHeight = pageHeight - padding.top - padding.bottom;
+            const areaAspectRatio = availableWidth / availableHeight;
+
+            let finalWidth: number;
+            let finalHeight: number;
+            if (imgAspectRatio > areaAspectRatio) {
+                finalWidth = availableWidth;
+                finalHeight = availableWidth / imgAspectRatio;
+            } else {
+                finalHeight = availableHeight;
+                finalWidth = availableHeight * imgAspectRatio;
+            }
+
+            const imageX = padding.left + (availableWidth - finalWidth) / 2;
+            const imageY = padding.bottom + (availableHeight - finalHeight) / 2;
+
+            page.drawImage(mapImage, {
+                x: imageX,
+                y: imageY,
+                width: finalWidth,
+                height: finalHeight,
+            });
+
+            // --- Survey name & location (same position as single-page) ---
+            if (surveyInfo.name) {
+                page.drawText(surveyInfo.name, {
+                    x: textPositions.projectName.x,
+                    y: textPositions.projectName.y,
+                    size: TEXT_SIZE.projectName,
+                    font: embeddedFontBold,
+                    color: rgb(0, 0, 0),
+                });
+            }
+            if (surveyInfo.location) {
+                page.drawText(surveyInfo.location, {
+                    x: textPositions.location.x,
+                    y: textPositions.location.y,
+                    size: TEXT_SIZE.location,
+                    font: embeddedFont,
+                    color: rgb(0, 0, 0),
+                });
+            }
+
+            // --- Segment info: "Hal. 1/3 | T.1 - T.8 | 320m" ---
+            const panjangLabel = meta.panjangMeter >= 1000
+                ? (meta.panjangMeter / 1000).toFixed(2) + ' km'
+                : Math.round(meta.panjangMeter) + 'm';
+            const segInfo = `Hal. ${meta.pageNumber}/${meta.totalPages}  |  T.${meta.firstNomor} - T.${meta.lastNomor}  |  ${panjangLabel}`;
+
+            // Draw segment info bottom-left of kop area
+            page.drawText(segInfo, {
+                x: padding.left,
+                y: textPositions.location.y,   // same Y as location text
+                size: 7,
+                font: embeddedFont,
+                color: rgb(0.3, 0.3, 0.3),
+            });
+        }
+
+        const pdfBytes = await outputDoc.save();
+        const pdfBase64 = uint8ArrayToBase64(pdfBytes);
+
+        const filename = `Survey_${surveyInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${pageMetas.length}hal_${Date.now()}.pdf`;
+        const outputPath = `${FileSystem.cacheDirectory}${filename}`;
+
+        await FileSystem.writeAsStringAsync(outputPath, pdfBase64, { encoding: 'base64' });
+
+        console.log(`Multi-page PDF saved: ${outputPath} (${pageMetas.length} pages)`);
+        return outputPath;
+    } catch (error) {
+        console.error('Multi-page PDF generation failed:', error);
+        return null;
+    }
+}
+
+// =============================================================================
 // LEGACY FUNCTION (for backward compatibility)
 // =============================================================================
 

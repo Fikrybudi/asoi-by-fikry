@@ -1228,10 +1228,15 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       // Android: gunakan html2canvas via WebView
       if (Platform.OS === 'android') {
         return new Promise<string | null>((resolve) => {
+          let hasResolved = false; // Guard untuk mencegah timeout stale tereksekusi
+
           captureResolverRef.current = (result: string | null) => {
+            if (hasResolved) return;
+            hasResolved = true;
             webviewRef.current?.injectJavaScript(removeMarkersJS);
             resolve(result);
           };
+
           webviewRef.current?.injectJavaScript(`
             if (typeof isCapturing !== 'undefined') { isCapturing = false; }
             if (window.captureMapToBase64) {
@@ -1244,13 +1249,16 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
             }
             true;
           `);
+
           setTimeout(() => {
-            if (captureResolverRef.current) {
-              console.warn('captureSegment timeout');
-              webviewRef.current?.injectJavaScript(removeMarkersJS);
-              captureResolverRef.current = null;
-              resolve(null);
-            }
+            if (hasResolved) return; // Jika sudah resolve, abaikan timeout ini
+            hasResolved = true;
+            console.warn('captureSegment timeout');
+            webviewRef.current?.injectJavaScript(removeMarkersJS);
+
+            // Hanya clear jika masih refer ke promise ini (untuk extra safety)
+            captureResolverRef.current = null;
+            resolve(null);
           }, 15000);
         });
       }
