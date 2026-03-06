@@ -2,10 +2,14 @@
 
 **ASOI** adalah aplikasi mobile berbasis **React Native (Expo)** yang dirancang untuk mempermudah proses survey lapangan aset PLN (Tiang, Gardu, dan Jalur Kabel). Aplikasi ini bekerja secara **Offline-First**, memungkinkan surveyor bekerja di area tanpa sinyal dan menyinkronkan data ke Cloud (Supabase) saat kembali online.
 
-![App Status](https://img.shields.io/badge/version-v1.5-blue) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green) ![Expo](https://img.shields.io/badge/sdk-Expo%2052-black)
+![App Status](https://img.shields.io/badge/version-v1.6-blue) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green) ![Expo](https://img.shields.io/badge/sdk-Expo%2052-black)
 
-## 🆕 What's New in v1.5
+## 🆕 What's New in v1.6
 
+- **Multi-Page PDF Export**: Export PDF gambar dengan opsi pemisahan halaman berdasarkan segmentasi (Misal: 8 Tiang TM/Hal, 10 Tiang TR/Hal, atau per 400 meter). Didesain dengan seamless tiling dan boundary marker A/B/C antar halaman agar tidak ada tiang yang ganda pada lembar gambar survei yang panjang.
+- **Improved PDF capture**: Capture map optimal dengan boundary otomatis dan performa tinggi secara paralel untuk survey besar.
+
+*Previous update (v1.5):*
 - **Fitur Undo**: Tombol undo untuk membatalkan aksi terakhir (add/edit/delete tiang, gardu, jalur). Maksimal 20 aksi disimpan.
 - **Rekap per Konstruksi**: Rekap tiang menampilkan breakdown per konstruksi (M1, M4, M21, TR-1B, dll) bukan per jenis (beton/besi).
 - **Rekap per Ukuran**: Breakdown tiang per ukuran (tinggi / kekuatan), misal: "11m / 200daN".
