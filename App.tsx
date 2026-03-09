@@ -339,33 +339,41 @@ export default function App() {
         const seg = segments[i];
         setExportProgress(`Mengambil gambar halaman ${i + 1} dari ${totalPages}...`);
 
-        // Anchor koordinat untuk seamless tiling
+        // Fungsi helper untuk mencari titik tengah antara dua segmen
+        const getMidpoint = (segA: any, segB: any) => {
+          if (!segA || !segB) return undefined;
+          const p1 = segA.tiangList[segA.tiangList.length - 1].koordinat;
+          const p2 = segB.tiangList[0].koordinat;
+          return {
+            latitude: (p1.latitude + p2.latitude) / 2,
+            longitude: (p1.longitude + p2.longitude) / 2
+          };
+        };
+
         const prevSegment = i > 0 ? segments[i - 1] : null;
         const nextSegment = i < segments.length - 1 ? segments[i + 1] : null;
-        const prevAnchor = prevSegment
-          ? prevSegment.tiangList[prevSegment.tiangList.length - 1].koordinat
-          : undefined;
-        const nextAnchor = nextSegment
-          ? nextSegment.tiangList[0].koordinat
-          : undefined;
+
+        // Titik batas = midpoint antara tiang terakhir segmen ini dan tiang pertama segmen tetangga.
+        // Menjamin titik batas memiliki koordinat geografis yang 100% SAMA untuk kedua halaman,
+        // sehingga visual marker boundary tidak terlihat "langkah" / bergeser satu tiang.
+        const prevAnchor = getMidpoint(prevSegment, seg);
+        const nextAnchor = getMidpoint(seg, nextSegment);
 
         const bounds = calculateBoundsForGroup(seg.tiangList, prevAnchor, nextAnchor);
 
-        // Hitung boundary markers huruf (A, B, C...) di titik potong segmen
-        // Titik potong N terletak di antara segmen N dan N+1
-        // Label: A = titik potong antara seg 0 & 1, B = antara seg 1 & 2, dst.
+        // Hitung boundary markers huruf (A, B, C...) di titik potong (midpoint)
         const boundaryMarkers: BoundaryMarker[] = [];
-        if (prevSegment && prevAnchor) {
-          // Titik batas kiri halaman ini = huruf ke-(i-1) = chr(65 + i - 1)
-          const label = String.fromCharCode(65 + i - 1); // A=0, B=1, ...
+        if (prevAnchor) {
+          // Titik batas kiri halaman ini = huruf ke-(i-1)
+          const label = String.fromCharCode(65 + i - 1);
           boundaryMarkers.push({
             label,
             lat: prevAnchor.latitude,
             lng: prevAnchor.longitude,
           });
         }
-        if (nextSegment && nextAnchor) {
-          // Titik batas kanan halaman ini = huruf ke-i = chr(65 + i)
+        if (nextAnchor) {
+          // Titik batas kanan halaman ini = huruf ke-i
           const label = String.fromCharCode(65 + i);
           boundaryMarkers.push({
             label,
