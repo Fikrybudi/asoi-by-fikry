@@ -113,6 +113,21 @@ export interface JalurKabel {
 }
 
 // =============================================================================
+// PERSIL PELANGGAN (CUSTOMER LAND PARCEL)
+// =============================================================================
+
+export interface PersilPelanggan {
+    id: string;
+    namaPersil: string;              // Label yang tampil di peta
+    warnaBorder: string;            // Hex color, misal '#E91E63'
+    koordinatSudut: [Coordinate, Coordinate]; // [SW corner, NE corner]
+    catatan?: string;
+    createdAt: Date;
+    updatedAt: Date;
+    isSynced: boolean;
+}
+
+// =============================================================================
 // JEMBATAN KABEL (CABLE BRIDGE)
 // =============================================================================
 
@@ -202,7 +217,7 @@ export interface Survey {
     garduList: Gardu[];
     jalurList: JalurKabel[];
     jembatanKabelList?: JembatanKabel[];
-
+    persilList?: PersilPelanggan[];
 
 
     // Rencana teknik summary

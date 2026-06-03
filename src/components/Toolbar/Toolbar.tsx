@@ -9,7 +9,7 @@ import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 // TYPES
 // =============================================================================
 
-export type ToolMode = 'none' | 'add-tiang' | 'add-gardu' | 'draw-jalur' | 'draw-jembatan' | 'underbuild-sutr';
+export type ToolMode = 'none' | 'add-tiang' | 'add-gardu' | 'draw-jalur' | 'draw-jembatan' | 'underbuild-sutr' | 'draw-persil';
 
 interface ToolbarProps {
     currentMode: ToolMode;
@@ -124,7 +124,33 @@ export default function Toolbar({
         );
     }
 
-    // ==========================================================================
+    // Persil drawing mode
+    if (currentMode === 'draw-persil') {
+        return (
+            <View style={[styles.drawingToolbar, { backgroundColor: '#795548' }]}>
+                <View style={styles.drawingInfo}>
+                    <Text style={styles.drawingInfoText}>
+                        🏘️ Tap titik 1 (sudut pertama)
+                    </Text>
+                    {drawingPointsCount === 1 && (
+                        <Text style={[styles.drawingInfoText, { fontSize: 11, opacity: 0.9 }]}>
+                            ✅ Titik 1 OK → Tap titik 2 (sudut berlawanan)
+                        </Text>
+                    )}
+                </View>
+                <View style={styles.drawingActions}>
+                    <TouchableOpacity
+                        style={[styles.drawingButton, styles.cancelButton]}
+                        onPress={onCancelDrawing}
+                    >
+                        <Text style={styles.cancelButtonText}>Batal</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+
+    // =========================================================================
     // RENDER MAIN TOOLBAR
     // ==========================================================================
 
@@ -225,14 +251,25 @@ export default function Toolbar({
                 </Text>
             </TouchableOpacity>
 
-            {/* Finish/Summary Button */}
+            {/* Persil Pelanggan Button */}
             <TouchableOpacity
-                style={[styles.toolButton, styles.finishSurveyButton]}
-                onPress={onOpenSummary}
+                style={[
+                    styles.toolButton,
+                    (currentMode as string) === 'draw-persil' && styles.toolButtonActiveBrown,
+                ]}
+                onPress={() => toggleMode('draw-persil')}
             >
-                <Text style={styles.toolIcon}>🏁</Text>
-                <Text style={[styles.toolLabel, styles.finishSurveyText]}>Selesai</Text>
+                <Text style={styles.toolIcon}>🏘️</Text>
+                <Text
+                    style={[
+                        styles.toolLabel,
+                        (currentMode as string) === 'draw-persil' && styles.toolLabelActiveBrown,
+                    ]}
+                >
+                    Persil
+                </Text>
             </TouchableOpacity>
+
         </View>
     );
 }
@@ -337,6 +374,13 @@ const styles = StyleSheet.create({
         color: '#00BCD4',
         fontWeight: '600',
     },
+    toolButtonActiveBrown: {
+        backgroundColor: '#EFEBE9',
+    },
+    toolLabelActiveBrown: {
+        color: '#795548',
+        fontWeight: '600',
+    },
     underbuildToolbar: {
         backgroundColor: '#4CAF50',
         paddingVertical: 10,
@@ -361,14 +405,5 @@ const styles = StyleSheet.create({
     underbuildFinishButtonText: {
         color: '#4CAF50',
         fontWeight: '600',
-    },
-    finishSurveyButton: {
-        backgroundColor: '#E8F5E9',
-        borderWidth: 1,
-        borderColor: '#4CAF50',
-    },
-    finishSurveyText: {
-        color: '#2E7D32',
-        fontWeight: 'bold',
     },
 });

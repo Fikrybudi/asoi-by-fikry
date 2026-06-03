@@ -4,7 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import { Survey, Tiang, Gardu, JalurKabel, JembatanKabel, SyncQueueItem } from '../types';
+import { Survey, Tiang, Gardu, JalurKabel, JembatanKabel, PersilPelanggan, SyncQueueItem } from '../types';
 import { supabaseSurveyService, syncManager } from './supabaseService';
 
 // Generate UUID using expo-crypto
@@ -387,6 +387,62 @@ export const jembatanKabelService = {
         if (filtered.length === list.length) return false;
 
         await surveyService.update(surveyId, { jembatanKabelList: filtered });
+        return true;
+    },
+};
+
+// =============================================================================
+// PERSIL PELANGGAN OPERATIONS (within a survey)
+// =============================================================================
+
+export const persilService = {
+    async add(surveyId: string, persil: Omit<PersilPelanggan, 'id' | 'createdAt' | 'updatedAt' | 'isSynced'>): Promise<PersilPelanggan | null> {
+        const survey = await surveyService.getById(surveyId);
+        if (!survey) return null;
+
+        const newPersil: PersilPelanggan = {
+            ...persil,
+            id: generateUUID(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isSynced: false,
+        };
+
+        const list = survey.persilList || [];
+        list.push(newPersil);
+        await surveyService.update(surveyId, { persilList: list });
+
+        return newPersil;
+    },
+
+    async update(surveyId: string, persilId: string, updates: Partial<PersilPelanggan>): Promise<PersilPelanggan | null> {
+        const survey = await surveyService.getById(surveyId);
+        if (!survey) return null;
+
+        const list = survey.persilList || [];
+        const index = list.findIndex(p => p.id === persilId);
+        if (index === -1) return null;
+
+        list[index] = {
+            ...list[index],
+            ...updates,
+            updatedAt: new Date(),
+            isSynced: false,
+        };
+
+        await surveyService.update(surveyId, { persilList: list });
+        return list[index];
+    },
+
+    async delete(surveyId: string, persilId: string): Promise<boolean> {
+        const survey = await surveyService.getById(surveyId);
+        if (!survey) return false;
+
+        const list = survey.persilList || [];
+        const filtered = list.filter(p => p.id !== persilId);
+        if (filtered.length === list.length) return false;
+
+        await surveyService.update(surveyId, { persilList: filtered });
         return true;
     },
 };

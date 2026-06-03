@@ -20,14 +20,26 @@ import {
     ScrollView,
     Platform,
     StatusBar,
+    Switch,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { Survey } from '../types';
+import {
+    JENIS_PERMOHONAN_OPTIONS,
+    TARIF_DAYA_OPTIONS,
+    HASIL_SURVEY_OPTIONS,
+    DEFAULT_BA_CHECKLIST,
+    CHECKLIST_ITEMS,
+    isPresetTarifDaya,
+} from '../constants/surveyOptions';
 import { surveyService } from '../services/database';
 import { supabaseSurveyService, syncManager } from '../services/supabaseService';
 import { generateBASurveyPdf } from '../utils/baSurveyPdf';
 import SignatureCapture from '../components/Forms/SignatureCapture';
 import ShareSurveyModal from '../components/Forms/ShareSurveyModal';
 import { Image } from 'react-native';
+
+// CONSTANTS: imported from '../constants/surveyOptions'
 
 // =============================================================================
 // TYPES
@@ -67,10 +79,13 @@ export default function SurveyHistoryScreen({
     const [isSaving, setIsSaving] = useState(false);
 
     // BA Survey Edit States
+    const [editJenisPermohonan, setEditJenisPermohonan] = useState(JENIS_PERMOHONAN_OPTIONS[0]);
     const [editIdPelanggan, setEditIdPelanggan] = useState('');
     const [editNamaPelanggan, setEditNamaPelanggan] = useState('');
-    const [editTarifDaya, setEditTarifDaya] = useState('');
-    const [editHasilSurvey, setEditHasilSurvey] = useState('');
+    const [editTarifDaya, setEditTarifDaya] = useState(TARIF_DAYA_OPTIONS[2]);
+    const [editCustomTarifDaya, setEditCustomTarifDaya] = useState('');
+    const [editShowCustomTarif, setEditShowCustomTarif] = useState(false);
+    const [editHasilSurvey, setEditHasilSurvey] = useState(HASIL_SURVEY_OPTIONS[0]);
     const [editNamaPerwakilan, setEditNamaPerwakilan] = useState('');
     const [editKeterangan, setEditKeterangan] = useState('');
     const [editChecklist, setEditChecklist] = useState({
@@ -233,10 +248,21 @@ export default function SurveyHistoryScreen({
         setEditLokasi(survey.lokasi || '');
         setEditSurveyor(survey.surveyor || '');
         // BA fields
+        setEditJenisPermohonan(survey.jenisSurvey || JENIS_PERMOHONAN_OPTIONS[0]);
         setEditIdPelanggan(survey.idPelanggan || '');
         setEditNamaPelanggan(survey.namaPelanggan || '');
-        setEditTarifDaya(survey.tarifDaya || '');
-        setEditHasilSurvey(survey.hasilSurvey || '');
+        // Handle tarif daya - check if it's a preset or custom
+        const savedTarif = survey.tarifDaya || TARIF_DAYA_OPTIONS[2];
+        if (isPresetTarifDaya(savedTarif)) {
+            setEditTarifDaya(savedTarif);
+            setEditShowCustomTarif(false);
+            setEditCustomTarifDaya('');
+        } else {
+            setEditTarifDaya('Ketik Manual...');
+            setEditShowCustomTarif(true);
+            setEditCustomTarifDaya(savedTarif);
+        }
+        setEditHasilSurvey(survey.hasilSurvey || HASIL_SURVEY_OPTIONS[0]);
         setEditNamaPerwakilan(survey.namaPerwakilan || '');
         setEditKeterangan(survey.keterangan || '');
         setEditChecklist(survey.baChecklist || {
@@ -261,15 +287,17 @@ export default function SurveyHistoryScreen({
 
         try {
             setIsSaving(true);
+            const finalTarifDaya = editShowCustomTarif ? editCustomTarifDaya : editTarifDaya;
             const updates = {
                 namaSurvey: editName,
+                jenisSurvey: editJenisPermohonan,
                 lokasi: editLokasi,
                 surveyor: editSurveyor,
                 // BA fields
                 idPelanggan: editIdPelanggan,
                 namaPelanggan: editNamaPelanggan,
                 alamatPelanggan: editLokasi,
-                tarifDaya: editTarifDaya,
+                tarifDaya: finalTarifDaya,
                 hasilSurvey: editHasilSurvey,
                 namaPerwakilan: editNamaPerwakilan,
                 keterangan: editKeterangan,
@@ -580,6 +608,7 @@ export default function SurveyHistoryScreen({
                             >
                                 <Text style={styles.modalTitle}>✏️ Edit Data Survey</Text>
 
+                                {/* Nama Survey */}
                                 <Text style={styles.label}>Nama Survey</Text>
                                 <TextInput
                                     style={styles.input}
@@ -590,31 +619,69 @@ export default function SurveyHistoryScreen({
                                     selectTextOnFocus
                                 />
 
-                                <Text style={styles.label}>Lokasi / Alamat</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={editLokasi}
-                                    onChangeText={setEditLokasi}
-                                    placeholder="Contoh: Kecamatan X"
-                                    placeholderTextColor="#999"
-                                    selectTextOnFocus
-                                />
+                                {/* Jenis Permohonan */}
+                                <Text style={styles.label}>Jenis Permohonan</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={editJenisPermohonan}
+                                        onValueChange={setEditJenisPermohonan}
+                                        style={styles.picker}
+                                    >
+                                        {JENIS_PERMOHONAN_OPTIONS.map((opt) => (
+                                            <Picker.Item key={opt} label={opt} value={opt} />
+                                        ))}
+                                    </Picker>
+                                </View>
+
+                                {/* Tarif / Daya */}
+                                <Text style={styles.label}>Tarif / Daya</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={editTarifDaya}
+                                        onValueChange={(v) => {
+                                            if (v === 'Ketik Manual...') {
+                                                setEditShowCustomTarif(true);
+                                                setEditTarifDaya(v);
+                                            } else {
+                                                setEditShowCustomTarif(false);
+                                                setEditTarifDaya(v);
+                                            }
+                                        }}
+                                        style={styles.picker}
+                                    >
+                                        {TARIF_DAYA_OPTIONS.map((opt) => (
+                                            <Picker.Item key={opt} label={opt} value={opt} />
+                                        ))}
+                                    </Picker>
+                                </View>
+                                {editShowCustomTarif && (
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Ketik tarif/daya manual..."
+                                        value={editCustomTarifDaya}
+                                        onChangeText={setEditCustomTarifDaya}
+                                        placeholderTextColor="#999"
+                                    />
+                                )}
 
                                 {/* Separator BA Survey Data */}
                                 <Text style={{ marginTop: 16, marginBottom: 8, fontSize: 14, fontWeight: 'bold', color: '#1565C0' }}>
                                     📋 Data BA Survey
                                 </Text>
 
-                                <Text style={styles.label}>ID Pelanggan (opsional)</Text>
+                                {/* ID Pelanggan */}
+                                <Text style={styles.label}>ID Pelanggan (Opsional)</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={editIdPelanggan}
                                     onChangeText={setEditIdPelanggan}
                                     placeholder="ID PLN jika ada"
                                     placeholderTextColor="#999"
+                                    keyboardType="numeric"
                                 />
 
-                                <Text style={styles.label}>Nama Pelanggan</Text>
+                                {/* Nama Pelanggan */}
+                                <Text style={styles.label}>Nama Pelanggan / Perusahaan</Text>
                                 <TextInput
                                     style={styles.input}
                                     value={editNamaPelanggan}
@@ -623,27 +690,36 @@ export default function SurveyHistoryScreen({
                                     placeholderTextColor="#999"
                                 />
 
-                                <Text style={styles.label}>Tarif / Daya</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={editTarifDaya}
-                                    onChangeText={setEditTarifDaya}
-                                    placeholder="Contoh: R3 / 197kVA"
-                                    placeholderTextColor="#999"
-                                />
-
-                                <Text style={styles.label}>Hasil Survey</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={editHasilSurvey}
-                                    onChangeText={setEditHasilSurvey}
-                                    placeholder="Contoh: Survei Perencanaan"
-                                    placeholderTextColor="#999"
-                                />
-
-                                <Text style={styles.label}>Keterangan Sketsa</Text>
+                                {/* Lokasi / Alamat */}
+                                <Text style={styles.label}>Lokasi / Alamat</Text>
                                 <TextInput
                                     style={[styles.input, { height: 60 }]}
+                                    value={editLokasi}
+                                    onChangeText={setEditLokasi}
+                                    placeholder="Contoh: Kecamatan X"
+                                    placeholderTextColor="#999"
+                                    multiline
+                                    selectTextOnFocus
+                                />
+
+                                {/* Hasil Survey */}
+                                <Text style={styles.label}>Hasil Survey Lokasi</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={editHasilSurvey}
+                                        onValueChange={setEditHasilSurvey}
+                                        style={styles.picker}
+                                    >
+                                        {HASIL_SURVEY_OPTIONS.map((opt) => (
+                                            <Picker.Item key={opt} label={opt} value={opt} />
+                                        ))}
+                                    </Picker>
+                                </View>
+
+                                {/* Keterangan */}
+                                <Text style={styles.label}>Keterangan Sketsa</Text>
+                                <TextInput
+                                    style={[styles.input, { height: 80 }]}
                                     value={editKeterangan}
                                     onChangeText={setEditKeterangan}
                                     placeholder="Contoh: Kebutuhan tiang 2 btg..."
@@ -652,65 +728,55 @@ export default function SurveyHistoryScreen({
                                 />
 
                                 {/* Checklist */}
-                                <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '600', color: '#333' }}>Checklist Pekerjaan</Text>
-                                {[
-                                    { key: 'perluasanJTM', label: 'Perluasan JTM' },
-                                    { key: 'bangunGardu', label: 'Bangun Gardu' },
-                                    { key: 'perluasanJTR', label: 'Perluasan JTR' },
-                                    { key: 'tanamTiang', label: 'Tanam Tiang' },
-                                    { key: 'dikenakanPFK', label: 'Dikenakan PFK' },
-                                ].map((item) => (
-                                    <TouchableOpacity
-                                        key={item.key}
-                                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
-                                        onPress={() => setEditChecklist(prev => ({ ...prev, [item.key]: !prev[item.key as keyof typeof prev] }))}
-                                    >
-                                        <Text style={{ fontSize: 16, marginRight: 8 }}>
-                                            {editChecklist[item.key as keyof typeof editChecklist] ? '☑️' : '⬜'}
-                                        </Text>
-                                        <Text style={{ fontSize: 14, color: '#333' }}>{item.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-
-                                {/* Pasal 7: APP Dipasang */}
-                                <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '600', color: '#333' }}>7. APP Dipasang di</Text>
-                                <View style={{ flexDirection: 'row', gap: 10 }}>
-                                    <TouchableOpacity
-                                        style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editAppDipasang === 'Persil' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
-                                        onPress={() => setEditAppDipasang('Persil')}
-                                    >
-                                        <Text style={{ color: editAppDipasang === 'Persil' ? 'white' : '#333', fontWeight: '600' }}>Persil</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editAppDipasang === 'Gardu' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
-                                        onPress={() => setEditAppDipasang('Gardu')}
-                                    >
-                                        <Text style={{ color: editAppDipasang === 'Gardu' ? 'white' : '#333', fontWeight: '600' }}>Gardu</Text>
-                                    </TouchableOpacity>
+                                <Text style={[styles.label, { marginTop: 15 }]}>Checklist Pekerjaan</Text>
+                                <View style={styles.checklistContainer}>
+                                    {CHECKLIST_ITEMS.map((item) => (
+                                        <View key={item.key} style={styles.checklistItem}>
+                                            <Text style={styles.checklistLabel}>{item.label}</Text>
+                                            <Switch
+                                                value={editChecklist[item.key as keyof typeof editChecklist]}
+                                                onValueChange={(v) =>
+                                                    setEditChecklist(prev => ({ ...prev, [item.key]: v }))
+                                                }
+                                                trackColor={{ false: '#767577', true: '#81b0ff' }}
+                                                thumbColor={editChecklist[item.key as keyof typeof editChecklist] ? '#1565C0' : '#f4f3f4'}
+                                            />
+                                        </View>
+                                    ))}
                                 </View>
 
-                                {/* Pasal 8: Konstruksi Oleh */}
-                                <Text style={{ marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '600', color: '#333' }}>8. Konstruksi Bangunan Gardu Oleh</Text>
-                                <View style={{ flexDirection: 'row', gap: 10 }}>
-                                    <TouchableOpacity
-                                        style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editKonstruksiOleh === 'Pelanggan' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
-                                        onPress={() => setEditKonstruksiOleh('Pelanggan')}
+                                {/* APP Dipasang */}
+                                <Text style={styles.label}>7. APP Dipasang di</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={editAppDipasang}
+                                        onValueChange={(v) => setEditAppDipasang(v as 'Persil' | 'Gardu')}
+                                        style={styles.picker}
                                     >
-                                        <Text style={{ color: editKonstruksiOleh === 'Pelanggan' ? 'white' : '#333', fontWeight: '600' }}>Pelanggan</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: editKonstruksiOleh === 'PLN' ? '#2196F3' : '#f0f0f0', alignItems: 'center' }}
-                                        onPress={() => setEditKonstruksiOleh('PLN')}
+                                        <Picker.Item label="Persil (Bagian Depan)" value="Persil" />
+                                        <Picker.Item label="Gardu" value="Gardu" />
+                                    </Picker>
+                                </View>
+
+                                {/* Konstruksi Oleh */}
+                                <Text style={styles.label}>8. Konstruksi Bangunan Gardu Oleh</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={editKonstruksiOleh}
+                                        onValueChange={(v) => setEditKonstruksiOleh(v as 'Pelanggan' | 'PLN')}
+                                        style={styles.picker}
                                     >
-                                        <Text style={{ color: editKonstruksiOleh === 'PLN' ? 'white' : '#333', fontWeight: '600' }}>PLN</Text>
-                                    </TouchableOpacity>
+                                        <Picker.Item label="Pelanggan" value="Pelanggan" />
+                                        <Picker.Item label="PLN" value="PLN" />
+                                    </Picker>
                                 </View>
 
                                 {/* Separator Tanda Tangan */}
-                                <Text style={{ marginTop: 16, marginBottom: 8, fontSize: 14, fontWeight: 'bold', color: '#1565C0' }}>
+                                <Text style={{ marginTop: 20, marginBottom: 10, fontSize: 14, fontWeight: 'bold', color: '#1565C0' }}>
                                     ✍️ Tanda Tangan
                                 </Text>
 
+                                {/* Nama Perwakilan */}
                                 <Text style={styles.label}>Nama Perwakilan Pelanggan</Text>
                                 <TextInput
                                     style={styles.input}
@@ -731,6 +797,7 @@ export default function SurveyHistoryScreen({
                                     )}
                                 </TouchableOpacity>
 
+                                {/* Nama Surveyor */}
                                 <Text style={[styles.label, { marginTop: 16 }]}>Nama Surveyor PLN</Text>
                                 <TextInput
                                     style={styles.input}
@@ -1133,6 +1200,37 @@ const styles = StyleSheet.create({
     editButton: {
         padding: 4,
         marginRight: 4,
+    },
+    // Picker & Checklist styles (shared with BASurveyForm via constants/surveyOptions.ts)
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        backgroundColor: '#f9f9f9',
+        overflow: 'hidden',
+        marginBottom: 4,
+    },
+    picker: {
+        height: 50,
+        color: '#333',
+    },
+    checklistContainer: {
+        backgroundColor: '#f5f5f5',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 8,
+    },
+    checklistItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    checklistLabel: {
+        fontSize: 14,
+        color: '#333',
     },
 });
 

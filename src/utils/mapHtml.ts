@@ -1,9 +1,10 @@
-﻿// =============================================================================
+// =============================================================================
 // PLN SURVEY APP - Leaflet Map HTML Template Generator
 // =============================================================================
 // Extracted from SurveyMap.tsx for maintainability
 
-import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel } from '../types';
+import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, PersilPelanggan } from '../types';
+import { OverlayFile } from '../types/overlayTypes';
 const generateMapHTML = (
   center: Coordinate,
   tiangList: Tiang[],
@@ -24,7 +25,9 @@ const generateMapHTML = (
     sktm: boolean;
   } = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true, sktm: true },
   selectedTiangIds: string[] = [],
-  zoomLevel: number = 18
+  zoomLevel: number = 18,
+  persilList: PersilPelanggan[] = [],
+  overlayLayers: OverlayFile[] = []
 ) => {
   const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
   // Tiang markers with labels
@@ -450,7 +453,7 @@ const generateMapHTML = (
         dashArray: '',
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map).bindPopup('ðŸŒ‰ Jembatan Kabel<br>${nameLabel}${totalDistance}<br>${jk.jenisJaringan}')
+      }).addTo(map).bindPopup('Jembatan Kabel<br>${nameLabel}${totalDistance}<br>${jk.jenisJaringan}')
         .on('click', function(e) {
           L.DomEvent.stopPropagation(e);
         });
@@ -459,9 +462,51 @@ const generateMapHTML = (
       L.marker([${midLat}, ${midLng}], {
         icon: L.divIcon({
           className: 'jembatan-label',
-          html: '<div style="color:#00838F;font-size:14px;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;">ðŸŒ‰ ${totalDistance}</div>',
+          html: '<div style="color:#00838F;font-size:12px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;">[JK] ${totalDistance}</div>',
           iconSize: [60, 20],
           iconAnchor: [30, 10]
+        }),
+        interactive: false
+      }).addTo(map);
+    `;
+  }).join('\n');
+
+  // Persil Pelanggan rectangles
+  const persilRectangles = persilList.map(p => {
+    const sw = p.koordinatSudut[0];
+    const ne = p.koordinatSudut[1];
+    const midLat = (sw.latitude + ne.latitude) / 2;
+    const midLng = (sw.longitude + ne.longitude) / 2;
+    const color = p.warnaBorder || '#E91E63';
+    // Escape nama untuk JS string
+    const nameEscaped = p.namaPersil.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const catatanEscaped = (p.catatan || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    return `
+      // Persil: ${nameEscaped}
+      L.rectangle(
+        [[${sw.latitude}, ${sw.longitude}], [${ne.latitude}, ${ne.longitude}]],
+        {
+          color: '${color}',
+          weight: 2,
+          fillColor: '${color}',
+          fillOpacity: 0.12,
+          dashArray: '6, 4',
+          interactive: true
+        }
+      ).addTo(map)
+        .bindPopup('<b>${nameEscaped}</b>${catatanEscaped ? '<br><i>' + catatanEscaped + '</i>' : ''}')
+        .on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          window.ReactNativeWebView.postMessage(JSON.stringify({type: 'persil', id: '${p.id}'}));
+        });
+
+      // Label nama persil di tengah kotak
+      L.marker([${midLat}, ${midLng}], {
+        icon: L.divIcon({
+          className: 'persil-label',
+          html: '<div style="color:${color};font-size:10px;font-weight:bold;white-space:nowrap;text-align:center;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;pointer-events:none;">${nameEscaped}</div>',
+          iconSize: [120, 20],
+          iconAnchor: [60, 10]
         }),
         interactive: false
       }).addTo(map);
@@ -553,7 +598,7 @@ const generateMapHTML = (
     var centerMarker = L.marker(map.getCenter(), {
       icon: L.divIcon({
         className: 'center-pin',
-        html: '<div class="pin-container"><div class="pin-icon">ðŸ“</div><div class="pin-shadow"></div></div>',
+        html: '<div class="pin-container"><div class="pin-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30"><path d="M12 0C7.6 0 4 3.6 4 8c0 5.4 8 16 8 16s8-10.6 8-16c0-4.4-3.6-8-8-8zm0 11c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z" fill="#E53935"/></svg></div><div class="pin-shadow"></div></div>',
         iconSize: [40, 50],
         iconAnchor: [20, 50]
       }),
@@ -585,6 +630,138 @@ const generateMapHTML = (
     updateCoordinateDisplay();
   ` : '';
 
+  // =========================================================================
+  // OVERLAY LAYERS (static imported data — read-only)
+  // =========================================================================
+  const overlayRendering = overlayLayers
+    .filter(ol => ol.visible)
+    .map(ol => {
+      const opacity = ol.opacity ?? 0.7;
+      let js = '';
+
+      // --- Polylines (JTM feeders) ---
+      if (ol.data.polylines.length > 0) {
+        // Google Maps-style distinct colors per feeder
+        const feederColors = ['#FF6600','#CC00FF','#009900','#0066FF','#FF0066','#00CCCC','#996633','#FF3333','#6600CC','#339966','#CC6600','#3366FF'];
+        ol.data.polylines.forEach((pl, idx) => {
+          const color = ol.color || feederColors[idx % feederColors.length];
+          const coords = pl.coords.map(c => `[${c.lat}, ${c.lng}]`).join(',');
+          const nameEsc = (pl.name || '').replace(/'/g, "\\'");
+          js += `
+            L.polyline([${coords}], {
+              color: '${color}',
+              weight: 4,
+              opacity: ${opacity},
+              interactive: true,
+              className: 'overlay-jtm overlay-layer overlay-${ol.id}'
+            }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i>JTM Eksisting</i>');
+          `;
+        });
+      }
+
+      // --- Points (Gardu / Proteksi / Custom) ---
+      if (ol.data.points.length > 0) {
+        // If overlay has both polylines AND points (mixed file like gardu+JTM KML),
+        // treat remaining points as gardu-style markers automatically
+        const effectivePointType = (ol.type === 'jtm' || ol.type === 'custom') && ol.data.polylines.length > 0
+          ? 'gardu' : ol.type;
+
+        ol.data.points.forEach(pt => {
+          const nameEsc = (pt.name || '').replace(/'/g, "\\\\'").replace(/"/g, '\\\\"');
+          let popupExtra = '';
+
+          if (effectivePointType === 'gardu') {
+            // ── GARDU: Google Maps style blue square marker ──
+            const desc = pt.properties['description'] || pt.properties['ex_description'] || '';
+            const alamat = pt.properties['ALAMAT'] || pt.properties['alamat'] || '';
+            const jenisPel = pt.properties['JENIS_PEL'] || '';
+            popupExtra = (desc ? '<br>Kode: ' + desc.replace(/'/g, "\\'") : '') + (jenisPel ? '<br>Jenis: ' + jenisPel : '') + (alamat ? '<br>' + alamat.replace(/'/g, "\\'") : '');
+
+            // Blue square icon (like Google Maps KML default)
+            const squareHtml = '<div style="width:14px;height:14px;background:#4285F4;border:2px solid white;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,0.4);opacity:' + opacity + '"></div>';
+            js += `
+              L.marker([${pt.lat}, ${pt.lng}], {
+                icon: L.divIcon({
+                  className: 'overlay-gardu overlay-layer overlay-${ol.id}',
+                  html: "${squareHtml}",
+                  iconSize: [18, 18],
+                  iconAnchor: [9, 9]
+                }),
+                interactive: true
+              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${ol.name}</i>');
+
+              // Gardu name label
+              L.marker([${pt.lat}, ${pt.lng}], {
+                icon: L.divIcon({
+                  className: 'overlay-gardu-label overlay-layer overlay-${ol.id}',
+                  html: '<div style="color:#1a73e8;font-size:9px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 3px white;opacity:${opacity};">${nameEsc}</div>',
+                  iconSize: null,
+                  iconAnchor: [-10, 5]
+                }),
+                interactive: false
+              }).addTo(map);
+            `;
+
+          } else if (ol.type === 'proteksi') {
+            // ── PROTEKSI: Orange circle marker (like Google Maps) ──
+            const jenis = (pt.properties['JENIS'] || pt.properties['jenis'] || '').toUpperCase();
+            let markerColor = '#FF6600'; // default orange
+            if (jenis === 'GH') markerColor = '#FF6600';
+            else if (jenis === 'LBS') markerColor = '#FF6600';
+            else if (jenis === 'PMR') markerColor = '#FF0000';
+            else if (jenis === 'SSO') markerColor = '#FF6600';
+
+            const ulp = pt.properties['ULP'] || pt.properties['ulp'] || '';
+            const pnl1 = pt.properties['PNL1'] || pt.properties['pnl1'] || '';
+            popupExtra = (jenis ? '<br>Jenis: ' + jenis : '') + (ulp ? '<br>ULP: ' + ulp : '') + (pnl1 ? '<br>PNL: ' + pnl1 : '');
+
+            // Orange filled circle with white border (like GMaps)
+            const circleHtml = '<div style="width:16px;height:16px;background:' + markerColor + ';border:2.5px solid white;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.4);opacity:' + opacity + '"></div>';
+            js += `
+              L.marker([${pt.lat}, ${pt.lng}], {
+                icon: L.divIcon({
+                  className: 'overlay-proteksi overlay-layer overlay-${ol.id}',
+                  html: "${circleHtml}",
+                  iconSize: [21, 21],
+                  iconAnchor: [10, 10]
+                }),
+                interactive: true
+              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${ol.name}</i>');
+
+              // Proteksi name label
+              L.marker([${pt.lat}, ${pt.lng}], {
+                icon: L.divIcon({
+                  className: 'overlay-proteksi-label overlay-layer overlay-${ol.id}',
+                  html: '<div style="color:#CC5500;font-size:9px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 3px white;opacity:${opacity};">${nameEsc}</div>',
+                  iconSize: null,
+                  iconAnchor: [-12, 5]
+                }),
+                interactive: false
+              }).addTo(map);
+            `;
+
+          } else {
+            // ── CUSTOM: simple circle marker ──
+            js += `
+              L.circleMarker([${pt.lat}, ${pt.lng}], {
+                radius: 5,
+                fillColor: '#607D8B',
+                color: 'white',
+                weight: 2,
+                fillOpacity: ${opacity},
+                opacity: ${opacity},
+                className: 'overlay-custom overlay-layer overlay-${ol.id}',
+                interactive: true
+              }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:#999">${ol.name}</i>');
+            `;
+          }
+        });
+      }
+
+      return js;
+    })
+    .join('\n');
+
   // Dynamic Styles Injection
   const cssInjection = `
     ${!visibleLayers?.tiang ? '.tiang-icon { display: none !important; }' : ''}
@@ -606,6 +783,9 @@ const generateMapHTML = (
     * { margin: 0; padding: 0; }
     html, body, #map { height: 100%; width: 100%; }
     .gardu-icon { background: transparent !important; border: none !important; }
+    .overlay-gardu, .overlay-gardu-label,
+    .overlay-proteksi, .overlay-proteksi-label,
+    .overlay-custom { background: transparent !important; border: none !important; }
     .leaflet-control-attribution { display: none; }
     
     /* Disable blue/orange tap highlight on Android/iOS */
@@ -696,6 +876,9 @@ const generateMapHTML = (
     <div class="legend-item"><div class="legend-line" style="background:#9C27B0;"></div>SKTM</div>
     <div class="legend-item"><div class="legend-line" style="background:#00BCD4;"></div>SKUTM</div>
     <div class="legend-item"><div class="legend-line" style="background:#4CAF50;"></div>SUTR</div>
+    ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><div class="legend-line" style="background:#FFC107;"></div>JTM Eksisting</div>' : ''}
+    ${overlayLayers.some(o => o.visible && o.type === 'gardu') ? '<div class="legend-item"><div class="legend-line" style="background:#FF9800;height:6px;width:6px;border-radius:50%;"></div>Gardu Eksisting</div>' : ''}
+    ${overlayLayers.some(o => o.visible && o.type === 'proteksi') ? '<div class="legend-item"><div class="legend-line" style="background:#F44336;height:6px;width:6px;border-radius:50%;"></div>Proteksi</div>' : ''}
   </div>
   <script>
     // FIX: Override default Canvas tolerance globally before map init
@@ -768,6 +951,12 @@ const generateMapHTML = (
 
     // Jembatan Kabel polylines
     ${jembatanPolylines}
+
+    // Persil Pelanggan rectangles
+    ${persilRectangles}
+
+    // Overlay layers (imported eksisting data)
+    ${overlayRendering}
 
     // Current drawing
     ${currentJalurLine}

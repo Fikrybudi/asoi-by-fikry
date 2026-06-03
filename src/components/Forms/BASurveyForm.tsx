@@ -11,6 +11,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import {
+    JENIS_PERMOHONAN_OPTIONS,
+    TARIF_DAYA_OPTIONS,
+    HASIL_SURVEY_OPTIONS,
+    DEFAULT_BA_CHECKLIST,
+    CHECKLIST_ITEMS,
+} from '../../constants/surveyOptions';
 
 // Types for BA Survey form
 export interface BASurveyData {
@@ -44,45 +51,6 @@ interface BASurveyFormProps {
     onSubmit: (data: BASurveyData) => void;
 }
 
-// Dropdown options
-const JENIS_PERMOHONAN_OPTIONS = [
-    'Pasang Baru',
-    'Perluasan Jaringan',
-    'Tambah Daya',
-    'Penurunan Daya',
-    'Perubahan Tarif',
-    'P2TL',
-    'Survey Perencanaan',
-];
-
-const TARIF_DAYA_OPTIONS = [
-    'R1 / 450VA',
-    'R1 / 900VA',
-    'R1 / 1300VA',
-    'R1 / 2200VA',
-    'R1M / 3500VA',
-    'R1M / 4400VA',
-    'R1M / 5500VA',
-    'R1M / 6600VA',
-    'R2 / 3500VA - 14kVA',
-    'R3 / >14kVA',
-    'B1 / 450VA - 5500VA',
-    'B2 / 6600VA - 200kVA',
-    'B3 / >200kVA',
-    'P1 / 450VA - 5500VA',
-    'P2 / 6600VA - 200kVA',
-    'P3 / >200kVA',
-    'Lainnya...',
-];
-
-const HASIL_SURVEY_OPTIONS = [
-    'Survei Perencanaan',
-    'Layak Pasang',
-    'Tidak Layak',
-    'Perlu Perluasan',
-    'Pending Dokumen',
-];
-
 export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFormProps) {
     const [jenisPermohonan, setJenisPermohonan] = useState(JENIS_PERMOHONAN_OPTIONS[0]);
     const [tarifDaya, setTarifDaya] = useState(TARIF_DAYA_OPTIONS[2]); // Default R1/1300VA
@@ -98,16 +66,10 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
     const [appDipasang, setAppDipasang] = useState<'Persil' | 'Gardu'>('Persil');
     const [konstruksiOleh, setKonstruksiOleh] = useState<'Pelanggan' | 'PLN'>('Pelanggan');
 
-    const [checklist, setChecklist] = useState({
-        perluasanJTM: false,
-        bangunGardu: false,
-        perluasanJTR: false,
-        tanamTiang: false,
-        dikenakanPFK: false,
-    });
+    const [checklist, setChecklist] = useState({ ...DEFAULT_BA_CHECKLIST });
 
     const handleTarifDayaChange = (value: string) => {
-        if (value === 'Lainnya...') {
+        if (value === 'Ketik Manual...') {
             setShowCustomTarif(true);
             setTarifDaya(value);
         } else {
@@ -158,13 +120,7 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
         setKeterangan('');
         setAppDipasang('Persil');
         setKonstruksiOleh('Pelanggan');
-        setChecklist({
-            perluasanJTM: false,
-            bangunGardu: false,
-            perluasanJTR: false,
-            tanamTiang: false,
-            dikenakanPFK: false,
-        });
+        setChecklist({ ...DEFAULT_BA_CHECKLIST });
     };
 
     return (
@@ -215,7 +171,7 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                         {showCustomTarif && (
                             <TextInput
                                 style={styles.input}
-                                placeholder="Ketik tarif/daya manual..."
+                                placeholder="Ketik tarif/daya manual, cth: R1 / 3500VA"
                                 value={customTarifDaya}
                                 onChangeText={setCustomTarifDaya}
                             />
@@ -267,13 +223,7 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                         {/* Checklist */}
                         <Text style={[styles.label, { marginTop: 15 }]}>Checklist Pekerjaan</Text>
                         <View style={styles.checklistContainer}>
-                            {[
-                                { key: 'perluasanJTM', label: 'Perluasan JTM' },
-                                { key: 'bangunGardu', label: 'Bangun Gardu' },
-                                { key: 'perluasanJTR', label: 'Perluasan JTR' },
-                                { key: 'tanamTiang', label: 'Tanam Tiang' },
-                                { key: 'dikenakanPFK', label: 'Dikenakan PFK' },
-                            ].map((item) => (
+                            {CHECKLIST_ITEMS.map((item) => (
                                 <View key={item.key} style={styles.checklistItem}>
                                     <Text style={styles.checklistLabel}>{item.label}</Text>
                                     <Switch
@@ -287,6 +237,16 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                                 </View>
                             ))}
                         </View>
+
+                        {/* Keterangan */}
+                        <Text style={[styles.label, { marginTop: 15 }]}>Keterangan</Text>
+                        <TextInput
+                            style={[styles.input, { height: 80 }]}
+                            placeholder="Contoh: Kebutuhan tiang 2 btg, gambar terlampir..."
+                            value={keterangan}
+                            onChangeText={setKeterangan}
+                            multiline
+                        />
 
                         {/* Pasal 7: APP Dipasang */}
                         <Text style={styles.label}>7. APP Dipasang di</Text>
@@ -313,16 +273,6 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                                 <Picker.Item label="PLN" value="PLN" />
                             </Picker>
                         </View>
-
-                        {/* Keterangan */}
-                        <Text style={[styles.label, { marginTop: 15 }]}>Keterangan</Text>
-                        <TextInput
-                            style={[styles.input, { height: 80 }]}
-                            placeholder="Contoh: Kebutuhan tiang 2 btg, gambar terlampir..."
-                            value={keterangan}
-                            onChangeText={setKeterangan}
-                            multiline
-                        />
 
                         {/* Separator: Tanda Tangan */}
                         <Text style={{ marginTop: 20, marginBottom: 10, fontSize: 14, fontWeight: 'bold', color: '#1565C0' }}>

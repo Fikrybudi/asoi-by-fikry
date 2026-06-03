@@ -14,15 +14,20 @@ import JalurForm from './src/components/Forms/JalurForm';
 import JembatanKabelForm from './src/components/Forms/JembatanKabelForm';
 import SurveySummaryScreen from './src/screens/SurveySummaryScreen';
 import SurveyHistoryScreen from './src/screens/SurveyHistoryScreen';
-import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, Survey } from './src/types';
-import { surveyService, tiangService, garduService, jalurService, jembatanKabelService } from './src/services/database';
+import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, Survey, PersilPelanggan } from './src/types';
+import { surveyService, tiangService, garduService, jalurService, jembatanKabelService, persilService } from './src/services/database';
 import { calculateDistance, generatePointsAlongPolyline, groupTiangBySegment, calculateBoundsForGroup, SegmentMode } from './src/utils/geoUtils';
 import { generatePdfWithMap, generateMultiPagePdf, sharePdf, PageMeta } from './src/utils/pdfExport';
+import { buildRincianPekerjaan } from './src/utils/rincianPekerjaan';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './src/services/supabaseClient';
 import LoginScreen from './src/screens/LoginScreen';
 import BASurveyForm, { BASurveyData } from './src/components/Forms/BASurveyForm';
 import { generateBASurveyPdf } from './src/utils/baSurveyPdf';
+import PersilForm, { PersilFormData } from './src/components/Forms/PersilForm';
+import OverlayManager from './src/components/Forms/OverlayManager';
+import { OverlayFile } from './src/types/overlayTypes';
+import { overlayStorage } from './src/services/overlayStorage';
 
 // ... other imports
 
@@ -42,6 +47,11 @@ export default function App() {
   const [showGarduForm, setShowGarduForm] = useState(false);
   const [showJalurForm, setShowJalurForm] = useState(false);
   const [showJembatanForm, setShowJembatanForm] = useState(false);
+  const [showPersilForm, setShowPersilForm] = useState(false);
+
+  // Persil drawing state
+  const [drawingPersilCorners, setDrawingPersilCorners] = useState<Coordinate[]>([]);
+  const [editingPersil, setEditingPersil] = useState<PersilPelanggan | null>(null);
 
   // Selected coordinate for new marker
   const [selectedCoordinate, setSelectedCoordinate] = useState<Coordinate | null>(null);
@@ -108,6 +118,10 @@ export default function App() {
   // BA Survey form state
   const [showBASurveyForm, setShowBASurveyForm] = useState(false);
 
+  // Overlay layers state
+  const [overlayLayers, setOverlayLayers] = useState<OverlayFile[]>([]);
+  const [showOverlayManager, setShowOverlayManager] = useState(false);
+
   // Undo history stack (max 20 actions)
   type UndoAction =
     | { type: 'add-tiang'; data: Tiang }
@@ -144,6 +158,11 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Load overlay layers from storage on startup
+  useEffect(() => {
+    overlayStorage.getAllOverlays().then(setOverlayLayers).catch(console.error);
   }, []);
 
   const initializeSurvey = async () => {
@@ -214,6 +233,27 @@ export default function App() {
     } else if (toolMode === 'draw-jalur' || toolMode === 'draw-jembatan') {
       setDrawingCoords(prev => [...prev, coordinate]);
       setIsDrawing(true);
+    } else if (toolMode === 'draw-persil') {
+      // Tap 1 = sudut pertama, tap 2 = sudut kedua → buka form
+      if (drawingPersilCorners.length === 0) {
+        setDrawingPersilCorners([coordinate]);
+      } else {
+        // Sudut kedua tapped → buka form
+        const corner1 = drawingPersilCorners[0];
+        const corner2 = coordinate;
+        // Normalisasi: SW = min coords, NE = max coords
+        const sw: Coordinate = {
+          latitude: Math.min(corner1.latitude, corner2.latitude),
+          longitude: Math.min(corner1.longitude, corner2.longitude),
+        };
+        const ne: Coordinate = {
+          latitude: Math.max(corner1.latitude, corner2.latitude),
+          longitude: Math.max(corner1.longitude, corner2.longitude),
+        };
+        setDrawingPersilCorners([sw, ne]);
+        setEditingPersil(null);
+        setShowPersilForm(true);
+      }
     }
   };
 
@@ -224,7 +264,95 @@ export default function App() {
       setDrawingCoords([]);
       setIsDrawing(false);
     }
+    // If switching away from persil mode, reset corners
+    if (toolMode === 'draw-persil' && mode !== 'draw-persil') {
+      setDrawingPersilCorners([]);
+    }
     setToolMode(mode);
+  };
+
+  // Handler: Persil form selesai
+  const handlePersilSubmit = async (data: PersilFormData) => {
+    if (!currentSurvey) return;
+    const koordinatSudut = data.koordinatSudut;
+
+    if (editingPersil) {
+      // Edit mode
+      const updated = await persilService.update(currentSurvey.id, editingPersil.id, {
+        namaPersil: data.namaPersil,
+        warnaBorder: data.warnaBorder,
+        catatan: data.catatan,
+      });
+      if (updated) {
+        const newPersilList = (currentSurvey.persilList || []).map(p =>
+          p.id === editingPersil.id ? updated : p
+        );
+        setCurrentSurvey(prev => prev ? { ...prev, persilList: newPersilList } : prev);
+      }
+    } else {
+      // Add new
+      const newPersil = await persilService.add(currentSurvey.id, {
+        namaPersil: data.namaPersil,
+        warnaBorder: data.warnaBorder,
+        catatan: data.catatan,
+        koordinatSudut,
+      });
+      if (newPersil) {
+        setCurrentSurvey(prev => prev ? {
+          ...prev,
+          persilList: [...(prev.persilList || []), newPersil]
+        } : prev);
+      }
+    }
+
+    setShowPersilForm(false);
+    setDrawingPersilCorners([]);
+    setEditingPersil(null);
+    setToolMode('none');
+  };
+
+  // Handler: Tap kotak persil di peta
+  const handlePersilPress = (persil: PersilPelanggan) => {
+    Alert.alert(
+      persil.namaPersil,
+      persil.catatan ? `📝 ${persil.catatan}` : 'Tap untuk aksi',
+      [
+        {
+          text: '✏️ Edit',
+          onPress: () => {
+            setEditingPersil(persil);
+            setDrawingPersilCorners([persil.koordinatSudut[0], persil.koordinatSudut[1]]);
+            setShowPersilForm(true);
+          }
+        },
+        {
+          text: '🗑️ Hapus',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Hapus Persil',
+              `Hapus "${persil.namaPersil}"?`,
+              [
+                { text: 'Batal', style: 'cancel' },
+                {
+                  text: 'Hapus',
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (!currentSurvey) return;
+                    await persilService.delete(currentSurvey.id, persil.id);
+                    setCurrentSurvey(prev => prev ? {
+                      ...prev,
+                      persilList: (prev.persilList || []).filter(p => p.id !== persil.id)
+                    } : prev);
+                  }
+                }
+              ]
+            );
+          }
+        },
+        { text: 'Tutup', style: 'cancel' },
+      ]
+    );
   };
 
   const handleFinishDrawing = () => {
@@ -305,6 +433,7 @@ export default function App() {
       const pdfPath = await generatePdfWithMap(mapBase64, {
         name: currentSurvey.namaSurvey,
         location: currentSurvey.lokasi || '',
+        rincianLines: buildRincianPekerjaan(currentSurvey),
       });
       if (!pdfPath) {
         Alert.alert('Error', 'Gagal generate PDF');
@@ -339,25 +468,21 @@ export default function App() {
         const seg = segments[i];
         setExportProgress(`Mengambil gambar halaman ${i + 1} dari ${totalPages}...`);
 
-        // Fungsi helper untuk mencari titik tengah antara dua segmen
-        const getMidpoint = (segA: any, segB: any) => {
+        // Fungsi helper untuk mendapatkan titik batas antara dua segmen
+        // Menggunakan tiang terakhir dari segmen pertama agar pembatas jatuh tepat di tiang
+        const getBoundaryPoint = (segA: any, segB: any) => {
           if (!segA || !segB) return undefined;
-          const p1 = segA.tiangList[segA.tiangList.length - 1].koordinat;
-          const p2 = segB.tiangList[0].koordinat;
-          return {
-            latitude: (p1.latitude + p2.latitude) / 2,
-            longitude: (p1.longitude + p2.longitude) / 2
-          };
+          return segA.tiangList[segA.tiangList.length - 1].koordinat;
         };
 
         const prevSegment = i > 0 ? segments[i - 1] : null;
         const nextSegment = i < segments.length - 1 ? segments[i + 1] : null;
 
-        // Titik batas = midpoint antara tiang terakhir segmen ini dan tiang pertama segmen tetangga.
+        // Titik batas = tiang terakhir segmen sebelumnya.
         // Menjamin titik batas memiliki koordinat geografis yang 100% SAMA untuk kedua halaman,
-        // sehingga visual marker boundary tidak terlihat "langkah" / bergeser satu tiang.
-        const prevAnchor = getMidpoint(prevSegment, seg);
-        const nextAnchor = getMidpoint(seg, nextSegment);
+        // sehingga visual marker boundary posisinya sejajar/tepat di tiang tersebut.
+        const prevAnchor = getBoundaryPoint(prevSegment, seg);
+        const nextAnchor = getBoundaryPoint(seg, nextSegment);
 
         const bounds = calculateBoundsForGroup(seg.tiangList, prevAnchor, nextAnchor);
 
@@ -409,6 +534,7 @@ export default function App() {
       const pdfPath = await generateMultiPagePdf(mapBase64s, {
         name: currentSurvey.namaSurvey,
         location: currentSurvey.lokasi || '',
+        rincianLines: buildRincianPekerjaan(currentSurvey),
       }, pageMetas);
 
       if (!pdfPath) {
@@ -1155,7 +1281,7 @@ export default function App() {
         namaSurvey: surveyName,
         jenisSurvey: baData.jenisPermohonan,
         lokasi: baData.alamat,
-        surveyor: session?.user?.email || 'Surveyor',
+        surveyor: baData.namaSurveyor || session?.user?.email || 'Surveyor',
         tanggalSurvey: baData.tanggalSurvey,
         tiangList: [],
         garduList: [],
@@ -1166,6 +1292,10 @@ export default function App() {
         alamatPelanggan: baData.alamat,
         tarifDaya: baData.tarifDaya,
         hasilSurvey: baData.hasilSurvey,
+        namaPerwakilan: baData.namaPerwakilan,
+        keterangan: baData.keterangan,
+        appDipasang: baData.appDipasang,
+        konstruksiOleh: baData.konstruksiOleh,
         baChecklist: baData.checklist,
       });
 
@@ -1336,12 +1466,16 @@ export default function App() {
           isAddingTiang={toolMode === 'add-tiang'}
           isAddingGardu={toolMode === 'add-gardu'}
           isDrawingJalur={toolMode === 'draw-jalur' || toolMode === 'draw-jembatan'}
+          isDrawingPersil={toolMode === 'draw-persil'}
           currentJalurCoords={drawingCoords}
           lastTiangCoord={currentSurvey?.tiangList.length ? currentSurvey.tiangList[currentSurvey.tiangList.length - 1].koordinat : undefined}
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}
           selectedTiangIds={underbuildTiangIds}
           onTiangLabelShift={handleTiangLabelShift}
+          persilList={currentSurvey?.persilList || []}
+          onPersilPress={handlePersilPress}
+          overlayLayers={overlayLayers}
         />
       </View>
 
@@ -1421,15 +1555,51 @@ export default function App() {
         </TouchableOpacity>
       )}
 
+      {/* Floating Selesai Button */}
+      {!uiHidden && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            right: 16,
+            bottom: 90,
+            backgroundColor: '#E8F5E9',
+            borderWidth: 1,
+            borderColor: '#4CAF50',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderRadius: 25,
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+          onPress={() => setShowSummary(true)}
+        >
+          <Text style={{ fontSize: 16, marginRight: 6 }}>🏁</Text>
+          <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 14 }}>
+            Selesai
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Toolbar */}
       {!uiHidden && (
         <Toolbar
           currentMode={toolMode}
           onModeChange={handleModeChange}
           onFinishDrawing={handleFinishDrawing}
-          onCancelDrawing={handleCancelDrawing}
+          onCancelDrawing={() => {
+            handleCancelDrawing();
+            if (toolMode === 'draw-persil') {
+              setDrawingPersilCorners([]);
+              setToolMode('none');
+            }
+          }}
           isDrawing={isDrawing}
-          drawingPointsCount={drawingCoords.length}
+          drawingPointsCount={toolMode === 'draw-persil' ? drawingPersilCorners.length : drawingCoords.length}
           underbuildTiangCount={underbuildTiangIds.length}
           onFinishUnderbuild={handleFinishUnderbuild}
           onCancelUnderbuild={handleCancelUnderbuild}
@@ -1502,6 +1672,24 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Persil Pelanggan Form */}
+      <PersilForm
+        visible={showPersilForm}
+        koordinatSudut={drawingPersilCorners.length === 2 ? [drawingPersilCorners[0], drawingPersilCorners[1]] : null}
+        onSubmit={handlePersilSubmit}
+        onCancel={() => {
+          setShowPersilForm(false);
+          setDrawingPersilCorners([]);
+          setEditingPersil(null);
+          setToolMode('none');
+        }}
+        initialData={editingPersil ? {
+          namaPersil: editingPersil.namaPersil,
+          warnaBorder: editingPersil.warnaBorder,
+          catatan: editingPersil.catatan,
+        } : undefined}
+      />
 
       {/* Survey Summary Screen */}
       {currentSurvey && (
@@ -1651,6 +1839,36 @@ export default function App() {
                   thumbColor={layerVisibility.sktm ? "#9C27B0" : "#f4f3f4"}
                 />
               </View>
+
+              {/* Overlay Eksisting */}
+              {overlayLayers.length > 0 && (
+                <>
+                  <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Data Eksisting</Text>
+                  {overlayLayers.map(ol => (
+                    <View key={ol.id} style={styles.layerItem}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <Ionicons
+                          name={ol.type === 'jtm' ? 'git-merge-outline' : ol.type === 'gardu' ? 'flash-outline' : ol.type === 'proteksi' ? 'shield-outline' : 'layers-outline'}
+                          size={18}
+                          color={ol.type === 'jtm' ? '#FFC107' : ol.type === 'gardu' ? '#FF9800' : ol.type === 'proteksi' ? '#F44336' : '#607D8B'}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={[styles.layerItemText, { flex: 1 }]} numberOfLines={1}>{ol.name}</Text>
+                      </View>
+                      <Switch
+                        value={ol.visible}
+                        onValueChange={(v) => {
+                          const updated = overlayLayers.map(o => o.id === ol.id ? { ...o, visible: v } : o);
+                          setOverlayLayers(updated);
+                          overlayStorage.updateVisibility(ol.id, v);
+                        }}
+                        trackColor={{ false: "#767577", true: "#81b0ff" }}
+                        thumbColor={ol.visible ? "#FFC107" : "#f4f3f4"}
+                      />
+                    </View>
+                  ))}
+                </>
+              )}
             </ScrollView>
 
             <TouchableOpacity
@@ -1743,6 +1961,18 @@ export default function App() {
               <Text style={{ fontSize: 16, color: '#333' }}>Tentang Aplikasi</Text>
             </TouchableOpacity>
 
+            {/* Import Data Eksisting Button */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
+              onPress={() => {
+                setShowMenu(false);
+                setShowOverlayManager(true);
+              }}
+            >
+              <Ionicons name="layers-outline" size={24} color="#FF9800" style={{ marginRight: 12 }} />
+              <Text style={{ fontSize: 16, color: '#333' }}>Import Data Eksisting</Text>
+            </TouchableOpacity>
+
             {/* Logout Button */}
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
@@ -1778,6 +2008,14 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      {/* Overlay Manager Modal */}
+      <OverlayManager
+        visible={showOverlayManager}
+        onClose={() => setShowOverlayManager(false)}
+        overlays={overlayLayers}
+        onOverlaysChange={setOverlayLayers}
+      />
 
       {/* About Modal */}
       <Modal

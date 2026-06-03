@@ -7,7 +7,8 @@ import { StyleSheet, View, TouchableOpacity, Text, Platform, PixelRatio, Modal, 
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { captureRef, captureScreen } from 'react-native-view-shot';
-import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel } from '../../types';
+import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, PersilPelanggan } from '../../types';
+import { OverlayFile } from '../../types/overlayTypes';
 import { generateMapHTML } from '../../utils/mapHtml';
 
 // =============================================================================
@@ -26,6 +27,8 @@ interface SurveyMapProps {
   isAddingTiang?: boolean;
   isAddingGardu?: boolean;
   isDrawingJalur?: boolean;
+  isDrawingPersil?: boolean;
+  drawingPersilCorners?: Coordinate[];  // 0 or 1 corners tapped so far
   currentJalurCoords?: Coordinate[];
   lastTiangCoord?: Coordinate; // For showing distance preview
   visibleLayers?: {
@@ -39,6 +42,9 @@ interface SurveyMapProps {
   onCenterChange?: (coordinate: Coordinate) => void;
   selectedTiangIds?: string[];
   onTiangLabelShift?: (tiangId: string, newPosition: number) => void;
+  persilList?: PersilPelanggan[];
+  onPersilPress?: (persil: PersilPelanggan) => void;
+  overlayLayers?: OverlayFile[];
 }
 
 
@@ -79,12 +85,17 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   isAddingTiang = false,
   isAddingGardu = false,
   isDrawingJalur = false,
+  isDrawingPersil = false,
+  drawingPersilCorners = [],
   currentJalurCoords = [],
   lastTiangCoord,
   visibleLayers = { tiang: true, gardu: true, sutr: true, sutm: true, skutm: true, sktm: true },
   onCenterChange,
   selectedTiangIds = [],
   onTiangLabelShift,
+  persilList = [],
+  onPersilPress,
+  overlayLayers = [],
 }, ref) => {
   const webviewRef = useRef<WebView>(null);
   const containerRef = useRef<View>(null);
@@ -446,6 +457,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       } else if (data.type === 'jalur') {
         const jalur = jalurList.find(j => j.id === data.id);
         if (jalur && onJalurPress) onJalurPress(jalur);
+      } else if (data.type === 'persil') {
+        const persil = persilList.find(p => p.id === data.id);
+        if (persil && onPersilPress) onPersilPress(persil);
       } else if (data.type === 'zoomChange') {
         setCurrentZoom(data.zoom);
       } else if (data.type === 'mapCapture') {
@@ -471,7 +485,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     }
   };
 
-  const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
+  const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur || isDrawingPersil;
 
   // Check if there are any survey points to navigate to (including jalur)
   const hasSurveyPoints = tiangList.length > 0 || garduList.length > 0 || jalurList.length > 0;
@@ -542,7 +556,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   // We'll handle movement updates via useEffect and injectJavaScript
   const html = React.useMemo(() => {
     return generateMapHTML(
-      mapCenter, // This will use the CURRENT center at the time of generation (load/refresh)
+      mapCenter,
       tiangList,
       garduList,
       jalurList,
@@ -554,7 +568,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       lastTiangCoord,
       visibleLayers,
       selectedTiangIds,
-      currentZoom
+      currentZoom,
+      persilList,
+      overlayLayers
     );
   }, [
     // Structural changes that REQUIRE HTML regeneration:
@@ -567,7 +583,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     isDrawingJalur,
     lastTiangCoord,
     visibleLayers,
-    selectedTiangIds
+    selectedTiangIds,
+    persilList,
+    overlayLayers
     // Note: mapCenter and currentZoom are EXCLUDED
   ]);
 

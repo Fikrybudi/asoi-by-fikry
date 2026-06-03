@@ -19,6 +19,8 @@ type Orientation = 'portrait' | 'landscape';
 interface SurveyInfo {
     name: string;
     location: string;
+    /** Optional: rincian pekerjaan lines to draw on the map area */
+    rincianLines?: string[];
 }
 
 // =============================================================================
@@ -58,6 +60,17 @@ const TEXT_POSITIONS = {
 const TEXT_SIZE = {
     projectName: 8,
     location: 7,
+};
+
+// Rincian Pekerjaan box style
+const RINCIAN = {
+    fontSize: 6,          // small font for the legend
+    lineHeight: 8,        // spacing between lines
+    paddingX: 6,          // inner padding horizontal
+    paddingY: 5,          // inner padding vertical
+    headerFontSize: 7,    // slightly bigger for headers
+    margin: 8,            // margin from map edge
+    bgOpacity: 0.85,      // background transparency
 };
 
 // =============================================================================
@@ -102,8 +115,152 @@ async function loadTemplate(orientation: Orientation): Promise<string | null> {
 }
 
 // =============================================================================
+// HELPER: Draw Rincian Pekerjaan block 
+// =============================================================================
+
+function drawRincianBlock(
+    page: any,
+    font: any,
+    fontBold: any,
+    rincianLines: string[],
+    mapAreaX: number,
+    mapAreaBottomY: number,
+) {
+    if (!rincianLines || rincianLines.length === 0) return;
+
+    // Measure the width needed
+    let maxWidth = 0;
+    for (const line of rincianLines) {
+        const isHeader = line.endsWith(':') || line === '';
+        const fs = isHeader ? RINCIAN.headerFontSize : RINCIAN.fontSize;
+        const f = isHeader ? fontBold : font;
+        const w = line === '' ? 0 : f.widthOfTextAtSize(line, fs);
+        if (w > maxWidth) maxWidth = w;
+    }
+
+    const boxWidth = maxWidth + RINCIAN.paddingX * 2;
+    // Filter out trailing empty lines for height calculation
+    const visibleLines = rincianLines.filter((l, i) => {
+        if (l !== '') return true;
+        // keep empty lines that are between content lines
+        return i < rincianLines.length - 1 && rincianLines.slice(i + 1).some(r => r !== '');
+    });
+    const boxHeight = visibleLines.length * RINCIAN.lineHeight + RINCIAN.paddingY * 2;
+
+    const boxX = mapAreaX + RINCIAN.margin;
+    const boxY = mapAreaBottomY + RINCIAN.margin;
+
+    // Draw white semi-transparent background
+    page.drawRectangle({
+        x: boxX,
+        y: boxY,
+        width: boxWidth,
+        height: boxHeight,
+        color: rgb(1, 1, 1),
+        opacity: RINCIAN.bgOpacity,
+        borderColor: rgb(0.6, 0.6, 0.6),
+        borderWidth: 0.5,
+    });
+
+    // Draw each line of text (top to bottom)
+    let textY = boxY + boxHeight - RINCIAN.paddingY - RINCIAN.fontSize;
+    for (const line of visibleLines) {
+        if (line === '') {
+            textY -= RINCIAN.lineHeight * 0.6; // smaller gap for empty lines
+            continue;
+        }
+        const isHeader = line.endsWith(':');
+        const fs = isHeader ? RINCIAN.headerFontSize : RINCIAN.fontSize;
+        const f = isHeader ? fontBold : font;
+
+        page.drawText(line, {
+            x: boxX + RINCIAN.paddingX,
+            y: textY,
+            size: fs,
+            font: f,
+            color: rgb(0.05, 0.1, 0.6), // dark blue
+        });
+        textY -= RINCIAN.lineHeight;
+    }
+}
+
+// =============================================================================
 // MAIN EXPORT FUNCTION
 // =============================================================================
+
+function drawProjectTitleCallout(
+    page: any,
+    font: any,
+    fontBold: any,
+    surveyInfo: SurveyInfo,
+    pageWidth: number,
+    imageBottomY: number
+) {
+    if (!surveyInfo.name && !surveyInfo.location) return;
+
+    const nameSize = 10;
+    const locSize = 8;
+
+    let nameWidth = 0;
+    if (surveyInfo.name) {
+        nameWidth = fontBold.widthOfTextAtSize(surveyInfo.name, nameSize);
+    }
+    let locWidth = 0;
+    if (surveyInfo.location) {
+        locWidth = font.widthOfTextAtSize(surveyInfo.location, locSize);
+    }
+
+    const maxTextWidth = Math.max(nameWidth, locWidth);
+
+    const paddingX = 14;
+    const paddingY = 7;
+    const numLines = (surveyInfo.name ? 1 : 0) + (surveyInfo.location ? 1 : 0);
+    const lineHeight = 12;
+    const boxHeight = (numLines * lineHeight) + (paddingY * 2) - 2;
+    const boxWidth = maxTextWidth + (paddingX * 2);
+
+    // Center horizontally
+    const boxX = (pageWidth - boxWidth) / 2;
+    // Center vertically in the kop area (between 0 and imageBottomY)
+    const boxY = (imageBottomY - boxHeight) / 2;
+
+    page.drawRectangle({
+        x: boxX,
+        y: boxY,
+        width: boxWidth,
+        height: boxHeight,
+        color: rgb(1, 1, 1),
+        opacity: 1,
+        borderColor: rgb(0.6, 0.6, 0.6),
+        borderWidth: 0.8,
+    });
+
+    let currentY = boxY + boxHeight - paddingY - nameSize + 2;
+
+    if (surveyInfo.name) {
+        const textX = boxX + (boxWidth - nameWidth) / 2;
+        page.drawText(surveyInfo.name, {
+            x: textX,
+            y: currentY,
+            size: nameSize,
+            font: fontBold,
+            color: rgb(0.05, 0.1, 0.5),
+        });
+        currentY -= lineHeight;
+    }
+
+    if (surveyInfo.location) {
+        const textX = boxX + (boxWidth - locWidth) / 2;
+        page.drawText(surveyInfo.location, {
+            x: textX,
+            y: currentY,
+            size: locSize,
+            font: font,
+            color: rgb(0.2, 0.2, 0.2),
+        });
+    }
+}
+
 
 /**
  * Generate PDF with map screenshot overlaid on template
@@ -186,31 +343,16 @@ export async function generatePdfWithMap(
             height: finalHeight,
         });
 
-        // Add text overlay for project name and location
+        // Add text overlay for project name and location (Top Center Callout)
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
         const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        const textPositions = TEXT_POSITIONS[orientation];
+        
+        // Judul survey di area kop (di BAWAH gambar peta, tidak menimpa peta)
+        drawProjectTitleCallout(firstPage, font, fontBold, surveyInfo, pageWidth, imageY);
 
-        // Draw project name (top)
-        if (surveyInfo.name) {
-            firstPage.drawText(surveyInfo.name, {
-                x: textPositions.projectName.x,
-                y: textPositions.projectName.y,
-                size: TEXT_SIZE.projectName,
-                font: fontBold,
-                color: rgb(0, 0, 0),
-            });
-        }
-
-        // Draw location (below name)
-        if (surveyInfo.location) {
-            firstPage.drawText(surveyInfo.location, {
-                x: textPositions.location.x,
-                y: textPositions.location.y,
-                size: TEXT_SIZE.location,
-                font: font,
-                color: rgb(0, 0, 0),
-            });
+        // Draw Rincian Pekerjaan block (bottom-left of map area)
+        if (surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
+            drawRincianBlock(firstPage, font, fontBold, surveyInfo.rincianLines, imageX, imageY);
         }
 
         // Save modified PDF
@@ -326,25 +468,8 @@ export async function generateMultiPagePdf(
                 height: finalHeight,
             });
 
-            // --- Survey name & location (same position as single-page) ---
-            if (surveyInfo.name) {
-                page.drawText(surveyInfo.name, {
-                    x: textPositions.projectName.x,
-                    y: textPositions.projectName.y,
-                    size: TEXT_SIZE.projectName,
-                    font: embeddedFontBold,
-                    color: rgb(0, 0, 0),
-                });
-            }
-            if (surveyInfo.location) {
-                page.drawText(surveyInfo.location, {
-                    x: textPositions.location.x,
-                    y: textPositions.location.y,
-                    size: TEXT_SIZE.location,
-                    font: embeddedFont,
-                    color: rgb(0, 0, 0),
-                });
-            }
+            // --- Judul survey di area kop (di BAWAH gambar peta, tidak menimpa peta) ---
+            drawProjectTitleCallout(page, embeddedFont, embeddedFontBold, surveyInfo, pageWidth, imageY);
 
             // --- Segment info: "Hal. 1/3 | T.1 - T.8 | 320m" ---
             const panjangLabel = meta.panjangMeter >= 1000
@@ -360,6 +485,11 @@ export async function generateMultiPagePdf(
                 font: embeddedFont,
                 color: rgb(0.3, 0.3, 0.3),
             });
+
+            // Draw Rincian Pekerjaan block on FIRST PAGE ONLY
+            if (i === 0 && surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
+                drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, imageX, imageY);
+            }
         }
 
         const pdfBytes = await outputDoc.save();
