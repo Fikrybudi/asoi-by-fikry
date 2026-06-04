@@ -30,6 +30,17 @@ const generateMapHTML = (
   overlayLayers: OverlayFile[] = []
 ) => {
   const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
+
+  // Safe string escaper for Javascript injection in WebView
+  const escapeForJsString = (str: string): string => {
+    return (str || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\r\n/g, '<br>')
+      .replace(/\n/g, '<br>')
+      .replace(/\r/g, '<br>');
+  };
   // Tiang markers with labels
   const tiangMarkers = tiangList.map(t => {
     // Color based on jenis jaringan
@@ -640,13 +651,19 @@ const generateMapHTML = (
       let js = '';
 
       // --- Polylines (JTM feeders) ---
+      const olNameEsc = escapeForJsString(ol.name);
+
       if (ol.data.polylines.length > 0) {
         // Google Maps-style distinct colors per feeder
         const feederColors = ['#FF6600','#CC00FF','#009900','#0066FF','#FF0066','#00CCCC','#996633','#FF3333','#6600CC','#339966','#CC6600','#3366FF'];
-        ol.data.polylines.forEach((pl, idx) => {
-          const color = ol.color || feederColors[idx % feederColors.length];
+        // Group segments of the same feeder to share the same color
+        const uniqueFeeders = Array.from(new Set(ol.data.polylines.map(pl => pl.name || 'Unknown')));
+
+        ol.data.polylines.forEach((pl) => {
+          const feederIdx = uniqueFeeders.indexOf(pl.name || 'Unknown');
+          const color = ol.color || feederColors[feederIdx % feederColors.length];
           const coords = pl.coords.map(c => `[${c.lat}, ${c.lng}]`).join(',');
-          const nameEsc = (pl.name || '').replace(/'/g, "\\'");
+          const nameEsc = escapeForJsString(pl.name);
           js += `
             L.polyline([${coords}], {
               color: '${color}',
@@ -654,7 +671,7 @@ const generateMapHTML = (
               opacity: ${opacity},
               interactive: true,
               className: 'overlay-jtm overlay-layer overlay-${ol.id}'
-            }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i>JTM Eksisting</i>');
+            }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i>${olNameEsc}</i>');
           `;
         });
       }
@@ -667,28 +684,60 @@ const generateMapHTML = (
           ? 'gardu' : ol.type;
 
         ol.data.points.forEach(pt => {
-          const nameEsc = (pt.name || '').replace(/'/g, "\\\\'").replace(/"/g, '\\\\"');
+          const nameEsc = escapeForJsString(pt.name);
           let popupExtra = '';
 
-          if (effectivePointType === 'gardu') {
-            // ── GARDU: Google Maps style blue square marker ──
-            const desc = pt.properties['description'] || pt.properties['ex_description'] || '';
-            const alamat = pt.properties['ALAMAT'] || pt.properties['alamat'] || '';
-            const jenisPel = pt.properties['JENIS_PEL'] || '';
-            popupExtra = (desc ? '<br>Kode: ' + desc.replace(/'/g, "\\'") : '') + (jenisPel ? '<br>Jenis: ' + jenisPel : '') + (alamat ? '<br>' + alamat.replace(/'/g, "\\'") : '');
+          // Check if this point is a tree or ROW observation
+          const isObservation = pt.name.toLowerCase().includes('pohon') || 
+                                pt.name.toLowerCase().includes('mangga') || 
+                                pt.name.toLowerCase().includes('bambu') ||
+                                pt.name.toLowerCase().includes('kelapa') ||
+                                pt.name.toLowerCase().includes('tebang') ||
+                                pt.name.toLowerCase().includes('row') ||
+                                pt.name.toLowerCase().includes('areuy') ||
+                                pt.name.toLowerCase().includes('pepohonan') ||
+                                pt.name.toLowerCase().includes('rambat') ||
+                                pt.name.toLowerCase().includes('jambu');
 
-            // Blue square icon (like Google Maps KML default)
-            const squareHtml = '<div style="width:14px;height:14px;background:#4285F4;border:2px solid white;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,0.4);opacity:' + opacity + '"></div>';
+          // Determine if this is a valid Gardu point (classification containing GD, type GD, or matching Gardu code format)
+          const isGarduPoint = (effectivePointType === 'gardu' || ol.type === 'gardu') && 
+                               !isObservation && 
+                               (pt.properties['CLASSIFICATION']?.includes('GD') || 
+                                pt.properties['TYPE_GARDU'] === 'GD' || 
+                                pt.name.match(/^[A-Za-z]{2,4}\d{3}$/));
+
+          if (isObservation) {
+            // ── OBSERVATION POINT: Green small circle marker ──
+            js += `
+              L.circleMarker([${pt.lat}, ${pt.lng}], {
+                radius: 4,
+                fillColor: '#4CAF50',
+                color: 'white',
+                weight: 1.5,
+                fillOpacity: ${opacity},
+                opacity: ${opacity},
+                className: 'overlay-observation overlay-layer overlay-${ol.id}',
+                interactive: true
+              }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:#999">Observasi Pohon / ROW</i>');
+            `;
+
+          } else if (isGarduPoint) {
+            // ── GARDU: Google Maps style blue square marker ──
+            const desc = escapeForJsString(pt.properties['DESCRIPTION'] || pt.properties['ex_description']);
+            const alamat = escapeForJsString(pt.properties['ALAMAT'] || pt.properties['alamat']);
+            const jenisPel = escapeForJsString(pt.properties['JENIS_PEL']);
+            popupExtra = (desc ? '<br>Kode: ' + desc : '') + (jenisPel ? '<br>Jenis: ' + jenisPel : '') + (alamat ? '<br>' + alamat : '');
+
             js += `
               L.marker([${pt.lat}, ${pt.lng}], {
                 icon: L.divIcon({
                   className: 'overlay-gardu overlay-layer overlay-${ol.id}',
-                  html: "${squareHtml}",
+                  html: '<div style="width:14px;height:14px;background:#4285F4;border:2px solid white;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,0.4);opacity:${opacity}"></div>',
                   iconSize: [18, 18],
                   iconAnchor: [9, 9]
                 }),
                 interactive: true
-              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${ol.name}</i>');
+              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${olNameEsc}</i>');
 
               // Gardu name label
               L.marker([${pt.lat}, ${pt.lng}], {
@@ -704,29 +753,27 @@ const generateMapHTML = (
 
           } else if (ol.type === 'proteksi') {
             // ── PROTEKSI: Orange circle marker (like Google Maps) ──
-            const jenis = (pt.properties['JENIS'] || pt.properties['jenis'] || '').toUpperCase();
+            const jenis = escapeForJsString(pt.properties['JENIS'] || pt.properties['jenis']).toUpperCase();
             let markerColor = '#FF6600'; // default orange
             if (jenis === 'GH') markerColor = '#FF6600';
             else if (jenis === 'LBS') markerColor = '#FF6600';
             else if (jenis === 'PMR') markerColor = '#FF0000';
             else if (jenis === 'SSO') markerColor = '#FF6600';
 
-            const ulp = pt.properties['ULP'] || pt.properties['ulp'] || '';
-            const pnl1 = pt.properties['PNL1'] || pt.properties['pnl1'] || '';
+            const ulp = escapeForJsString(pt.properties['ULP'] || pt.properties['ulp']);
+            const pnl1 = escapeForJsString(pt.properties['PNL1'] || pt.properties['pnl1']);
             popupExtra = (jenis ? '<br>Jenis: ' + jenis : '') + (ulp ? '<br>ULP: ' + ulp : '') + (pnl1 ? '<br>PNL: ' + pnl1 : '');
 
-            // Orange filled circle with white border (like GMaps)
-            const circleHtml = '<div style="width:16px;height:16px;background:' + markerColor + ';border:2.5px solid white;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.4);opacity:' + opacity + '"></div>';
             js += `
               L.marker([${pt.lat}, ${pt.lng}], {
                 icon: L.divIcon({
                   className: 'overlay-proteksi overlay-layer overlay-${ol.id}',
-                  html: "${circleHtml}",
+                  html: '<div style="width:16px;height:16px;background:${markerColor};border:2.5px solid white;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.4);opacity:${opacity}"></div>',
                   iconSize: [21, 21],
                   iconAnchor: [10, 10]
                 }),
                 interactive: true
-              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${ol.name}</i>');
+              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${olNameEsc}</i>');
 
               // Proteksi name label
               L.marker([${pt.lat}, ${pt.lng}], {
@@ -752,7 +799,7 @@ const generateMapHTML = (
                 opacity: ${opacity},
                 className: 'overlay-custom overlay-layer overlay-${ol.id}',
                 interactive: true
-              }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:#999">${ol.name}</i>');
+              }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:#999">${olNameEsc}</i>');
             `;
           }
         });

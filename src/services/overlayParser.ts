@@ -282,6 +282,21 @@ function parseKML(kmlString: string): OverlayGeoData {
 }
 
 /**
+ * Haversine distance formula to calculate distance between two coordinates in meters.
+ */
+function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const degToRad = Math.PI / 180;
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * degToRad;
+    const dLon = (lon2 - lon1) * degToRad;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * degToRad) * Math.cos(lat2 * degToRad) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+/**
  * Lightweight KML parser that doesn't require DOMParser.
  * Handles <Placemark> with <Point>, <LineString>, and <Polygon> geometries.
  */
@@ -305,89 +320,264 @@ function parseKMLManual(kml: string): OverlayGeoData {
         const description = descMatch ? descMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim() : '';
 
         const properties: Record<string, string> = {};
-        if (description) properties['description'] = description;
+        if (description) {
+            properties['description'] = description;
+            
+            // 1. Parse from HTML table rows if present: <td>Key</td><td>Value</td>
+            const trRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+            let trMatch;
+            let hasTableData = false;
+            while ((trMatch = trRegex.exec(description)) !== null) {
+                const rowContent = trMatch[1];
+                const cellRegex = /<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+                const cells: string[] = [];
+                let cellMatch;
+                while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
+                    cells.push(
+                        cellMatch[1]
+                            .replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
+                            .replace(/<[^>]*>/g, '')
+                            .trim()
+                    );
+                }
+                if (cells.length >= 2) {
+                    const key = cells[0].trim();
+                    const value = cells[1].trim();
+                    if (key) {
+                        properties[key] = value;
+                        properties[key.toUpperCase()] = value;
+                        hasTableData = true;
+                    }
+                }
+            }
+            
+            // 2. Parse from key-value pairs text if table rows weren't found
+            if (!hasTableData) {
+                const cleanText = description.replace(/<[^>]*>/g, '\n');
+                const lines = cleanText.split('\n');
+                for (const line of lines) {
+                    const parts = line.split(/[:=]/);
+                    if (parts.length >= 2) {
+                        const key = parts[0].trim();
+                        const value = parts.slice(1).join(':').trim();
+                        if (key && value) {
+                            properties[key] = value;
+                            properties[key.toUpperCase()] = value;
+                        }
+                    }
+                }
+            }
+        }
 
         // Extract ExtendedData / SimpleData
         const simpleDataRegex = /<SimpleData\s+name="([^"]+)">([\s\S]*?)<\/SimpleData>/gi;
         let sdMatch;
         while ((sdMatch = simpleDataRegex.exec(content)) !== null) {
-            properties[sdMatch[1]] = sdMatch[2].trim();
+            const key = sdMatch[1].trim();
+            const val = sdMatch[2].trim();
+            properties[key] = val;
+            properties[key.toUpperCase()] = val;
         }
 
-        // Check for Point
-        const pointMatch = content.match(/<Point\b[^>]*>[\s\S]*?<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/i);
-        if (pointMatch) {
-            const coords = parseKMLCoordinates(pointMatch[1]);
+        // Extract ExtendedData / Data
+        const dataRegex = /<Data\s+name="([^"]+)">\s*<value>([\s\S]*?)<\/value>\s*<\/Data>/gi;
+        let dMatch;
+        while ((dMatch = dataRegex.exec(content)) !== null) {
+            const key = dMatch[1].trim();
+            const val = dMatch[2].trim();
+            properties[key] = val;
+            properties[key.toUpperCase()] = val;
+        }
+
+        // Determine final name for point assets (Gardu, Proteksi)
+        // Their code is often in DESCRIPTION or ex_description while the <name> tag is the feeder/penyulang
+        // Scan properties for any value matching a Gardu code pattern: e.g. KUK240, SBJM240
+        let garduCodeFromProps = '';
+        const garduPattern = /^[A-Za-z]{2,4}\d{3}[A-Za-z]?$/;
+        
+        // Search in keys that are likely to contain the code first
+        const likelyKeys = ['DESCRIPTION', 'EX_DESCRIPTION', 'KODE', 'KODE_GARDU', 'NAMA_GARDU', 'NOMOR_GARDU', 'NO_GARDU', 'GARDU'];
+        for (const key of likelyKeys) {
+            const val = (properties[key] || '').trim().replace(/<[^>]*>/g, '').trim();
+            if (val && garduPattern.test(val)) {
+                garduCodeFromProps = val;
+                break;
+            }
+        }
+        
+        // If not found in likely keys, check all properties
+        if (!garduCodeFromProps) {
+            for (const [key, val] of Object.entries(properties)) {
+                if (typeof val === 'string') {
+                    const cleanVal = val.trim().replace(/<[^>]*>/g, '').trim();
+                    if (garduPattern.test(cleanVal)) {
+                        garduCodeFromProps = cleanVal;
+                        break;
+                    }
+                }
+            }
+        }
+
+        let finalName = name;
+        if (garduCodeFromProps) {
+            finalName = garduCodeFromProps;
+            properties['feeder'] = name;
+        } else {
+            const descVal = (properties['DESCRIPTION'] || properties['ex_description'] || properties['description'] || '').trim();
+            const cleanDesc = descVal.replace(/<[^>]*>/g, '').trim();
+            if (cleanDesc && cleanDesc.length < 50 && !cleanDesc.includes(':') && cleanDesc.length > 0) {
+                finalName = cleanDesc;
+                properties['feeder'] = name;
+            }
+        }
+
+        // Check for LineString elements (using /gi to extract multiple segments in MultiGeometry)
+        const lineStringRegex = /<LineString\b[^>]*>[\s\S]*?<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/gi;
+        let lsMatch;
+        while ((lsMatch = lineStringRegex.exec(content)) !== null) {
+            const coords = parseKMLCoordinates(lsMatch[1]);
+            if (coords.length >= 2) {
+                polylines.push({ name, coords, properties });
+            }
+        }
+
+        // Check for Polygon elements (using /gi to extract multiple)
+        const polygonRegex = /<Polygon\b[^>]*>[\s\S]*?<outerBoundaryIs>[\s\S]*?<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/gi;
+        let polyMatch;
+        while ((polyMatch = polygonRegex.exec(content)) !== null) {
+            const coords = parseKMLCoordinates(polyMatch[1]);
+            if (coords.length >= 3) {
+                polylines.push({ name, coords, properties });
+            }
+        }
+
+        // Check for Point elements (using /gi to extract multiple)
+        const pointRegex = /<Point\b[^>]*>[\s\S]*?<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/gi;
+        let ptMatch;
+        while ((ptMatch = pointRegex.exec(content)) !== null) {
+            const coords = parseKMLCoordinates(ptMatch[1]);
             if (coords.length > 0) {
                 points.push({
                     lat: coords[0].lat,
                     lng: coords[0].lng,
-                    name,
+                    name: finalName,
                     properties,
                 });
-            }
-            continue;
-        }
-
-        // Check for LineString
-        const lineMatch = content.match(/<LineString\b[^>]*>[\s\S]*?<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/i);
-        if (lineMatch) {
-            const coords = parseKMLCoordinates(lineMatch[1]);
-            if (coords.length >= 2) {
-                polylines.push({ name, coords, properties });
-            }
-            continue;
-        }
-
-        // Check for Polygon (outer boundary only)
-        const polygonMatch = content.match(/<Polygon\b[^>]*>[\s\S]*?<outerBoundaryIs>[\s\S]*?<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/i);
-        if (polygonMatch) {
-            const coords = parseKMLCoordinates(polygonMatch[1]);
-            if (coords.length >= 3) {
-                polylines.push({ name, coords, properties });
             }
         }
     }
 
     // ── Post-processing: detect Point-based polylines ────────────────
     // Some KML files (especially JTM exports) use individual Point
-    // placemarks per vertex instead of LineString. If many points share
-    // the same name → group them into polylines.
-    // Also handles mixed files (gardu points + JTM point-vertices).
-    if (points.length > 0) {
+    // placemarks per vertex instead of LineString. If points share
+    // the same name (count >= 3) → group them into polylines.
+    // We ONLY do this if there are no existing LineStrings parsed, to avoid
+    // grouping tree observations or Gardus into zigzag/straight lines.
+    if (polylines.length === 0 && points.length > 0) {
+        // Function to check if a point should be excluded from point-to-polyline grouping
+        const isExcludeFromGrouping = (name: string, props: Record<string, string>): boolean => {
+            const lowerName = name.toLowerCase();
+            const isObservation = 
+                lowerName.includes('pohon') || 
+                lowerName.includes('mangga') || 
+                lowerName.includes('bambu') ||
+                lowerName.includes('kelapa') ||
+                lowerName.includes('tebang') ||
+                lowerName.includes('row') ||
+                lowerName.includes('areuy') ||
+                lowerName.includes('pepohonan') ||
+                lowerName.includes('rambat') ||
+                lowerName.includes('jambu') ||
+                lowerName.includes('pisang') ||
+                lowerName.includes('nangka') ||
+                lowerName.includes('petai') ||
+                lowerName.includes('pete') ||
+                lowerName.includes('mahoni') ||
+                lowerName.includes('albasia') ||
+                lowerName.includes('aren');
+
+            const isGardu = 
+                props['CLASSIFICATION']?.includes('GD') || 
+                props['TYPE_GARDU'] === 'GD' || 
+                name.match(/^[A-Za-z]{2,4}\d{3}[A-Za-z]?$/);
+
+            const isProteksi =
+                props['JENIS'] !== undefined ||
+                props['PNL1'] !== undefined ||
+                name.startsWith('GH ') ||
+                name.startsWith('LBS ') ||
+                name.startsWith('PMR ') ||
+                name.startsWith('SSO ');
+
+            return !!(isObservation || isGardu || isProteksi);
+        };
+
         const nameCount: Record<string, number> = {};
         points.forEach(p => {
             if (p.name) nameCount[p.name] = (nameCount[p.name] || 0) + 1;
         });
 
-        const maxShared = Math.max(...Object.values(nameCount), 0);
-        const uniqueNames = Object.keys(nameCount).length;
+        const groups: Record<string, OverlayPoint[]> = {};
+        const singlePoints: OverlayPoint[] = [];
 
-        // If few unique names with many points each → polyline data
-        if (maxShared >= 3 && uniqueNames < points.length * 0.5) {
-            const groups: Record<string, OverlayPoint[]> = {};
-            const singlePoints: OverlayPoint[] = [];
+        points.forEach(p => {
+            // Only group if name count >= 3 and is not excluded
+            if (p.name && nameCount[p.name] >= 3 && !isExcludeFromGrouping(p.name, p.properties)) {
+                if (!groups[p.name]) groups[p.name] = [];
+                groups[p.name].push(p);
+            } else {
+                singlePoints.push(p);
+            }
+        });
 
-            points.forEach(p => {
-                if (p.name && nameCount[p.name] >= 3) {
-                    if (!groups[p.name]) groups[p.name] = [];
-                    groups[p.name].push(p);
-                } else {
-                    singlePoints.push(p);
+        const groupedPolylines: OverlayPolyline[] = [];
+        const fallbackSinglePoints: OverlayPoint[] = [];
+
+        Object.entries(groups).forEach(([name, pts]) => {
+            const remaining = [...pts];
+            
+            while (remaining.length > 0) {
+                let currentSegment: OverlayPoint[] = [remaining.shift()!];
+                
+                while (remaining.length > 0) {
+                    const last = currentSegment[currentSegment.length - 1];
+                    let nearestIdx = -1;
+                    let nearestDist = Infinity;
+
+                    for (let i = 0; i < remaining.length; i++) {
+                        const dist = getDistanceMeters(last.lat, last.lng, remaining[i].lat, remaining[i].lng);
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            nearestIdx = i;
+                        }
+                    }
+
+                    // Only connect if distance is <= 150m
+                    if (nearestIdx !== -1 && nearestDist <= 150) {
+                        currentSegment.push(remaining[nearestIdx]);
+                        remaining.splice(nearestIdx, 1);
+                    } else {
+                        // Nearest point is too far, start a new segment
+                        break;
+                    }
                 }
-            });
 
-            const groupedPolylines: OverlayPolyline[] = Object.entries(groups).map(([name, pts]) => {
-                const sorted = sortByNearestNeighbor(pts);
-                return {
-                    name,
-                    coords: sorted.map(p => ({ lat: p.lat, lng: p.lng })),
-                    properties: pts[0]?.properties || {},
-                };
-            });
+                if (currentSegment.length >= 2) {
+                    groupedPolylines.push({
+                        name,
+                        coords: currentSegment.map(p => ({ lat: p.lat, lng: p.lng })),
+                        properties: currentSegment[0].properties,
+                    });
+                } else {
+                    fallbackSinglePoints.push(currentSegment[0]);
+                }
+            }
+        });
 
-            return { points: singlePoints, polylines: [...polylines, ...groupedPolylines] };
-        }
+        return { 
+            points: [...singlePoints, ...fallbackSinglePoints], 
+            polylines: [...polylines, ...groupedPolylines] 
+        };
     }
 
     return { points, polylines };

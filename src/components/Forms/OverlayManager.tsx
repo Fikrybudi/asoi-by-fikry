@@ -43,7 +43,7 @@ const TYPE_OPTIONS: { value: OverlayDataType; label: string }[] = [
 ];
 
 const COLOR_PRESETS = [
-    '#FFC107', '#FF9800', '#F44336', '#E91E63',
+    'multi', '#FFC107', '#FF9800', '#F44336', '#E91E63',
     '#9C27B0', '#2196F3', '#4CAF50', '#00BCD4',
 ];
 
@@ -67,7 +67,7 @@ export default function OverlayManager({
     const [pendingOverlay, setPendingOverlay] = useState<OverlayFile | null>(null);
     const [pendingName, setPendingName] = useState('');
     const [pendingType, setPendingType] = useState<OverlayDataType>('custom');
-    const [pendingColor, setPendingColor] = useState('#FFC107');
+    const [pendingColor, setPendingColor] = useState('multi');
 
     // ── Import Flow ──────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ export default function OverlayManager({
                 type: detectedType,
                 visible: true,
                 opacity: 0.7,
-                color: detectedType === 'jtm' ? '#FFC107' : undefined,
+                color: undefined, // JTM layers default to multi-color (undefined)
                 data: geoData,
                 importedAt: new Date().toISOString(),
             };
@@ -126,7 +126,7 @@ export default function OverlayManager({
             setPendingOverlay(overlay);
             setPendingName(overlay.name);
             setPendingType(detectedType);
-            setPendingColor(overlay.color || '#FFC107');
+            setPendingColor('multi');
             setImportStep('confirm');
             setImporting(false);
         } catch (error: any) {
@@ -142,7 +142,7 @@ export default function OverlayManager({
             ...pendingOverlay,
             name: pendingName.trim() || pendingOverlay.name,
             type: pendingType,
-            color: pendingType === 'jtm' ? pendingColor : undefined,
+            color: pendingType === 'jtm' ? (pendingColor === 'multi' ? undefined : pendingColor) : undefined,
         };
 
         const updated = [...overlays, finalOverlay];
@@ -294,17 +294,34 @@ export default function OverlayManager({
                                     <>
                                         <Text style={styles.fieldLabel}>Warna Jalur</Text>
                                         <View style={styles.colorRow}>
-                                            {COLOR_PRESETS.map(c => (
-                                                <TouchableOpacity
-                                                    key={c}
-                                                    style={[
-                                                        styles.colorSwatch,
-                                                        { backgroundColor: c },
-                                                        pendingColor === c && styles.colorSwatchActive,
-                                                    ]}
-                                                    onPress={() => setPendingColor(c)}
-                                                />
-                                            ))}
+                                            {COLOR_PRESETS.map(c => {
+                                                if (c === 'multi') {
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={c}
+                                                            style={[
+                                                                styles.colorSwatch,
+                                                                styles.multiColorSwatch,
+                                                                pendingColor === 'multi' && styles.colorSwatchActive,
+                                                            ]}
+                                                            onPress={() => setPendingColor('multi')}
+                                                        >
+                                                            <Text style={styles.multiColorSwatchText}>🌈</Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                }
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={c}
+                                                        style={[
+                                                            styles.colorSwatch,
+                                                            { backgroundColor: c },
+                                                            pendingColor === c && styles.colorSwatchActive,
+                                                        ]}
+                                                        onPress={() => setPendingColor(c)}
+                                                    />
+                                                );
+                                            })}
                                         </View>
                                     </>
                                 )}
@@ -547,6 +564,16 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         borderWidth: 2,
         borderColor: 'transparent',
+    },
+    multiColorSwatch: {
+        backgroundColor: '#f0f0f0',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#ccc',
+    },
+    multiColorSwatchText: {
+        fontSize: 14,
     },
     colorSwatchActive: {
         borderColor: '#333',
