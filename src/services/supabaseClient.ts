@@ -5,9 +5,14 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Supabase credentials (reads from env variables with fallback)
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://kpsilvibobjvqxanugto.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtwc2lsdmlib2JqdnF4YW51Z3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0NTUxMjEsImV4cCI6MjA4MjAzMTEyMX0.7W2JMeVnezluKTlNvHI-_FmfatDYHawUGSXf-ooY0so';
+// Supabase credentials (reads from env variables with safe fallback)
+const SUPABASE_URL = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_SUPABASE_URL)
+    ? process.env.EXPO_PUBLIC_SUPABASE_URL
+    : 'https://kpsilvibobjvqxanugto.supabase.co';
+
+const SUPABASE_ANON_KEY = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY)
+    ? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+    : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtwc2lsdmlib2JqdnF4YW51Z3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0NTUxMjEsImV4cCI6MjA4MjAzMTEyMX0.7W2JMeVnezluKTlNvHI-_FmfatDYHawUGSXf-ooY0so';
 
 // Create Supabase client with offline session support
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
