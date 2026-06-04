@@ -704,7 +704,7 @@ const generateMapHTML = (
                                !isObservation && 
                                (pt.properties['CLASSIFICATION']?.includes('GD') || 
                                 pt.properties['TYPE_GARDU'] === 'GD' || 
-                                pt.name.match(/^[A-Za-z]{2,4}\d{3}$/));
+                                pt.name.match(/^[A-Za-z]{2,4}\d{3}[A-Za-z]?$/));
 
           if (isObservation) {
             // ── OBSERVATION POINT: Green small circle marker ──
