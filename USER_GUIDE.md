@@ -1,4 +1,4 @@
-# 📖 Panduan Penggunaan ASOI v1.6
+# 📖 Panduan Penggunaan ASOI v1.9
 
 **ASOI** (Aplikasi Survey Online) adalah aplikasi mobile untuk survey lapangan aset PLN (Tiang, Gardu, dan Jalur Kabel). Aplikasi ini bekerja secara **Offline-First** dan menggunakan standar konstruksi lokal **Area Banten Selatan**.
 
@@ -288,7 +288,7 @@ Tekan tombol **"📋"** atau akses dari menu untuk melihat daftar survey.
 ### Format Export
 | Format | Kegunaan |
 |--------|----------|
-| **📄 PDF** | Laporan resmi untuk cetak/arsip. Kini mendukung **Multi-Page Export** untuk survey besar (bisa dibagi per 8 TM, 10 TR, atau 400m dengan pembatas antar halaman yang mudah dibaca). |
+| **📄 PDF** | Laporan resmi untuk cetak/arsip. Mendukung **Multi-Page Export** untuk survey besar (bisa dibagi per 8 TM, 10 TR, atau 400m dengan pembatas antar halaman yang mudah dibaca). Sistem capture peta bekerja secara 100% offline (local inlined engine) dan teroptimasi untuk mencegah kehabisan memori. |
 | **🌍 KML** | Import ke Google Earth |
 | **📊 CSV** | Import ke Excel / Google Maps |
 
@@ -380,5 +380,5 @@ Untuk bantuan atau laporan bug, hubungi:
 
 ---
 
-**Versi Dokumen**: 1.6  
-**Terakhir Diperbarui**: Maret 2026
+**Versi Dokumen**: 1.9  
+**Terakhir Diperbarui**: Juni 2026

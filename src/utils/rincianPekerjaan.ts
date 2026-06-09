@@ -7,18 +7,21 @@
 import { Survey } from '../types';
 
 /**
- * Parse tinggi tiang string ('9m', '12m') → number string
+ * Format tinggi tiang string ('9m', '12m') → standard formatted string
  */
-function parseTinggi(tinggi: string): string {
-    return tinggi.replace(/[^0-9]/g, '');
+function formatTinggi(tinggi: string): string {
+    if (!tinggi) return '';
+    const clean = tinggi.replace(/[^0-9]/g, '');
+    return clean ? `${clean}m` : tinggi;
 }
 
 /**
- * Parse kekuatan tiang string ('200 daN', '350 daN') → number string
+ * Format kekuatan tiang string ('200 daN', '350 daN') → standard formatted string
  */
-function parseKekuatan(kekuatan?: string): string {
-    if (!kekuatan) return '?';
-    return kekuatan.replace(/[^0-9]/g, '');
+function formatKekuatan(kekuatan?: string): string {
+    if (!kekuatan) return '';
+    const clean = kekuatan.replace(/[^0-9]/g, '');
+    return clean ? `${clean} daN` : kekuatan;
 }
 
 /**
@@ -46,8 +49,12 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
     // ─────────────────────────────────────────────
     // 1. PEKERJAAN SUTM (tiang TM + jalur TM + konstruksi TM)
     // ─────────────────────────────────────────────
-    const tiangSUTM = tiangList.filter(t => t.jenisJaringan === 'SUTM' && t.status !== 'existing');
-    const jalurSUTM = jalurList.filter(j => j.jenisJaringan === 'SUTM' && j.status !== 'remove');
+    const tiangSUTM = tiangList.filter(
+        t => t.jenisJaringan === 'SUTM' && t.status !== 'existing' && !t.konstruksi?.startsWith('JOINTING-')
+    );
+    const jalurSUTM = jalurList.filter(
+        j => j.jenisJaringan === 'SUTM' && j.status !== 'existing' && j.status !== 'remove'
+    );
 
     if (tiangSUTM.length > 0 || jalurSUTM.length > 0) {
         lines.push('PEKERJAAN SUTM :');
@@ -57,7 +64,9 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
         if (tiangSUTM.length > 0) {
             const tiangGroups: Record<string, number> = {};
             for (const t of tiangSUTM) {
-                const key = `TIANG ${parseTinggi(t.tinggiTiang)}/${parseKekuatan(t.kekuatanTiang)}`;
+                const h = formatTinggi(t.tinggiTiang);
+                const k = formatKekuatan(t.kekuatanTiang);
+                const key = k ? `TIANG ${h}/${k}` : `TIANG ${h}`;
                 tiangGroups[key] = (tiangGroups[key] || 0) + 1;
             }
             for (const [label, count] of Object.entries(tiangGroups)) {
@@ -100,8 +109,12 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
     // ─────────────────────────────────────────────
     // 2. PEKERJAAN SUTR (tiang TR + jalur TR + konstruksi TR)
     // ─────────────────────────────────────────────
-    const tiangSUTR = tiangList.filter(t => t.jenisJaringan === 'SUTR' && t.status !== 'existing');
-    const jalurSUTR = jalurList.filter(j => j.jenisJaringan === 'SUTR' && j.status !== 'remove');
+    const tiangSUTR = tiangList.filter(
+        t => t.jenisJaringan === 'SUTR' && t.status !== 'existing' && !t.konstruksi?.startsWith('JOINTING-')
+    );
+    const jalurSUTR = jalurList.filter(
+        j => j.jenisJaringan === 'SUTR' && j.status !== 'existing' && j.status !== 'remove'
+    );
 
     if (tiangSUTR.length > 0 || jalurSUTR.length > 0) {
         lines.push('PEKERJAAN SUTR :');
@@ -111,7 +124,9 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
         if (tiangSUTR.length > 0) {
             const tiangGroups: Record<string, number> = {};
             for (const t of tiangSUTR) {
-                const key = `TIANG ${parseTinggi(t.tinggiTiang)}/${parseKekuatan(t.kekuatanTiang)}`;
+                const h = formatTinggi(t.tinggiTiang);
+                const k = formatKekuatan(t.kekuatanTiang);
+                const key = k ? `TIANG ${h}/${k}` : `TIANG ${h}`;
                 tiangGroups[key] = (tiangGroups[key] || 0) + 1;
             }
             for (const [label, count] of Object.entries(tiangGroups)) {
@@ -154,8 +169,12 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
     // ─────────────────────────────────────────────
     // 3. PEKERJAAN SKUTM (jika ada)
     // ─────────────────────────────────────────────
-    const tiangSKUTM = tiangList.filter(t => t.jenisJaringan === 'SKUTM' && t.status !== 'existing');
-    const jalurSKUTM = jalurList.filter(j => j.jenisJaringan === 'SKUTM' && j.status !== 'remove');
+    const tiangSKUTM = tiangList.filter(
+        t => t.jenisJaringan === 'SKUTM' && t.status !== 'existing' && !t.konstruksi?.startsWith('JOINTING-')
+    );
+    const jalurSKUTM = jalurList.filter(
+        j => j.jenisJaringan === 'SKUTM' && j.status !== 'existing' && j.status !== 'remove'
+    );
 
     if (tiangSKUTM.length > 0 || jalurSKUTM.length > 0) {
         lines.push('PEKERJAAN SKUTM :');
@@ -164,7 +183,9 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
         if (tiangSKUTM.length > 0) {
             const tiangGroups: Record<string, number> = {};
             for (const t of tiangSKUTM) {
-                const key = `TIANG ${parseTinggi(t.tinggiTiang)}/${parseKekuatan(t.kekuatanTiang)}`;
+                const h = formatTinggi(t.tinggiTiang);
+                const k = formatKekuatan(t.kekuatanTiang);
+                const key = k ? `TIANG ${h}/${k}` : `TIANG ${h}`;
                 tiangGroups[key] = (tiangGroups[key] || 0) + 1;
             }
             for (const [label, count] of Object.entries(tiangGroups)) {
@@ -213,6 +234,11 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
             nomor++;
         }
         lines.push('');
+    }
+
+    // If only the header "RINCIAN PEKERJAAN :" and the empty line were added, return empty array
+    if (lines.length <= 2) {
+        return [];
     }
 
     return lines;

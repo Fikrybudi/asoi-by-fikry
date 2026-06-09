@@ -5,6 +5,7 @@
 
 import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, PersilPelanggan } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
+import { HTML2CANVAS_SOURCE } from './html2canvasSource';
 const generateMapHTML = (
   center: Coordinate,
   tiangList: Tiang[],
@@ -825,7 +826,9 @@ const generateMapHTML = (
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script>
+    ${HTML2CANVAS_SOURCE}
+  </script>
   <style>
     * { margin: 0; padding: 0; }
     html, body, #map { height: 100%; width: 100%; }
@@ -1096,33 +1099,73 @@ const generateMapHTML = (
       setDisplay('.crosshair', 'none');
       setDisplay('.leaflet-control-layers', 'none');
       
+      // Safety timeout to reset isCapturing if html2canvas locks up
+      var safetyTimeout = setTimeout(function() {
+        if (isCapturing) {
+          isCapturing = false;
+          // Restore UI
+          setDisplay('.legend', '');
+          setDisplay('.leaflet-control-zoom', '');
+          setDisplay('.crosshair', '');
+          setDisplay('.leaflet-control-layers', '');
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapCaptureError',
+            error: 'html2canvas capture timeout (15s)'
+          }));
+        }
+      }, 15000);
+
       // Wait for tiles to render (3000ms â€” cukup untuk segmen baru)
       setTimeout(function() {
-        html2canvas(document.getElementById('map'), {
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-          scale: window.devicePixelRatio || 1
-        }).then(function(canvas) {
-          var base64 = canvas.toDataURL('image/png').split(',')[1];
+        try {
+          if (typeof html2canvas === 'undefined') {
+            throw new Error('html2canvas library is not loaded');
+          }
+          html2canvas(document.getElementById('map'), {
+            useCORS: true,
+            allowTaint: false, // Prevent canvas taint SecurityError
+            logging: false,
+            scale: 1 // Force scale: 1 to avoid Out-Of-Memory (OOM) on high-DPI screens (e.g. 3x/4x)
+          }).then(function(canvas) {
+            clearTimeout(safetyTimeout);
+            var base64 = canvas.toDataURL('image/png').split(',')[1];
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'mapCapture',
+              base64: base64
+            }));
+            
+            // Restore UI
+            setDisplay('.legend', '');
+            setDisplay('.leaflet-control-zoom', '');
+            setDisplay('.crosshair', '');
+            setDisplay('.leaflet-control-layers', '');
+            isCapturing = false;
+          }).catch(function(err) {
+            clearTimeout(safetyTimeout);
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'mapCaptureError',
+              error: err.message || 'html2canvas failed'
+  			}));
+            // Restore UI
+            setDisplay('.legend', '');
+            setDisplay('.leaflet-control-zoom', '');
+            setDisplay('.crosshair', '');
+            setDisplay('.leaflet-control-layers', '');
+            isCapturing = false;
+          });
+        } catch (err) {
+          clearTimeout(safetyTimeout);
           window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'mapCapture',
-            base64: base64
+            type: 'mapCaptureError',
+            error: err.message || 'html2canvas failed'
           }));
-          
           // Restore UI
           setDisplay('.legend', '');
           setDisplay('.leaflet-control-zoom', '');
           setDisplay('.crosshair', '');
           setDisplay('.leaflet-control-layers', '');
           isCapturing = false;
-        }).catch(function(err) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'mapCaptureError',
-            error: err.message || 'html2canvas failed'
-          }));
-          isCapturing = false;
-        });
+        }
       }, 3000);
     };
 
