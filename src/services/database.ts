@@ -25,25 +25,30 @@ export const setAutoSync = (enabled: boolean) => {
     autoSyncEnabled = enabled;
 };
 
-// Trigger cloud sync after local operations
-const triggerCloudSync = async (survey: Survey) => {
+// Trigger cloud sync after local operations (debounced 5s to batch rapid edits)
+let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+const triggerCloudSync = (survey: Survey) => {
     if (!autoSyncEnabled) return;
 
-    try {
-        const isOnline = await syncManager.isOnline();
-        if (isOnline) {
-            await supabaseSurveyService.upsertSurvey(survey);
-            // Mark as synced locally
-            const surveys = await surveyService.getAll();
-            const index = surveys.findIndex(s => s.id === survey.id);
-            if (index !== -1) {
-                surveys[index].isSynced = true;
-                await AsyncStorage.setItem(KEYS.SURVEYS, JSON.stringify(surveys));
+    // Cancel any pending sync — only the latest state matters
+    if (_syncTimer) clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(async () => {
+        try {
+            const isOnline = await syncManager.isOnline();
+            if (isOnline) {
+                await supabaseSurveyService.upsertSurvey(survey);
+                // Mark as synced locally
+                const surveys = await surveyService.getAll();
+                const index = surveys.findIndex(s => s.id === survey.id);
+                if (index !== -1) {
+                    surveys[index].isSynced = true;
+                    await AsyncStorage.setItem(KEYS.SURVEYS, JSON.stringify(surveys));
+                }
             }
+        } catch (error) {
+            console.log('Cloud sync failed, will retry later:', error);
         }
-    } catch (error) {
-        console.log('Cloud sync failed, will retry later:', error);
-    }
+    }, 5000);
 };
 
 // =============================================================================
