@@ -4,6 +4,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView } from 'react-native';
+import LayerControlModal from './src/components/Modals/LayerControlModal';
+import MenuModal from './src/components/Modals/MenuModal';
+import AboutModal from './src/components/Modals/AboutModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import SurveyMap, { SurveyMapRef, BoundaryMarker } from './src/components/Map/SurveyMap';
@@ -633,105 +636,60 @@ export default function App() {
             ? `Extend jalur (total: ${existingJalur.tiangIds?.length || 1} tiang)`
             : 'Buat jalur baru';
 
+          // Helper: connect jalur (shared by "Ya + Lanjut" and "Ya, Selesai")
+          const connectJalur = async (keepAddMode: boolean) => {
+            if (existingJalur) {
+              const updatedKoordinat = [...existingJalur.koordinat, newTiang.koordinat];
+              const updatedTiangIds = [...(existingJalur.tiangIds || []), newTiang.id];
+              const totalPanjang = existingJalur.panjangMeter + segmentDistance;
+
+              const updated = await jalurService.update(currentSurvey.id, existingJalur.id, {
+                koordinat: updatedKoordinat,
+                tiangIds: updatedTiangIds,
+                panjangMeter: totalPanjang,
+              });
+
+              if (updated) {
+                setCurrentSurvey(prev => prev ? {
+                  ...prev,
+                  jalurList: prev.jalurList.map(j => j.id === existingJalur.id ? updated : j),
+                } : null);
+                if (!keepAddMode) {
+                  Alert.alert('Sukses', `Jalur diperpanjang! Total: ${totalPanjang.toFixed(0)}m (${updatedTiangIds.length} tiang)`);
+                }
+              }
+            } else {
+              const jalurData = {
+                koordinat: [prevTiang.koordinat, newTiang.koordinat],
+                jenisJaringan: data.jenisJaringan as any,
+                jenisPenghantar: penghantar.jenis,
+                penampangMM: penghantar.penampang,
+                panjangMeter: segmentDistance,
+                tiangIds: [prevTiang.id, newTiang.id],
+                status: 'planned' as const,
+              };
+
+              const newJalur = await jalurService.add(currentSurvey.id, jalurData);
+              if (newJalur) {
+                setCurrentSurvey(prev => prev ? {
+                  ...prev,
+                  jalurList: [...prev.jalurList, newJalur],
+                } : null);
+                if (!keepAddMode) {
+                  Alert.alert('Sukses', `Jalur ${segmentDistance.toFixed(0)}m berhasil dibuat!`);
+                }
+              }
+            }
+            setToolMode(keepAddMode ? 'add-tiang' : 'none');
+          };
+
           Alert.alert(
             '🔗 Hubungkan Jalur?',
             `Tiang ${newTiang.nomorUrut} disimpan!\n\n${actionText} dari Tiang ${prevTiang.nomorUrut} ke Tiang ${newTiang.nomorUrut}?\n\n📌 ${penghantar.jenis} ${penghantar.penampang}\n📏 +${segmentDistance.toFixed(0)}m`,
             [
-              {
-                text: 'Tidak',
-                style: 'cancel',
-              },
-              {
-                text: 'Ya + Lanjut',
-                onPress: async () => {
-                  if (existingJalur) {
-                    // Extend existing jalur
-                    const updatedKoordinat = [...existingJalur.koordinat, newTiang.koordinat];
-                    const updatedTiangIds = [...(existingJalur.tiangIds || []), newTiang.id];
-                    const totalPanjang = existingJalur.panjangMeter + segmentDistance;
-
-                    const updated = await jalurService.update(currentSurvey.id, existingJalur.id, {
-                      koordinat: updatedKoordinat,
-                      tiangIds: updatedTiangIds,
-                      panjangMeter: totalPanjang,
-                    });
-
-                    if (updated) {
-                      setCurrentSurvey(prev => prev ? {
-                        ...prev,
-                        jalurList: prev.jalurList.map(j => j.id === existingJalur.id ? updated : j),
-                      } : null);
-                    }
-                  } else {
-                    // Create new jalur
-                    const jalurData = {
-                      koordinat: [prevTiang.koordinat, newTiang.koordinat],
-                      jenisJaringan: data.jenisJaringan as any,
-                      jenisPenghantar: penghantar.jenis,
-                      penampangMM: penghantar.penampang,
-                      panjangMeter: segmentDistance,
-                      tiangIds: [prevTiang.id, newTiang.id],
-                      status: 'planned' as const,
-                    };
-
-                    const newJalur = await jalurService.add(currentSurvey.id, jalurData);
-                    if (newJalur) {
-                      setCurrentSurvey(prev => prev ? {
-                        ...prev,
-                        jalurList: [...prev.jalurList, newJalur],
-                      } : null);
-                    }
-                  }
-                  // Keep add-tiang mode active
-                  setToolMode('add-tiang');
-                }
-              },
-              {
-                text: 'Ya, Selesai',
-                onPress: async () => {
-                  if (existingJalur) {
-                    // Extend existing jalur
-                    const updatedKoordinat = [...existingJalur.koordinat, newTiang.koordinat];
-                    const updatedTiangIds = [...(existingJalur.tiangIds || []), newTiang.id];
-                    const totalPanjang = existingJalur.panjangMeter + segmentDistance;
-
-                    const updated = await jalurService.update(currentSurvey.id, existingJalur.id, {
-                      koordinat: updatedKoordinat,
-                      tiangIds: updatedTiangIds,
-                      panjangMeter: totalPanjang,
-                    });
-
-                    if (updated) {
-                      setCurrentSurvey(prev => prev ? {
-                        ...prev,
-                        jalurList: prev.jalurList.map(j => j.id === existingJalur.id ? updated : j),
-                      } : null);
-                      Alert.alert('Sukses', `Jalur diperpanjang! Total: ${totalPanjang.toFixed(0)}m (${updatedTiangIds.length} tiang)`);
-                    }
-                  } else {
-                    // Create new jalur
-                    const jalurData = {
-                      koordinat: [prevTiang.koordinat, newTiang.koordinat],
-                      jenisJaringan: data.jenisJaringan as any,
-                      jenisPenghantar: penghantar.jenis,
-                      penampangMM: penghantar.penampang,
-                      panjangMeter: segmentDistance,
-                      tiangIds: [prevTiang.id, newTiang.id],
-                      status: 'planned' as const,
-                    };
-
-                    const newJalur = await jalurService.add(currentSurvey.id, jalurData);
-                    if (newJalur) {
-                      setCurrentSurvey(prev => prev ? {
-                        ...prev,
-                        jalurList: [...prev.jalurList, newJalur],
-                      } : null);
-                      Alert.alert('Sukses', `Jalur ${segmentDistance.toFixed(0)}m berhasil dibuat!`);
-                    }
-                  }
-                  setToolMode('none');
-                }
-              }
+              { text: 'Tidak', style: 'cancel' },
+              { text: 'Ya + Lanjut', onPress: () => connectJalur(true) },
+              { text: 'Ya, Selesai', onPress: () => connectJalur(false) },
             ]
           );
         } else {
@@ -1721,165 +1679,18 @@ export default function App() {
         onSubmit={handleBASurveySubmit}
       />
       {/* Layer Control Modal */}
-      <Modal
+      <LayerControlModal
         visible={showLayerControl}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowLayerControl(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={[styles.layerModalContent, { maxHeight: '80%' }]}>
-            <Text style={styles.layerTitle}>Atur Layer Peta</Text>
-
-            <ScrollView style={{ maxHeight: 400 }}>
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="pricetag" size={18} color="#666" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Label Tiang</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.tiang}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, tiang: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.tiang ? "#2196F3" : "#f4f3f4"}
-                />
-              </View>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="flash" size={18} color="#FF9800" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Label Gardu</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.gardu}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, gardu: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.gardu ? "#2196F3" : "#f4f3f4"}
-                />
-              </View>
-
-              <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Titik Marker</Text>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="ellipse" size={18} color="#2196F3" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Titik Tiang</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.titikTiang}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, titikTiang: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.titikTiang ? "#2196F3" : "#f4f3f4"}
-                />
-              </View>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="ellipse" size={18} color="#FF9800" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Titik Gardu</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.titikGardu}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, titikGardu: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.titikGardu ? "#FF9800" : "#f4f3f4"}
-                />
-              </View>
-
-              <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Jalur Kabel</Text>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="radio-button-on" size={18} color="#4CAF50" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Label SUTR (TR)</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.sutr}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sutr: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.sutr ? "#4CAF50" : "#f4f3f4"}
-                />
-              </View>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="radio-button-on" size={18} color="#E91E63" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Label SUTM (TM)</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.sutm}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sutm: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.sutm ? "#E91E63" : "#f4f3f4"}
-                />
-              </View>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="radio-button-on" size={18} color="#00BCD4" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Label SKUTM</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.skutm}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, skutm: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.skutm ? "#00BCD4" : "#f4f3f4"}
-                />
-              </View>
-
-              <View style={styles.layerItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="radio-button-on" size={18} color="#9C27B0" style={{ marginRight: 8 }} />
-                  <Text style={styles.layerItemText}>Label SKTM</Text>
-                </View>
-                <Switch
-                  value={layerVisibility.sktm}
-                  onValueChange={(v) => setLayerVisibility(prev => ({ ...prev, sktm: v }))}
-                  trackColor={{ false: "#767577", true: "#81b0ff" }}
-                  thumbColor={layerVisibility.sktm ? "#9C27B0" : "#f4f3f4"}
-                />
-              </View>
-
-              {/* Overlay Eksisting */}
-              {overlayLayers.length > 0 && (
-                <>
-                  <Text style={{ marginTop: 15, marginBottom: 5, fontSize: 14, color: '#666', fontWeight: 'bold' }}>Data Eksisting</Text>
-                  {overlayLayers.map(ol => (
-                    <View key={ol.id} style={styles.layerItem}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                        <Ionicons
-                          name={ol.type === 'jtm' ? 'git-merge-outline' : ol.type === 'gardu' ? 'flash-outline' : ol.type === 'proteksi' ? 'shield-outline' : 'layers-outline'}
-                          size={18}
-                          color={ol.type === 'jtm' ? '#FFC107' : ol.type === 'gardu' ? '#FF9800' : ol.type === 'proteksi' ? '#F44336' : '#607D8B'}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text style={[styles.layerItemText, { flex: 1 }]} numberOfLines={1}>{ol.name}</Text>
-                      </View>
-                      <Switch
-                        value={ol.visible}
-                        onValueChange={(v) => {
-                          const updated = overlayLayers.map(o => o.id === ol.id ? { ...o, visible: v } : o);
-                          setOverlayLayers(updated);
-                          overlayStorage.updateVisibility(ol.id, v);
-                        }}
-                        trackColor={{ false: "#767577", true: "#81b0ff" }}
-                        thumbColor={ol.visible ? "#FFC107" : "#f4f3f4"}
-                      />
-                    </View>
-                  ))}
-                </>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.layerCloseButton}
-              onPress={() => setShowLayerControl(false)}
-            >
-              <Text style={styles.layerCloseText}>Tutup</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowLayerControl(false)}
+        layerVisibility={layerVisibility}
+        onLayerChange={(update) => setLayerVisibility(prev => ({ ...prev, ...update }))}
+        overlayLayers={overlayLayers}
+        onOverlayVisibilityChange={(id, v) => {
+          const updated = overlayLayers.map(o => o.id === id ? { ...o, visible: v } : o);
+          setOverlayLayers(updated);
+          overlayStorage.updateVisibility(id, v);
+        }}
+      />
 
       {/* Restore UI Button */}
       {uiHidden && (
@@ -1931,83 +1742,13 @@ export default function App() {
 
 
       {/* Menu Modal */}
-      <Modal
+      <MenuModal
         visible={showMenu}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowMenu(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={[styles.layerModalContent, { width: '80%' }]}>
-            <Text style={styles.layerTitle}>Menu</Text>
-
-            {/* User Info */}
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ backgroundColor: '#1565C0', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
-                <Ionicons name="person" size={30} color="white" />
-              </View>
-              <Text style={{ fontSize: 14, color: '#666' }}>{session?.user?.email || 'User'}</Text>
-            </View>
-
-            {/* About Button */}
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
-              onPress={() => {
-                setShowMenu(false);
-                setShowAbout(true);
-              }}
-            >
-              <Ionicons name="information-circle-outline" size={24} color="#1565C0" style={{ marginRight: 12 }} />
-              <Text style={{ fontSize: 16, color: '#333' }}>Tentang Aplikasi</Text>
-            </TouchableOpacity>
-
-            {/* Import Data Eksisting Button */}
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
-              onPress={() => {
-                setShowMenu(false);
-                setShowOverlayManager(true);
-              }}
-            >
-              <Ionicons name="layers-outline" size={24} color="#FF9800" style={{ marginRight: 12 }} />
-              <Text style={{ fontSize: 16, color: '#333' }}>Import Data Eksisting</Text>
-            </TouchableOpacity>
-
-            {/* Logout Button */}
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#eee' }}
-              onPress={() => {
-                Alert.alert(
-                  'Logout',
-                  'Yakin ingin keluar dari aplikasi?',
-                  [
-                    { text: 'Batal', style: 'cancel' },
-                    {
-                      text: 'Logout',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await supabase.auth.signOut();
-                        setShowMenu(false);
-                      }
-                    }
-                  ]
-                );
-              }}
-            >
-              <Ionicons name="log-out-outline" size={24} color="#F44336" style={{ marginRight: 12 }} />
-              <Text style={{ fontSize: 16, color: '#F44336' }}>Logout</Text>
-            </TouchableOpacity>
-
-            {/* Close Button */}
-            <TouchableOpacity
-              style={[styles.layerCloseButton, { marginTop: 20 }]}
-              onPress={() => setShowMenu(false)}
-            >
-              <Text style={styles.layerCloseText}>Tutup</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowMenu(false)}
+        userEmail={session?.user?.email || 'User'}
+        onOpenAbout={() => setShowAbout(true)}
+        onOpenOverlayManager={() => setShowOverlayManager(true)}
+      />
 
       {/* Overlay Manager Modal */}
       <OverlayManager
@@ -2018,66 +1759,10 @@ export default function App() {
       />
 
       {/* About Modal */}
-      <Modal
+      <AboutModal
         visible={showAbout}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowAbout(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={[styles.layerModalContent, { width: '90%', maxHeight: '80%' }]}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* App Logo & Version */}
-              <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                <Ionicons name="location" size={50} color="#1565C0" />
-                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>ASOI</Text>
-                <Text style={{ fontSize: 14, color: '#666' }}>Aplikasi Survey Online</Text>
-                <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 1.0.0</Text>
-              </View>
-
-              {/* Developer Info */}
-              <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>👨‍💻 Informasi Pengembang</Text>
-                <Text style={{ fontSize: 13, color: '#555', marginBottom: 5 }}>Aplikasi ini dikembangkan dan dikelola oleh:</Text>
-                <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#1565C0' }}>Fikry Budi H</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    const url = 'https://wa.me/6287773068968';
-                    import('react-native').then(({ Linking }) => Linking.openURL(url));
-                  }}
-                  style={{ marginTop: 8 }}
-                >
-                  <Text style={{ fontSize: 13, color: '#25D366', textDecorationLine: 'underline' }}>087773068968</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Legal */}
-              <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>⚖️ Legalitas & Kebijakan</Text>
-                <Text style={{ fontSize: 13, color: '#1565C0', marginBottom: 5 }}>• Ketentuan Layanan</Text>
-                <Text style={{ fontSize: 13, color: '#1565C0', marginBottom: 5 }}>• Kebijakan Privasi</Text>
-                <Text style={{ fontSize: 13, color: '#1565C0' }}>• Lisensi Pihak Ketiga</Text>
-              </View>
-
-              {/* Copyright */}
-              <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 20 }}>
-                <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2024 Fikry. All Rights Reserved.</Text>
-                <Text style={{ fontSize: 11, color: '#aaa', textAlign: 'center', marginTop: 5, fontStyle: 'italic' }}>
-                  Dibuat dengan semangat untuk memudahkan riset digital di Indonesia.
-                </Text>
-              </View>
-            </ScrollView>
-
-            {/* Close Button */}
-            <TouchableOpacity
-              style={styles.layerCloseButton}
-              onPress={() => setShowAbout(false)}
-            >
-              <Text style={styles.layerCloseText}>Tutup</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowAbout(false)}
+      />
     </SafeAreaView>
   );
 }
