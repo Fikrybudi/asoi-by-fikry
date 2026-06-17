@@ -18,7 +18,14 @@ export async function getAllOverlays(): Promise<OverlayFile[]> {
         if (!raw) return [];
         return JSON.parse(raw) as OverlayFile[];
     } catch (error) {
-        console.error('Error loading overlays:', error);
+        const msg = String(error);
+        // Android CursorWindow limit exceeded — data too large to read back
+        if (msg.includes('CursorWindow') || msg.includes('Row too big')) {
+            console.warn('Overlay data too large for AsyncStorage, clearing...');
+            try { await AsyncStorage.removeItem(STORAGE_KEY); } catch (_) {}
+        } else {
+            console.error('Error loading overlays:', error);
+        }
         return [];
     }
 }
@@ -35,7 +42,13 @@ export async function saveOverlay(overlay: OverlayFile): Promise<void> {
         } else {
             all.push(overlay);
         }
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+        const json = JSON.stringify(all);
+        // Guard: prevent saving data that exceeds Android CursorWindow (~2MB)
+        if (json.length > 1_800_000) {
+            console.warn(`Overlay data too large (${(json.length / 1024).toFixed(0)}KB), skipping save`);
+            throw new Error('Data overlay terlalu besar untuk disimpan. Coba hapus beberapa overlay lama.');
+        }
+        await AsyncStorage.setItem(STORAGE_KEY, json);
     } catch (error) {
         console.error('Error saving overlay:', error);
         throw error;
