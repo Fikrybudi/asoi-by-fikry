@@ -9,7 +9,7 @@ import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 // TYPES
 // =============================================================================
 
-export type ToolMode = 'none' | 'add-tiang' | 'add-gardu' | 'draw-jalur' | 'draw-jembatan' | 'underbuild-sutr' | 'draw-persil';
+export type ToolMode = 'none' | 'add-tiang' | 'add-gardu' | 'draw-jalur' | 'draw-jembatan' | 'underbuild-sutr' | 'draw-persil' | 'move-tiang';
 
 interface ToolbarProps {
     currentMode: ToolMode;
@@ -144,6 +144,35 @@ export default function Toolbar({
                         onPress={onCancelDrawing}
                     >
                         <Text style={styles.cancelButtonText}>Batal</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+
+    // Move tiang mode
+    if (currentMode === 'move-tiang') {
+        return (
+            <View style={[styles.drawingToolbar, { backgroundColor: '#FF9800' }]}>
+                <View style={styles.drawingInfo}>
+                    <Text style={styles.drawingInfoText}>
+                        📍 Geser peta ke posisi baru tiang
+                    </Text>
+                </View>
+                <View style={styles.drawingActions}>
+                    <TouchableOpacity
+                        style={[styles.drawingButton, styles.cancelButton]}
+                        onPress={onCancelDrawing}
+                    >
+                        <Text style={styles.cancelButtonText}>Batal</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.drawingButton, styles.finishButton]}
+                        onPress={onFinishDrawing}
+                    >
+                        <Text style={[styles.finishButtonText, { color: '#FF9800' }]}>
+                            Simpan ✓
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>

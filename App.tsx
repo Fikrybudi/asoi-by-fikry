@@ -63,6 +63,9 @@ export default function App() {
   const [drawingCoords, setDrawingCoords] = useState<Coordinate[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // Move Tiang state
+  const [movingTiangId, setMovingTiangId] = useState<string | null>(null);
+
   // Remember last jenis jaringan for next tiang
   const [lastJenisJaringan, setLastJenisJaringan] = useState<'SUTM' | 'SUTR' | 'SKUTM'>('SUTM');
 
@@ -358,7 +361,72 @@ export default function App() {
     );
   };
 
-  const handleFinishDrawing = () => {
+  const handleFinishDrawing = async () => {
+    if (toolMode === 'move-tiang') {
+      if (movingTiangId && centerCoordinate && currentSurvey) {
+        try {
+          // 1. Update Tiang Coordinate
+          const updatedTiang = await tiangService.update(currentSurvey.id, movingTiangId, {
+            koordinat: centerCoordinate
+          });
+
+          if (updatedTiang) {
+            // 2. Find and update connected Jalur
+            const connectedJalurs = currentSurvey.jalurList.filter(j => j.tiangIds?.includes(movingTiangId));
+            
+            const updatedJalurPromises = connectedJalurs.map(async (jalur) => {
+              const newKoordinat = [...jalur.koordinat];
+              // Update the specific point(s) matching this tiang's ID
+              jalur.tiangIds.forEach((id, index) => {
+                if (id === movingTiangId) {
+                  newKoordinat[index] = centerCoordinate;
+                }
+              });
+
+              // Recalculate length
+              let newPanjang = 0;
+              for (let i = 0; i < newKoordinat.length - 1; i++) {
+                newPanjang += calculateDistance(newKoordinat[i], newKoordinat[i+1]);
+              }
+
+              return await jalurService.update(currentSurvey.id, jalur.id, {
+                koordinat: newKoordinat,
+                panjangMeter: newPanjang
+              });
+            });
+
+            const resolvedJalurs = (await Promise.all(updatedJalurPromises)).filter(Boolean) as JalurKabel[];
+
+            // 3. Update React State
+            setCurrentSurvey(prev => {
+              if (!prev) return null;
+              
+              const newTiangList = prev.tiangList.map(t => t.id === movingTiangId ? updatedTiang : t);
+              
+              let newJalurList = [...prev.jalurList];
+              resolvedJalurs.forEach(updatedJ => {
+                newJalurList = newJalurList.map(j => j.id === updatedJ.id ? updatedJ : j);
+              });
+
+              return {
+                ...prev,
+                tiangList: newTiangList,
+                jalurList: newJalurList
+              };
+            });
+
+            Alert.alert('Sukses', 'Posisi tiang dan jalur berhasil digeser!');
+          }
+        } catch (error) {
+          console.error("Error moving tiang:", error);
+          Alert.alert('Error', 'Gagal memindahkan tiang');
+        }
+      }
+      setMovingTiangId(null);
+      setToolMode('none');
+      return;
+    }
+
     if (drawingCoords.length >= 2) {
       if (toolMode === 'draw-jembatan') {
         setShowJembatanForm(true);
@@ -371,6 +439,7 @@ export default function App() {
   const handleCancelDrawing = () => {
     setDrawingCoords([]);
     setIsDrawing(false);
+    setMovingTiangId(null);
     setToolMode('none');
   };
 
@@ -885,6 +954,13 @@ export default function App() {
       `${tiang.konstruksi} - ${tiang.jenisTiang}\nTinggi: ${tiang.tinggiTiang}\nKekuatan: ${tiang.kekuatanTiang}${tiang.status === 'existing' ? '\n(Existing)' : ''}`,
       [
         { text: 'OK' },
+        {
+          text: '📍 Geser Posisi',
+          onPress: () => {
+            setMovingTiangId(tiang.id);
+            setToolMode('move-tiang');
+          }
+        },
         {
           text: '✏️ Edit',
           onPress: () => {
@@ -1421,12 +1497,16 @@ export default function App() {
           onTiangPress={handleTiangPress}
           onGarduPress={handleGarduPress}
           onJalurPress={handleJalurPress}
-          isAddingTiang={toolMode === 'add-tiang'}
+          isAddingTiang={toolMode === 'add-tiang' || toolMode === 'move-tiang'}
           isAddingGardu={toolMode === 'add-gardu'}
           isDrawingJalur={toolMode === 'draw-jalur' || toolMode === 'draw-jembatan'}
           isDrawingPersil={toolMode === 'draw-persil'}
           currentJalurCoords={drawingCoords}
-          lastTiangCoord={currentSurvey?.tiangList.length ? currentSurvey.tiangList[currentSurvey.tiangList.length - 1].koordinat : undefined}
+          lastTiangCoord={
+            toolMode === 'move-tiang' && movingTiangId
+              ? currentSurvey?.tiangList.find(t => t.id === movingTiangId)?.koordinat
+              : (currentSurvey?.tiangList.length ? currentSurvey.tiangList[currentSurvey.tiangList.length - 1].koordinat : undefined)
+          }
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}
           selectedTiangIds={underbuildTiangIds}

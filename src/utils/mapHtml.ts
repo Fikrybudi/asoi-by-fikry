@@ -597,7 +597,7 @@ const generateMapHTML = (
       // Update label
       var labelEl = document.getElementById('distance-preview-label');
       if (labelEl) {
-        labelEl.textContent = 'â†” ' + distText;
+        labelEl.textContent = '↔ ' + distText;
       }
     }
     
@@ -948,17 +948,17 @@ const generateMapHTML = (
     // Google Maps Tile Layers
     var googleStreets = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       maxZoom: 21,
-      attribution: 'Â© Google Maps'
+      attribution: '© Google Maps'
     });
     
     var googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
       maxZoom: 21,
-      attribution: 'Â© Google Maps'
+      attribution: '© Google Maps'
     });
     
     var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
       maxZoom: 21,
-      attribution: 'Â© Google Maps'
+      attribution: '© Google Maps'
     });
     
     // Default to streets
@@ -966,9 +966,9 @@ const generateMapHTML = (
     
     // Layer control
     var baseMaps = {
-      "ðŸ—ºï¸ Peta": googleStreets,
-      "ðŸ›°ï¸ Satelit": googleSatellite,
-      "ðŸŒ Hybrid": googleHybrid
+      "🗺️ Peta": googleStreets,
+      "🛰️ Satelit": googleSatellite,
+      "🌍 Hybrid": googleHybrid
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -980,7 +980,7 @@ const generateMapHTML = (
       color: 'white',
       weight: 3,
       fillOpacity: 1
-    }).addTo(map).bindPopup('ðŸ“ Lokasi Anda');
+    }).addTo(map).bindPopup('📍 Lokasi Anda');
 
     // Add accuracy circle
     L.circle([${center.latitude}, ${center.longitude}], {
