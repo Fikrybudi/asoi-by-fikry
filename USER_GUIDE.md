@@ -18,9 +18,10 @@
 10. [Riwayat Survey](#10-riwayat-survey)
 11. [Sinkronisasi Cloud](#11-sinkronisasi-cloud)
 12. [Export Laporan](#12-export-laporan)
-13. [Berita Acara Survey](#13-berita-acara-survey-ba)
-14. [Fitur Undo](#14-fitur-undo)
-15. [Tips & Troubleshooting](#15-tips--troubleshooting)
+13. [Pengaturan Hak Akses (Superadmin)](#13-pengaturan-hak-akses-superadmin)
+14. [Berita Acara Survey](#14-berita-acara-survey-ba)
+15. [Fitur Undo](#15-fitur-undo)
+16. [Tips & Troubleshooting](#16-tips--troubleshooting)
 
 ---
 
@@ -372,11 +373,31 @@ Aplikasi memiliki tombol **Undo** untuk membatalkan aksi terakhir.
 
 ---
 
-## 📞 Kontak & Support
+## 🛠 Kontak & Support
 
 Untuk bantuan atau laporan bug, hubungi:
 - **Tim Development**: [Sesuaikan contact info] +6287773068968 (Whatsapp Only)
 - **GitHub Repository**: https://github.com/Fikrybudi/asoi-by-fikry
+
+---
+
+## 🔐 Pengaturan Hak Akses (Superadmin)
+
+Secara bawaan (*default*), setiap pengguna hanya bisa melihat, mengubah, dan menghapus hasil survey **miliknya sendiri**. Namun, Anda bisa mengangkat seorang user menjadi **Superadmin** agar mereka dapat melihat hasil survey dari semua akun.
+
+### Cara Menjadikan Akun sebagai Superadmin:
+1. Buka *dashboard* **Supabase**.
+2. Masuk ke menu **SQL Editor**.
+3. *Copy* dan *Paste* perintah SQL berikut:
+   ```sql
+   UPDATE auth.users
+   SET raw_user_meta_data = '{"role": "superadmin"}'::jsonb
+   WHERE email = 'email_akun_yang_dituju@domain.com';
+   ```
+4. Ubah `'email_akun_yang_dituju@domain.com'` dengan email surveyor yang sebenarnya.
+5. Klik **Run**.
+
+Kini, akun tersebut akan otomatis bisa mengakses data dari semua surveyor.
 
 ---
 

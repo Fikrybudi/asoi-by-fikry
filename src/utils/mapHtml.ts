@@ -214,13 +214,13 @@ const generateMapHTML = (
       }
     }
 
-    // Calculate anchor offset (CLOSER to tiang - only 8px offset)
-    const offsetPx = 8;
+    // Calculate anchor offset (further from tiang to avoid overlapping jalur)
+    const offsetPx = 35;
     const anchorX = (circleSize / 2) - (bestQuadrant.offsetX * offsetPx);
-    const anchorY = (circleSize + 10) - (bestQuadrant.offsetY * offsetPx);
+    const anchorY = (circleSize / 2 + 10) - (bestQuadrant.offsetY * offsetPx);
 
     // Create circular label HTML with 3 sections
-    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + borderColor + ';border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
+    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + borderColor + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
       '<div style="display:flex;flex:1;border-bottom:1px solid ' + borderColor + ';">' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + bgColor + ';border-right:1px solid ' + borderColor + ';">' + nomorLabel + '</div>' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + ukuranFontSize + 'px;font-weight:bold;color:#333;">' + ukuranLabel + '</div>' +
@@ -1026,6 +1026,7 @@ const generateMapHTML = (
 
     // Track zoom changes to persist across re-renders
     map.on('zoomend', function() {
+      if (typeof isCapturing !== 'undefined' && isCapturing) return;
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'zoomChange',
         zoom: map.getZoom()
@@ -1034,6 +1035,7 @@ const generateMapHTML = (
 
     // Track map center changes to persist position across re-renders
     map.on('moveend', function() {
+      if (typeof isCapturing !== 'undefined' && isCapturing) return;
       var center = map.getCenter();
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'mapCenterChange',
@@ -1083,8 +1085,8 @@ const generateMapHTML = (
 
       // First fit bounds if provided
       if (bounds) {
-        map.fitBounds(bounds, { animate: false, padding: [30, 30] });
         map.invalidateSize();
+        map.fitBounds(bounds, { animate: false, padding: [0, 0] });
       }
       
       // Helper null-safe hide/show
@@ -1172,28 +1174,44 @@ const generateMapHTML = (
     window._segBoundaryMarkers = [];
 
     // Tambah marker huruf (A, B, C...) di titik batas segmen PDF
+    // Sekarang menampilkan label pasangan (misal A—A) + garis potong dashed merah
     window.addSegmentBoundaryMarkers = function(markers) {
       if (!markers || markers.length === 0) return;
       markers.forEach(function(m) {
-        var html = [
+        // Label badge atas
+        var topHtml = [
           '<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">',
-            '<div style="background:#D32F2F;color:white;font-weight:bold;font-size:13px;',
-              'width:24px;height:24px;border-radius:4px;display:flex;align-items:center;',
-              'justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.5);border:2px solid white;">',
-              m.label,
+            '<div style="background:#D32F2F;color:white;font-weight:bold;font-size:14px;',
+              'padding:3px 8px;border-radius:4px;box-shadow:0 2px 5px rgba(0,0,0,0.5);',
+              'border:2px solid white;white-space:nowrap;">',
+              m.label + '—' + m.label,
             '</div>',
-            '<div style="width:3px;height:28px;background:#D32F2F;"></div>',
-            '<div style="width:14px;height:3px;background:#D32F2F;"></div>',
+            '<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #D32F2F;"></div>',
           '</div>'
         ].join('');
-        var icon = L.divIcon({
-          html: html,
+        var topIcon = L.divIcon({
+          html: topHtml,
           className: '',
-          iconAnchor: [12, 55],
-          iconSize: [24, 55]
+          iconAnchor: [20, 32],
+          iconSize: [40, 32]
         });
-        var marker = L.marker([m.lat, m.lng], {icon: icon, interactive: false, zIndexOffset: 9999}).addTo(map);
-        window._segBoundaryMarkers.push(marker);
+        var topMarker = L.marker([m.lat, m.lng], {icon: topIcon, interactive: false, zIndexOffset: 9999}).addTo(map);
+        window._segBoundaryMarkers.push(topMarker);
+
+        // Garis potong vertikal dashed merah (polyline pendek di sekitar titik)
+        // Buat garis vertikal ~60m ke atas dan bawah dari titik batas
+        var offsetDeg = 0.0006; // ~60m
+        var cutLine = L.polyline(
+          [[m.lat - offsetDeg, m.lng], [m.lat + offsetDeg, m.lng]],
+          {
+            color: '#D32F2F',
+            weight: 2,
+            dashArray: '6, 4',
+            opacity: 0.7,
+            interactive: false
+          }
+        ).addTo(map);
+        window._segBoundaryMarkers.push(cutLine);
       });
     };
 

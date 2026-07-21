@@ -7,7 +7,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { decode as base64Decode } from 'base64-arraybuffer';
-import { Asset } from 'expo-asset';
 import { Dimensions } from 'react-native';
 
 // =============================================================================
@@ -88,31 +87,7 @@ function detectOrientation(): Orientation {
     return height > width ? 'portrait' : 'landscape';
 }
 
-/**
- * Load appropriate template based on orientation
- */
-async function loadTemplate(orientation: Orientation): Promise<string | null> {
-    try {
-        const templateModule = orientation === 'portrait'
-            ? require('../../assets/blangko_potrait.pdf')
-            : require('../../assets/blangko.pdf');
 
-        const templateAsset = Asset.fromModule(templateModule);
-        await templateAsset.downloadAsync();
-
-        if (!templateAsset.localUri) {
-            console.error(`Failed to load ${orientation} template`);
-            return null;
-        }
-
-        return await FileSystem.readAsStringAsync(templateAsset.localUri, {
-            encoding: 'base64',
-        });
-    } catch (error) {
-        console.error(`Error loading ${orientation} template:`, error);
-        return null;
-    }
-}
 
 // =============================================================================
 // HELPER: Draw Rincian Pekerjaan block 
@@ -279,21 +254,11 @@ export async function generatePdfWithMap(
         const orientation: Orientation = detectOrientation();
         console.log(`Using ${orientation} template`);
 
-        // Load the appropriate template
-        const templateBase64 = await loadTemplate(orientation);
-        if (!templateBase64) {
-            console.error('Failed to load template');
-            return null;
-        }
-
-        // Load PDF with pdf-lib
-        const pdfBytes = base64Decode(templateBase64);
-        const pdfDoc = await PDFDocument.load(pdfBytes);
-
-        // Get first page
-        const pages = pdfDoc.getPages();
-        const firstPage = pages[0];
-        const { width: pageWidth, height: pageHeight } = firstPage.getSize();
+        // Create a blank A4 page based on orientation
+        const pdfDoc = await PDFDocument.create();
+        const pageWidth = orientation === 'portrait' ? 595.28 : 841.89;
+        const pageHeight = orientation === 'portrait' ? 841.89 : 595.28;
+        const firstPage = pdfDoc.addPage([pageWidth, pageHeight]);
 
         console.log(`PDF Page size: ${pageWidth} x ${pageHeight}`);
 
@@ -403,22 +368,6 @@ export async function generateMultiPagePdf(
         console.log(`Starting multi-page PDF: ${mapBase64s.length} pages`);
 
         const orientation: Orientation = detectOrientation();
-        const templateBase64 = await loadTemplate(orientation);
-        if (!templateBase64) {
-            console.error('Failed to load template for multi-page PDF');
-            return null;
-        }
-
-        const font = await (async () => {
-            // We'll embed fonts once we have the doc
-            return null;
-        })();
-
-        // Load template to get page size
-        const templateBytes = base64Decode(templateBase64);
-        const templateDoc = await PDFDocument.load(templateBytes);
-        const templatePage = templateDoc.getPages()[0];
-        const { width: pageWidth, height: pageHeight } = templatePage.getSize();
 
         // Create a fresh PDFDocument for the output
         const outputDoc = await PDFDocument.create();
@@ -428,16 +377,15 @@ export async function generateMultiPagePdf(
         const padding = orientation === 'portrait' ? PORTRAIT_PADDING : LANDSCAPE_PADDING;
         const textPositions = TEXT_POSITIONS[orientation];
 
+        // A4 dimensions
+        const pageWidth = orientation === 'portrait' ? 595.28 : 841.89;
+        const pageHeight = orientation === 'portrait' ? 841.89 : 595.28;
+
         for (let i = 0; i < mapBase64s.length; i++) {
             const mapBase64 = mapBase64s[i];
             const meta = pageMetas[i];
 
-            // Copy a fresh template page into output doc
-            const [copiedPage] = await outputDoc.copyPages(
-                await PDFDocument.load(templateBytes),
-                [0]
-            );
-            const page = outputDoc.addPage(copiedPage);
+            const page = outputDoc.addPage([pageWidth, pageHeight]);
 
             // Embed map image
             const mapImageBytes = base64Decode(mapBase64);

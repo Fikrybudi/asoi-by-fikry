@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     View,
@@ -8,6 +8,7 @@ import {
     Modal,
     ScrollView,
     Switch,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -18,6 +19,8 @@ import {
     DEFAULT_BA_CHECKLIST,
     CHECKLIST_ITEMS,
 } from '../../constants/surveyOptions';
+import { Survey } from '../../types';
+import SignatureCapture from './SignatureCapture';
 
 // Types for BA Survey form
 export interface BASurveyData {
@@ -49,9 +52,11 @@ interface BASurveyFormProps {
     visible: boolean;
     onClose: () => void;
     onSubmit: (data: BASurveyData) => void;
+    onRegeneratePDF?: (data: BASurveyData) => void;
+    initialData?: Survey | null;
 }
 
-export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFormProps) {
+export default function BASurveyForm({ visible, onClose, onSubmit, onRegeneratePDF, initialData }: BASurveyFormProps) {
     const [jenisPermohonan, setJenisPermohonan] = useState(JENIS_PERMOHONAN_OPTIONS[0]);
     const [tarifDaya, setTarifDaya] = useState(TARIF_DAYA_OPTIONS[2]); // Default R1/1300VA
     const [customTarifDaya, setCustomTarifDaya] = useState('');
@@ -67,6 +72,65 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
     const [konstruksiOleh, setKonstruksiOleh] = useState<'Pelanggan' | 'PLN'>('Pelanggan');
 
     const [checklist, setChecklist] = useState({ ...DEFAULT_BA_CHECKLIST });
+
+    // Signature states
+    const [signaturePelanggan, setSignaturePelanggan] = useState<string>('');
+    const [signatureSurveyor, setSignatureSurveyor] = useState<string>('');
+    const [showSignaturePad, setShowSignaturePad] = useState<'pelanggan' | 'surveyor' | null>(null);
+
+    // Initialize state if initialData is provided
+    useEffect(() => {
+        if (visible && initialData) {
+            setJenisPermohonan(initialData.jenisSurvey || JENIS_PERMOHONAN_OPTIONS[0]);
+            
+            // Handle Tarif / Daya mapping
+            if (initialData.tarifDaya && TARIF_DAYA_OPTIONS.includes(initialData.tarifDaya)) {
+                setTarifDaya(initialData.tarifDaya);
+                setShowCustomTarif(false);
+                setCustomTarifDaya('');
+            } else if (initialData.tarifDaya) {
+                setTarifDaya('Ketik Manual...');
+                setShowCustomTarif(true);
+                setCustomTarifDaya(initialData.tarifDaya);
+            }
+
+            setIdPelanggan(initialData.idPelanggan || '');
+            setNamaPelanggan(initialData.namaSurvey.split(' - ')[1]?.split(' (')[0] || ''); // fallback attempt if original name is gone, though ideally user types it
+            // Oh wait, Survey has `lokasi`, not `namaPelanggan` directly. But if they just created it, it might be recoverable.
+            setAlamat(initialData.lokasi || '');
+            setHasilSurvey(initialData.hasilSurvey || HASIL_SURVEY_OPTIONS[0]);
+            setNamaSurveyor(initialData.surveyor || '');
+            setNamaPerwakilan(initialData.namaPerwakilan || '');
+            setKeterangan(initialData.keterangan || '');
+            setAppDipasang(initialData.appDipasang || 'Persil');
+            setKonstruksiOleh(initialData.konstruksiOleh || 'Pelanggan');
+            setChecklist(initialData.baChecklist || { ...DEFAULT_BA_CHECKLIST });
+            setSignaturePelanggan(initialData.signaturePelanggan || '');
+            setSignatureSurveyor(initialData.signatureSurveyor || '');
+        } else if (visible && !initialData) {
+            // Reset to default on open as new
+            resetForm();
+        }
+    }, [visible, initialData]);
+
+    const resetForm = () => {
+        setJenisPermohonan(JENIS_PERMOHONAN_OPTIONS[0]);
+        setTarifDaya(TARIF_DAYA_OPTIONS[2]);
+        setCustomTarifDaya('');
+        setShowCustomTarif(false);
+        setIdPelanggan('');
+        setNamaPelanggan('');
+        setAlamat('');
+        setHasilSurvey(HASIL_SURVEY_OPTIONS[0]);
+        setNamaSurveyor('');
+        setNamaPerwakilan('');
+        setKeterangan('');
+        setAppDipasang('Persil');
+        setKonstruksiOleh('Pelanggan');
+        setChecklist({ ...DEFAULT_BA_CHECKLIST });
+        setSignaturePelanggan('');
+        setSignatureSurveyor('');
+    };
 
     const handleTarifDayaChange = (value: string) => {
         if (value === 'Ketik Manual...') {
@@ -104,23 +168,14 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
             appDipasang,
             konstruksiOleh,
             checklist,
+            signaturePelanggan,
+            signatureSurveyor,
         });
 
-        // Reset form
-        setJenisPermohonan(JENIS_PERMOHONAN_OPTIONS[0]);
-        setTarifDaya(TARIF_DAYA_OPTIONS[2]);
-        setCustomTarifDaya('');
-        setShowCustomTarif(false);
-        setIdPelanggan('');
-        setNamaPelanggan('');
-        setAlamat('');
-        setHasilSurvey(HASIL_SURVEY_OPTIONS[0]);
-        setNamaSurveyor('');
-        setNamaPerwakilan('');
-        setKeterangan('');
-        setAppDipasang('Persil');
-        setKonstruksiOleh('Pelanggan');
-        setChecklist({ ...DEFAULT_BA_CHECKLIST });
+        // We don't reset form here anymore, it's handled by visibility/initialData effect
+        // Just let the parent close it.
+
+
     };
 
     return (
@@ -134,7 +189,7 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>BERITA ACARA SURVEY</Text>
+                        <Text style={styles.title}>{initialData ? 'EDIT DATA SURVEY' : 'BERITA ACARA SURVEY'}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <Ionicons name="close" size={24} color="#666" />
                         </TouchableOpacity>
@@ -287,6 +342,20 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                             value={namaPerwakilan}
                             onChangeText={setNamaPerwakilan}
                         />
+                        {/* Signature Pelanggan */}
+                        <TouchableOpacity
+                            style={{ marginTop: 8, padding: 12, backgroundColor: signaturePelanggan ? '#E8F5E9' : '#f0f0f0', borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: signaturePelanggan ? '#4CAF50' : '#ddd', borderStyle: 'dashed' }}
+                            onPress={() => setShowSignaturePad('pelanggan')}
+                        >
+                            {signaturePelanggan ? (
+                                <Image source={{ uri: signaturePelanggan }} style={{ width: 200, height: 60, resizeMode: 'contain' }} />
+                            ) : (
+                                <View style={{ alignItems: 'center' }}>
+                                    <Ionicons name="create-outline" size={24} color="#666" />
+                                    <Text style={{ color: '#666', marginTop: 4 }}>+ Tambah Tanda Tangan Pelanggan</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
 
                         {/* Nama Surveyor PLN */}
                         <Text style={styles.label}>Nama Surveyor PLN</Text>
@@ -296,15 +365,74 @@ export default function BASurveyForm({ visible, onClose, onSubmit }: BASurveyFor
                             value={namaSurveyor}
                             onChangeText={setNamaSurveyor}
                         />
+                        {/* Signature Surveyor */}
+                        <TouchableOpacity
+                            style={{ marginTop: 8, padding: 12, backgroundColor: signatureSurveyor ? '#E3F2FD' : '#f0f0f0', borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: signatureSurveyor ? '#2196F3' : '#ddd', borderStyle: 'dashed', marginBottom: 20 }}
+                            onPress={() => setShowSignaturePad('surveyor')}
+                        >
+                            {signatureSurveyor ? (
+                                <Image source={{ uri: signatureSurveyor }} style={{ width: 200, height: 60, resizeMode: 'contain' }} />
+                            ) : (
+                                <View style={{ alignItems: 'center' }}>
+                                    <Ionicons name="create-outline" size={24} color="#666" />
+                                    <Text style={{ color: '#666', marginTop: 4 }}>+ Tambah Tanda Tangan Surveyor</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     </ScrollView>
 
                     {/* Submit Button */}
                     <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                        <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginRight: 8 }} />
-                        <Text style={styles.submitText}>Buat Survey & Generate PDF</Text>
+                        <Ionicons name={initialData ? "save" : "checkmark-circle"} size={20} color="white" style={{ marginRight: 8 }} />
+                        <Text style={styles.submitText}>{initialData ? 'Simpan Perubahan' : 'Buat Survey & Generate PDF'}</Text>
                     </TouchableOpacity>
+
+                    {/* Regenerate PDF Button for Edit Mode */}
+                    {initialData && onRegeneratePDF && (
+                        <TouchableOpacity 
+                            style={[styles.submitButton, { backgroundColor: '#FF9800', marginTop: 0 }]} 
+                            onPress={() => {
+                                const finalTarifDaya = showCustomTarif ? customTarifDaya : tarifDaya;
+                                onRegeneratePDF({
+                                    jenisPermohonan,
+                                    tarifDaya: finalTarifDaya,
+                                    idPelanggan,
+                                    namaPelanggan,
+                                    alamat,
+                                    tanggalSurvey: new Date(initialData.tanggalSurvey || Date.now()),
+                                    hasilSurvey,
+                                    namaSurveyor,
+                                    namaPerwakilan,
+                                    keterangan,
+                                    appDipasang,
+                                    konstruksiOleh,
+                                    checklist,
+                                    signaturePelanggan,
+                                    signatureSurveyor,
+                                });
+                            }}
+                        >
+                            <Ionicons name="document-text" size={20} color="white" style={{ marginRight: 8 }} />
+                            <Text style={styles.submitText}>Regenerate BA PDF</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
+
+            {/* Signature Capture Modal */}
+            <SignatureCapture
+                visible={showSignaturePad !== null}
+                title={showSignaturePad === 'pelanggan' ? 'Tanda Tangan Perwakilan Pelanggan' : 'Tanda Tangan Surveyor PLN'}
+                onSave={(signature) => {
+                    if (showSignaturePad === 'pelanggan') {
+                        setSignaturePelanggan(signature);
+                    } else if (showSignaturePad === 'surveyor') {
+                        setSignatureSurveyor(signature);
+                    }
+                    setShowSignaturePad(null);
+                }}
+                onCancel={() => setShowSignaturePad(null)}
+            />
         </Modal>
     );
 }

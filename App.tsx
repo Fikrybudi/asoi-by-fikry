@@ -558,11 +558,20 @@ export default function App() {
 
         const bounds = calculateBoundsForGroup(seg.tiangList, prevAnchor, nextAnchor);
 
-        // Hitung boundary markers huruf (A, B, C...) di titik potong (midpoint)
+        // Fungsi untuk generate A, B, C... Z, AA, AB, dll
+        const getMarkerLabel = (index: number) => {
+          let label = '';
+          while (index >= 0) {
+            label = String.fromCharCode((index % 26) + 65) + label;
+            index = Math.floor(index / 26) - 1;
+          }
+          return label;
+        };
+
         const boundaryMarkers: BoundaryMarker[] = [];
         if (prevAnchor) {
           // Titik batas kiri halaman ini = huruf ke-(i-1)
-          const label = String.fromCharCode(65 + i - 1);
+          const label = getMarkerLabel(i - 1);
           boundaryMarkers.push({
             label,
             lat: prevAnchor.latitude,
@@ -571,7 +580,7 @@ export default function App() {
         }
         if (nextAnchor) {
           // Titik batas kanan halaman ini = huruf ke-i
-          const label = String.fromCharCode(65 + i);
+          const label = getMarkerLabel(i);
           boundaryMarkers.push({
             label,
             lat: nextAnchor.latitude,
@@ -598,7 +607,7 @@ export default function App() {
 
         // Delay agar WebView reset state sebelum capture berikutnya
         if (i < segments.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 

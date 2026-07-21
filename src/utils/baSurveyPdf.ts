@@ -36,11 +36,11 @@ export async function generateBASurveyPdf(options: BAPdfOptions): Promise<string
         <meta charset="UTF-8">
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            @page { size: A4; margin: 20mm 15mm; }
+            @page { size: A4; margin: 0; }
             body { 
                 font-family: 'Times New Roman', serif; 
                 font-size: 12pt; 
-                padding: 0;
+                padding: 40px 50px; /* Safe cross-platform padding */
                 line-height: 1.4;
             }
             h1 { 
@@ -213,6 +213,8 @@ export async function generateBASurveyPdf(options: BAPdfOptions): Promise<string
         const { uri } = await Print.printToFileAsync({
             html,
             base64: false,
+            width: 595.28, // A4 width at 72 PPI
+            height: 841.89, // A4 height at 72 PPI
         });
 
         // Share the PDF directly

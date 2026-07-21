@@ -12,6 +12,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS surveys (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     nama_survey TEXT NOT NULL,
     jenis_survey TEXT NOT NULL,
     lokasi TEXT,
@@ -99,7 +100,7 @@ CREATE TABLE IF NOT EXISTS jalur (
 CREATE INDEX IF NOT EXISTS idx_jalur_survey_id ON jalur(survey_id);
 
 -- =============================================================================
--- ROW LEVEL SECURITY (Optional - Enable if needed)
+-- ROW LEVEL SECURITY (Owner & Superadmin Logic)
 -- =============================================================================
 
 -- Enable RLS on all tables
@@ -108,14 +109,45 @@ ALTER TABLE tiang ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gardu ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jalur ENABLE ROW LEVEL SECURITY;
 
--- Policy: Team Shared Access (Authenticated Users Only)
--- Users must be logged in to View/Insert/Update/Delete.
--- Anonymous users are blocked.
+-- 1. SURVYEYS TABLE POLICIES
+-- Boleh membuat survey (insert) jika sudah login, otomatis menjadi miliknya
+CREATE POLICY "Insert own survey" ON surveys FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Enable access for authenticated users only" ON surveys FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Enable access for authenticated users only" ON tiang FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Enable access for authenticated users only" ON gardu FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Enable access for authenticated users only" ON jalur FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- Boleh melihat (select) JIKA dia pembuatnya, ATAU dia adalah superadmin
+CREATE POLICY "Select surveys" ON surveys FOR SELECT TO authenticated USING (
+  auth.uid() = user_id OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'
+);
+
+-- Boleh mengedit/menghapus (update/delete) JIKA dia pembuatnya, ATAU dia adalah superadmin
+CREATE POLICY "Update own surveys or superadmin" ON surveys FOR UPDATE TO authenticated USING (
+  auth.uid() = user_id OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'
+);
+CREATE POLICY "Delete own surveys or superadmin" ON surveys FOR DELETE TO authenticated USING (
+  auth.uid() = user_id OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'
+);
+
+-- 2. CHILD TABLES POLICIES (Tiang, Gardu, Jalur)
+-- Child tables rely on the surveys.user_id for access control
+CREATE POLICY "Child Select" ON tiang FOR SELECT TO authenticated USING (
+  EXISTS (SELECT 1 FROM surveys WHERE surveys.id = tiang.survey_id AND (surveys.user_id = auth.uid() OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'))
+);
+CREATE POLICY "Child Insert/Update/Delete" ON tiang FOR ALL TO authenticated USING (
+  EXISTS (SELECT 1 FROM surveys WHERE surveys.id = tiang.survey_id AND (surveys.user_id = auth.uid() OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'))
+);
+
+CREATE POLICY "Child Select" ON gardu FOR SELECT TO authenticated USING (
+  EXISTS (SELECT 1 FROM surveys WHERE surveys.id = gardu.survey_id AND (surveys.user_id = auth.uid() OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'))
+);
+CREATE POLICY "Child Insert/Update/Delete" ON gardu FOR ALL TO authenticated USING (
+  EXISTS (SELECT 1 FROM surveys WHERE surveys.id = gardu.survey_id AND (surveys.user_id = auth.uid() OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'))
+);
+
+CREATE POLICY "Child Select" ON jalur FOR SELECT TO authenticated USING (
+  EXISTS (SELECT 1 FROM surveys WHERE surveys.id = jalur.survey_id AND (surveys.user_id = auth.uid() OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'))
+);
+CREATE POLICY "Child Insert/Update/Delete" ON jalur FOR ALL TO authenticated USING (
+  EXISTS (SELECT 1 FROM surveys WHERE surveys.id = jalur.survey_id AND (surveys.user_id = auth.uid() OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'superadmin'))
+);
 
 -- =============================================================================
 -- STORAGE BUCKET FOR PHOTOS
@@ -124,3 +156,17 @@ CREATE POLICY "Enable access for authenticated users only" ON jalur FOR ALL TO a
 
 -- Create a public bucket called 'survey-photos'
 -- In Supabase Dashboard: Storage > Create bucket > Name: survey-photos > Public: Yes
+
+-- =============================================================================
+-- HOW TO SET A USER AS SUPERADMIN
+-- =============================================================================
+
+-- Run this snippet in the Supabase SQL Editor whenever you want to grant
+-- superadmin privileges to an existing user account.
+-- Change 'email_akun_anda@domain.com' to the actual user's email.
+
+/*
+UPDATE auth.users
+SET raw_user_meta_data = '{"role": "superadmin"}'::jsonb
+WHERE email = 'email_akun_anda@domain.com';
+*/

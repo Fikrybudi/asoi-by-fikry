@@ -6,7 +6,7 @@
 // =============================================================================
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { OverlayFile } from '../types/overlayTypes';
 
 const STORAGE_KEY = '@overlay_files';
@@ -43,8 +43,8 @@ export async function getAllOverlays(): Promise<OverlayFile[]> {
         await ensureDirExists();
         
         const populatedOverlays = await Promise.all(overlays.map(async (overlay) => {
-            // Backward compatibility: If geojson already exists (legacy small file), keep it
-            if (overlay.geojson && Object.keys(overlay.geojson).length > 0) {
+            // Backward compatibility: If data already exists (legacy small file), keep it
+            if (overlay.data && Object.keys(overlay.data).length > 0) {
                 return overlay;
             }
             
@@ -53,13 +53,13 @@ export async function getAllOverlays(): Promise<OverlayFile[]> {
                 const fileInfo = await FileSystem.getInfoAsync(path);
                 if (fileInfo.exists) {
                     const content = await FileSystem.readAsStringAsync(path);
-                    return { ...overlay, geojson: JSON.parse(content) };
+                    return { ...overlay, data: JSON.parse(content) };
                 }
             } catch (err) {
                 console.warn(`Failed to load geojson for overlay ${overlay.id}:`, err);
             }
-            // Return empty geojson if file read fails to prevent app crash
-            return { ...overlay, geojson: {} };
+            // Return empty data if file read fails to prevent app crash
+            return { ...overlay, data: { points: [], polylines: [] } };
         }));
         
         return populatedOverlays;
@@ -76,13 +76,13 @@ export async function saveOverlay(overlay: OverlayFile): Promise<void> {
     try {
         await ensureDirExists();
         
-        // 1. Write the massive geojson to a physical file
+        // 1. Write the massive data to a physical file
         const path = getOverlayFilePath(overlay.id);
-        const geojsonString = JSON.stringify(overlay.geojson || {});
+        const geojsonString = JSON.stringify(overlay.data || { points: [], polylines: [] });
         await FileSystem.writeAsStringAsync(path, geojsonString, { encoding: FileSystem.EncodingType.UTF8 });
         
-        // 2. Prepare metadata-only object for AsyncStorage (strip geojson)
-        const metadataOnly: OverlayFile = { ...overlay, geojson: undefined };
+        // 2. Prepare metadata-only object for AsyncStorage (strip data)
+        const metadataOnly: OverlayFile = { ...overlay, data: undefined as any };
         
         // 3. Update AsyncStorage list
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -139,8 +139,8 @@ export async function updateVisibility(id: string, visible: boolean): Promise<vo
         const overlay = all.find(o => o.id === id);
         if (overlay) {
             overlay.visible = visible;
-            // Ensure we don't accidentally write legacy geojson back
-            if (overlay.geojson) overlay.geojson = undefined;
+            // Ensure we don't accidentally write legacy data back
+            if (overlay.data) overlay.data = undefined as any;
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
         }
     } catch (error) {
@@ -160,8 +160,8 @@ export async function updateOpacity(id: string, opacity: number): Promise<void> 
         const overlay = all.find(o => o.id === id);
         if (overlay) {
             overlay.opacity = Math.max(0, Math.min(1, opacity));
-            // Ensure we don't accidentally write legacy geojson back
-            if (overlay.geojson) overlay.geojson = undefined;
+            // Ensure we don't accidentally write legacy data back
+            if (overlay.data) overlay.data = undefined as any;
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
         }
     } catch (error) {
@@ -174,8 +174,8 @@ export async function updateOpacity(id: string, opacity: number): Promise<void> 
  */
 export async function saveAllOverlays(overlays: OverlayFile[]): Promise<void> {
     try {
-        // Strip geojson payload before bulk saving metadata
-        const metadataOnlyOverlays = overlays.map(o => ({ ...o, geojson: undefined }));
+        // Strip data payload before bulk saving metadata
+        const metadataOnlyOverlays = overlays.map(o => ({ ...o, data: undefined as any }));
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(metadataOnlyOverlays));
     } catch (error) {
         console.error('Error saving all overlays:', error);

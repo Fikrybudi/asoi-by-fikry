@@ -209,7 +209,7 @@ export function groupTiangBySegment(tiangList: Tiang[], mode: SegmentMode): Tian
         }];
     }
 
-    const maxPoles = mode === 'tm8' ? 8 : mode === 'tr10' ? 10 : Infinity;
+    const maxPoles = mode === 'tm8' ? 9 : mode === 'tr10' ? 11 : Infinity;
     const maxMeters = mode === 'dist400' ? 400 : Infinity;
 
     const segments: Omit<TiangSegment, 'totalPages'>[] = [];
@@ -276,7 +276,7 @@ export function calculateBoundsForGroup(
     tiangList: Tiang[],
     prevAnchor?: Coordinate,   // last coord of prev segment → left boundary
     nextAnchor?: Coordinate,   // first coord of next segment → right boundary
-    paddingFactor = 0.2
+    paddingFactor = 0.05       // 5% padding by default (not 20%)
 ): [[number, number], [number, number]] {
     if (tiangList.length === 0) {
         return [[-6.22, 106.83], [-6.20, 106.85]];
@@ -297,15 +297,23 @@ export function calculateBoundsForGroup(
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
 
-    // Padding untuk semua sisi
-    const latPad = (maxLat - minLat) * paddingFactor || 0.001;
-    const lngPad = (maxLng - minLng) * paddingFactor || 0.001;
+    // General 5% padding (minimum 0.0003 ~ 30m)
+    const latPad = Math.max((maxLat - minLat) * paddingFactor, 0.0003);
+    const lngPad = Math.max((maxLng - minLng) * paddingFactor, 0.0003);
 
-    // Sisi yang ada anchor → padding diperkecil (agar tepi halaman sejajar)
-    const padMinLat = prevAnchor ? latPad * 0.05 : latPad;
-    const padMaxLat = nextAnchor ? latPad * 0.05 : latPad;
-    const padMinLng = prevAnchor ? lngPad * 0.05 : lngPad;
-    const padMaxLng = nextAnchor ? lngPad * 0.05 : lngPad;
+    // Anchor padding: EXACTLY 0.0004 (~40m) so it always zooms tightly to the boundary without clipping the marker
+    const anchorPad = 0.0004;
+
+    // We don't know geometrically which side (Min/Max, Lat/Lng) corresponds to prevAnchor or nextAnchor.
+    // So if an anchor exists, we just apply the anchorPad to all sides to be safe,
+    // OR we can just check if the anchor is at the edge.
+    // Simpler: if there is an anchor, the corresponding bounds side gets anchorPad.
+    
+    // For MinLat: if prevAnchor or nextAnchor is at minLat, use anchorPad
+    const padMinLat = (prevAnchor && prevAnchor.latitude === minLat) || (nextAnchor && nextAnchor.latitude === minLat) ? anchorPad : latPad;
+    const padMaxLat = (prevAnchor && prevAnchor.latitude === maxLat) || (nextAnchor && nextAnchor.latitude === maxLat) ? anchorPad : latPad;
+    const padMinLng = (prevAnchor && prevAnchor.longitude === minLng) || (nextAnchor && nextAnchor.longitude === minLng) ? anchorPad : lngPad;
+    const padMaxLng = (prevAnchor && prevAnchor.longitude === maxLng) || (nextAnchor && nextAnchor.longitude === maxLng) ? anchorPad : lngPad;
 
     return [
         [minLat - padMinLat, minLng - padMinLng],

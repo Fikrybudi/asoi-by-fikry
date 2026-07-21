@@ -306,7 +306,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       // Inject markers sebelum capture (jika ada)
       if (boundaryMarkers && boundaryMarkers.length > 0) {
         webviewRef.current.injectJavaScript(injectMarkersJS);
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // Android: gunakan html2canvas via WebView
@@ -323,14 +323,21 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
 
           webviewRef.current?.injectJavaScript(`
             if (typeof isCapturing !== 'undefined') { isCapturing = false; }
-            if (window.captureMapToBase64) {
-              window.captureMapToBase64(${JSON.stringify(bounds)});
-            } else {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'mapCaptureError',
-                error: 'captureMapToBase64 not available'
-              }));
+            
+            // Retry logic: if captureMapToBase64 not ready (WebView may have reloaded), wait and retry
+            function tryCapture(attempt) {
+              if (window.captureMapToBase64) {
+                window.captureMapToBase64(${JSON.stringify(bounds)});
+              } else if (attempt < 3) {
+                setTimeout(function() { tryCapture(attempt + 1); }, 1500);
+              } else {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'mapCaptureError',
+                  error: 'captureMapToBase64 not available after retries'
+                }));
+              }
             }
+            tryCapture(0);
             true;
           `);
 
