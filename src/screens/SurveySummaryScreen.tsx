@@ -16,7 +16,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Survey, JalurKabel, Tiang, Gardu } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
-import { exportToPDF, exportToKML, exportToCSV } from '../utils/exportUtils';
+import { exportToPDF, exportToKML } from '../utils/exportUtils';
+import { generateBASurveyPdf } from '../utils/baSurveyPdf';
+import { BASurveyData } from '../components/Forms/BASurveyForm';
 
 // =============================================================================
 // TYPES
@@ -203,16 +205,40 @@ export default function SurveySummaryScreen({
         }
     };
 
-    const handleExportCSV = async () => {
+    const handleExportBASurvey = async () => {
         setIsExporting(true);
         try {
-            const success = await exportToCSV(survey);
-            if (!success) {
-                Alert.alert('Error', 'Gagal mengexport CSV - Sharing tidak tersedia');
+            const baData: BASurveyData = {
+                jenisPermohonan: survey.jenisSurvey || 'Pasang Baru',
+                tarifDaya: survey.tarifDaya || 'R1 / 1300VA',
+                idPelanggan: survey.idPelanggan || '',
+                namaPelanggan: survey.namaPelanggan || (survey.namaSurvey ? survey.namaSurvey.split(' - ')[1]?.split(' (')[0] || survey.namaSurvey : ''),
+                alamat: survey.alamatPelanggan || survey.lokasi || '',
+                tanggalSurvey: new Date(survey.tanggalSurvey || Date.now()),
+                hasilSurvey: survey.hasilSurvey || 'DAPAT DILAKSANAKAN',
+                namaSurveyor: survey.surveyor || '',
+                namaPerwakilan: survey.namaPerwakilan || '',
+                keterangan: survey.keterangan || '',
+                appDipasang: survey.appDipasang || 'Persil',
+                konstruksiOleh: survey.konstruksiOleh || 'Pelanggan',
+                checklist: survey.baChecklist || {
+                    perluasanJTM: false,
+                    bangunGardu: false,
+                    perluasanJTR: false,
+                    tanamTiang: false,
+                    dikenakanPFK: false,
+                },
+                signaturePelanggan: survey.signaturePelanggan,
+                signatureSurveyor: survey.signatureSurveyor,
+            };
+
+            const pdfPath = await generateBASurveyPdf({ baData });
+            if (!pdfPath) {
+                Alert.alert('Error', 'Gagal mengexport BA Survey PDF');
             }
         } catch (error: any) {
-            console.error('CSV export error:', error);
-            Alert.alert('Error', `Gagal export CSV: ${error?.message || 'Unknown error'}`);
+            console.error('BA Survey export error:', error);
+            Alert.alert('Error', `Gagal export BA Survey: ${error?.message || 'Unknown error'}`);
         } finally {
             setIsExporting(false);
         }
@@ -621,16 +647,16 @@ export default function SurveySummaryScreen({
                                     )}
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.exportButton, styles.exportCSV]}
-                                    onPress={handleExportCSV}
+                                    style={[styles.exportButton, styles.exportBASurvey]}
+                                    onPress={handleExportBASurvey}
                                     disabled={isExporting}
                                 >
                                     {isExporting ? (
                                         <ActivityIndicator size="small" color="white" />
                                     ) : (
                                         <>
-                                            <Ionicons name="grid" size={24} color="#388E3C" style={{ marginBottom: 4 }} />
-                                            <Text style={styles.exportButtonText}>Export CSV (Excel)</Text>
+                                            <Ionicons name="clipboard" size={24} color="#388E3C" style={{ marginBottom: 4 }} />
+                                            <Text style={styles.exportButtonText}>Export BA Survey</Text>
                                         </>
                                     )}
                                 </TouchableOpacity>
@@ -651,7 +677,7 @@ export default function SurveySummaryScreen({
                                     )}
                                 </TouchableOpacity>
                             </View>
-                            <Text style={styles.exportHint}>KML & CSV bisa dibuka di Google Earth/Maps/Excel</Text>
+                            <Text style={styles.exportHint}>KML bisa dibuka di Google Earth/Maps</Text>
                         </View>
                     )}
 
@@ -895,7 +921,7 @@ const styles = StyleSheet.create({
     exportKML: {
         backgroundColor: '#FF9800',
     },
-    exportCSV: {
+    exportBASurvey: {
         backgroundColor: '#2E7D32', // Green
     },
     exportIcon: {
