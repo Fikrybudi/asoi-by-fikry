@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Survey, JalurKabel, Tiang, Gardu } from '../types';
+import { OverlayFile } from '../types/overlayTypes';
 import { exportToPDF, exportToKML, exportToCSV } from '../utils/exportUtils';
 
 // =============================================================================
@@ -29,6 +30,7 @@ interface SurveySummaryScreenProps {
     onNewSurvey: () => void;
     mapScreenshot?: string;
     onExportPDFGambar?: () => Promise<void>; // Callback to trigger map capture and PDF generation
+    overlayLayers?: OverlayFile[];
 }
 
 // =============================================================================
@@ -43,6 +45,7 @@ export default function SurveySummaryScreen({
     onNewSurvey,
     mapScreenshot,
     onExportPDFGambar,
+    overlayLayers,
 }: SurveySummaryScreenProps) {
     const [isExporting, setIsExporting] = useState(false);
     const [isExportingGambar, setIsExportingGambar] = useState(false);
@@ -172,7 +175,7 @@ export default function SurveySummaryScreen({
     const handleExportKML = async () => {
         setIsExporting(true);
         try {
-            const success = await exportToKML(survey);
+            const success = await exportToKML(survey, overlayLayers);
             if (!success) {
                 Alert.alert('Error', 'Gagal mengexport KML - Sharing tidak tersedia');
             }

@@ -6,6 +6,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Survey } from '../types';
+import { OverlayFile } from '../types/overlayTypes';
 
 // =============================================================================
 // HELPER
@@ -257,9 +258,160 @@ export const exportToPDF = async (survey: Survey): Promise<boolean> => {
 // =============================================================================
 
 /**
+ * Generate KML content for overlay layers (JTM eksisting, Gardu eksisting, Proteksi)
+ */
+const generateOverlayKML = (overlayLayers?: OverlayFile[]): string => {
+    if (!overlayLayers || overlayLayers.length === 0) return '';
+
+    const escapeXml = (str: string) => {
+        if (!str) return '';
+        return str.replace(/[<>&'"]/g, (c) => {
+            switch (c) {
+                case '<': return '&lt;';
+                case '>': return '&gt;';
+                case '&': return '&amp;';
+                case "'": return '&apos;';
+                case '"': return '&quot;';
+                default: return c;
+            }
+        });
+    };
+
+    let kml = '';
+
+    // Collect all JTM polylines
+    const jtmLayers = overlayLayers.filter(ol => ol.visible && (ol.type === 'jtm' || ol.data.polylines.length > 0));
+    if (jtmLayers.length > 0) {
+        let jtmPlacemarks = '';
+        jtmLayers.forEach(ol => {
+            ol.data.polylines.forEach(pl => {
+                const coords = pl.coords.map(c => `${c.lng},${c.lat},0`).join(' ');
+                jtmPlacemarks += `
+        <Placemark>
+            <name>${escapeXml(pl.name || 'JTM')}</name>
+            <description><![CDATA[
+                <b>Layer:</b> ${escapeXml(ol.name)}<br/>
+                ${Object.entries(pl.properties).map(([k, v]) => `<b>${escapeXml(k)}:</b> ${escapeXml(v)}`).join('<br/>')}
+            ]]></description>
+            <Style>
+                <LineStyle>
+                    <color>ff0066ff</color>
+                    <width>3</width>
+                </LineStyle>
+            </Style>
+            <LineString>
+                <tessellate>1</tessellate>
+                <coordinates>${coords}</coordinates>
+            </LineString>
+        </Placemark>`;
+            });
+        });
+        kml += `
+    <Folder>
+        <name>JTM Eksisting</name>
+        ${jtmPlacemarks}
+    </Folder>`;
+    }
+
+    // Collect Gardu overlay points
+    const garduLayers = overlayLayers.filter(ol => ol.visible && ol.type === 'gardu');
+    const garduPoints: { name: string; lat: number; lng: number; props: Record<string, string>; layerName: string }[] = [];
+    garduLayers.forEach(ol => {
+        ol.data.points.forEach(pt => {
+            garduPoints.push({ name: pt.name, lat: pt.lat, lng: pt.lng, props: pt.properties, layerName: ol.name });
+        });
+    });
+    // Also include gardu-style points from JTM layers (mixed files)
+    jtmLayers.forEach(ol => {
+        ol.data.points.forEach(pt => {
+            const isObservation = /pohon|mangga|bambu|kelapa|tebang|row|areuy|pepohonan|rambat|jambu/i.test(pt.name);
+            const isGardu = !isObservation && (
+                pt.properties['CLASSIFICATION']?.includes('GD') ||
+                pt.properties['TYPE_GARDU'] === 'GD' ||
+                /^[A-Za-z]{2,4}\d{3}[A-Za-z]?$/.test(pt.name)
+            );
+            if (isGardu) {
+                garduPoints.push({ name: pt.name, lat: pt.lat, lng: pt.lng, props: pt.properties, layerName: ol.name });
+            }
+        });
+    });
+
+    if (garduPoints.length > 0) {
+        const garduPlacemarks = garduPoints.map(pt => `
+        <Placemark>
+            <name>${escapeXml(pt.name)}</name>
+            <description><![CDATA[
+                <b>Layer:</b> ${escapeXml(pt.layerName)}<br/>
+                ${Object.entries(pt.props).filter(([_, v]) => v).map(([k, v]) => `<b>${escapeXml(k)}:</b> ${escapeXml(v)}`).join('<br/>')}
+            ]]></description>
+            <Style>
+                <IconStyle>
+                    <color>ffF48542</color>
+                    <scale>0.8</scale>
+                    <Icon><href>http://maps.google.com/mapfiles/kml/shapes/square.png</href></Icon>
+                </IconStyle>
+                <LabelStyle><scale>0.7</scale></LabelStyle>
+            </Style>
+            <Point>
+                <coordinates>${pt.lng},${pt.lat},0</coordinates>
+            </Point>
+        </Placemark>`).join('\n');
+
+        kml += `
+    <Folder>
+        <name>Gardu Eksisting (${garduPoints.length})</name>
+        ${garduPlacemarks}
+    </Folder>`;
+    }
+
+    // Collect Proteksi overlay points
+    const proteksiLayers = overlayLayers.filter(ol => ol.visible && ol.type === 'proteksi');
+    if (proteksiLayers.length > 0) {
+        let proteksiPlacemarks = '';
+        proteksiLayers.forEach(ol => {
+            ol.data.points.forEach(pt => {
+                const jenis = pt.properties['JENIS'] || pt.properties['jenis'] || '';
+                const ulp = pt.properties['ULP'] || pt.properties['ulp'] || '';
+                const pnl = pt.properties['PNL1'] || pt.properties['pnl1'] || '';
+                proteksiPlacemarks += `
+        <Placemark>
+            <name>${escapeXml(pt.name)}</name>
+            <description><![CDATA[
+                <b>Jenis:</b> ${escapeXml(jenis)}<br/>
+                <b>ULP:</b> ${escapeXml(ulp)}<br/>
+                <b>PNL:</b> ${escapeXml(pnl)}<br/>
+                <b>Layer:</b> ${escapeXml(ol.name)}
+            ]]></description>
+            <Style>
+                <IconStyle>
+                    <color>ff0066FF</color>
+                    <scale>0.8</scale>
+                    <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+                </IconStyle>
+                <LabelStyle><scale>0.7</scale></LabelStyle>
+            </Style>
+            <Point>
+                <coordinates>${pt.lng},${pt.lat},0</coordinates>
+            </Point>
+        </Placemark>`;
+            });
+        });
+
+        const totalProteksi = proteksiLayers.reduce((sum, ol) => sum + ol.data.points.length, 0);
+        kml += `
+    <Folder>
+        <name>Titik Proteksi (${totalProteksi})</name>
+        ${proteksiPlacemarks}
+    </Folder>`;
+    }
+
+    return kml;
+};
+
+/**
  * Generate KML content for survey
  */
-const generateKML = (survey: Survey): string => {
+const generateKML = (survey: Survey, overlayLayers?: OverlayFile[]): string => {
     // Helper to escape XML
     const escapeXml = (str: string) => {
         if (!str) return '';
@@ -396,6 +548,7 @@ const generateKML = (survey: Survey): string => {
         ${jalurLines}
     </Folder>
     
+    ${generateOverlayKML(overlayLayers)}
 </Document>
 </kml>`;
 };
@@ -403,9 +556,9 @@ const generateKML = (survey: Survey): string => {
 /**
  * Export survey to KML and share
  */
-export const exportToKML = async (survey: Survey): Promise<boolean> => {
+export const exportToKML = async (survey: Survey, overlayLayers?: OverlayFile[]): Promise<boolean> => {
     try {
-        const kml = generateKML(survey);
+        const kml = generateKML(survey, overlayLayers);
 
         // Create filename
         const safeName = survey.namaSurvey.replace(/[^a-zA-Z0-9]/g, '_');

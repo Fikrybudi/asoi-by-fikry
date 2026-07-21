@@ -123,6 +123,7 @@ export default function App() {
 
   // BA Survey form state
   const [showBASurveyForm, setShowBASurveyForm] = useState(false);
+  const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
 
   // Overlay layers state
   const [overlayLayers, setOverlayLayers] = useState<OverlayFile[]>([]);
@@ -1747,6 +1748,7 @@ export default function App() {
           onSaveAndClose={handleSaveAndClose}
           onNewSurvey={handleNewSurvey}
           onExportPDFGambar={handleExportPDFGambar}
+          overlayLayers={overlayLayers}
         />
       )}
 
@@ -1754,6 +1756,11 @@ export default function App() {
       <SurveyHistoryScreen
         visible={showHistory}
         onSelectSurvey={handleSelectSurvey}
+        onEditSurvey={(survey) => {
+          setEditingSurvey(survey);
+          setShowBASurveyForm(true);
+          setShowHistory(false);
+        }}
         onNewSurvey={() => {
           setShowHistory(false);
           handleNewSurvey();
@@ -1764,8 +1771,50 @@ export default function App() {
       {/* BA Survey Form - New Survey Creation */}
       <BASurveyForm
         visible={showBASurveyForm}
-        onClose={() => setShowBASurveyForm(false)}
-        onSubmit={handleBASurveySubmit}
+        onClose={() => {
+          setShowBASurveyForm(false);
+          setEditingSurvey(null);
+        }}
+        onSubmit={async (baData) => {
+          if (editingSurvey) {
+            // Edit mode: update existing survey
+            try {
+              const tanggal = baData.tanggalSurvey.toLocaleDateString('id-ID');
+              const surveyName = `${baData.jenisPermohonan} - ${baData.namaPelanggan} (${tanggal})`;
+              await surveyService.update(editingSurvey.id, {
+                namaSurvey: surveyName,
+                jenisSurvey: baData.jenisPermohonan,
+                lokasi: baData.alamat,
+                surveyor: baData.namaSurveyor || session?.user?.email || 'Surveyor',
+                tanggalSurvey: baData.tanggalSurvey,
+                idPelanggan: baData.idPelanggan,
+                alamatPelanggan: baData.alamat,
+                tarifDaya: baData.tarifDaya,
+                hasilSurvey: baData.hasilSurvey,
+                namaPerwakilan: baData.namaPerwakilan,
+                keterangan: baData.keterangan,
+                appDipasang: baData.appDipasang,
+                konstruksiOleh: baData.konstruksiOleh,
+                baChecklist: baData.checklist,
+              });
+              // Reload survey if it's the current one
+              if (currentSurvey?.id === editingSurvey.id) {
+                const updated = await surveyService.getById(editingSurvey.id);
+                if (updated) setCurrentSurvey(updated);
+              }
+              setShowBASurveyForm(false);
+              setEditingSurvey(null);
+              Alert.alert('✅ Berhasil', 'Data survey berhasil diperbarui!');
+            } catch (error) {
+              console.error('Error updating survey:', error);
+              Alert.alert('Error', 'Gagal memperbarui survey');
+            }
+          } else {
+            // New survey mode
+            await handleBASurveySubmit(baData);
+          }
+        }}
+        initialData={editingSurvey || undefined}
       />
       {/* Layer Control Modal */}
       <LayerControlModal
