@@ -178,48 +178,76 @@ export const supabaseSurveyService = {
     /**
      * Sync a survey to Supabase
      */
-    async upsertSurvey(survey: Survey): Promise<boolean> {
+    /**
+     * Sync a survey to Supabase
+     */
+    async upsertSurvey(survey: Survey): Promise<{ success: boolean; error?: string }> {
         try {
             // Get current user for ownership
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 console.error('No authenticated user');
-                return false;
+                return {
+                    success: false,
+                    error: 'Anda belum login ke akun Supabase. Silakan login terlebih dahulu melalui menu Login.'
+                };
             }
+
+            let tanggalIso = new Date().toISOString();
+            try {
+                if (survey.tanggalSurvey) {
+                    const d = new Date(survey.tanggalSurvey);
+                    if (!isNaN(d.getTime())) {
+                        tanggalIso = d.toISOString();
+                    }
+                }
+            } catch (e) {}
 
             const surveyRow: Partial<SurveyRow> = {
                 id: survey.id,
                 user_id: user.id,  // Associate survey with current user
-                nama_survey: survey.namaSurvey,
-                jenis_survey: survey.jenisSurvey,
-                lokasi: survey.lokasi,
-                kecamatan: survey.kecamatan,
-                kelurahan: survey.kelurahan,
-                nama_feeder: survey.namaFeeder,
-                nama_gardu_induk: survey.namaGarduInduk,
-                surveyor: survey.surveyor,
-                tanggal_survey: new Date(survey.tanggalSurvey).toISOString(),
+                nama_survey: survey.namaSurvey || 'Survey Tanpa Nama',
+                jenis_survey: survey.jenisSurvey || 'SUTM',
+                lokasi: survey.lokasi || '',
+                kecamatan: survey.kecamatan || '',
+                kelurahan: survey.kelurahan || '',
+                nama_feeder: survey.namaFeeder || '',
+                nama_gardu_induk: survey.namaGarduInduk || '',
+                surveyor: survey.surveyor || '',
+                tanggal_survey: tanggalIso,
                 updated_at: new Date().toISOString(),
             };
 
-            const { error } = await supabase
+            const { error: surveyErr } = await supabase
                 .from('surveys')
                 .upsert(surveyRow, { onConflict: 'id' });
 
-            if (error) {
-                console.error('Survey upsert error:', error);
-                return false;
+            if (surveyErr) {
+                console.error('Survey upsert error:', surveyErr);
+                return {
+                    success: false,
+                    error: `Gagal upsert survey (${surveyErr.code || 'RLS/DB Error'}): ${surveyErr.message}`
+                };
             }
 
-            // Sync tiang, gardu, jalur
-            await this.syncTiangList(survey.id, survey.tiangList);
-            await this.syncGarduList(survey.id, survey.garduList);
-            await this.syncJalurList(survey.id, survey.jalurList);
+            // Sync tiang, gardu, jalur safely
+            if (survey.tiangList && survey.tiangList.length > 0) {
+                await this.syncTiangList(survey.id, survey.tiangList);
+            }
+            if (survey.garduList && survey.garduList.length > 0) {
+                await this.syncGarduList(survey.id, survey.garduList);
+            }
+            if (survey.jalurList && survey.jalurList.length > 0) {
+                await this.syncJalurList(survey.id, survey.jalurList);
+            }
 
-            return true;
-        } catch (error) {
+            return { success: true };
+        } catch (error: any) {
             console.error('Survey sync error:', error);
-            return false;
+            return {
+                success: false,
+                error: error?.message || 'Terjadi kesalahan sistem saat sinkronisasi survey.'
+            };
         }
     },
 
@@ -228,24 +256,28 @@ export const supabaseSurveyService = {
      */
     async syncTiangList(surveyId: string, tiangList: Tiang[]): Promise<void> {
         for (const tiang of tiangList) {
-            const tiangRow: Partial<TiangRow> = {
-                id: tiang.id,
-                survey_id: surveyId,
-                nomor_urut: tiang.nomorUrut,
-                latitude: tiang.koordinat.latitude,
-                longitude: tiang.koordinat.longitude,
-                jenis_tiang: tiang.jenisTiang,
-                tinggi_tiang: tiang.tinggiTiang,
-                kekuatan_tiang: tiang.kekuatanTiang,
-                jenis_jaringan: tiang.jenisJaringan,
-                konstruksi: tiang.konstruksi,
-                perlengkapan: tiang.perlengkapan,
-                foto: tiang.foto,
-                catatan: tiang.catatan,
-                updated_at: new Date().toISOString(),
-            };
+            try {
+                const tiangRow: Partial<TiangRow> = {
+                    id: tiang.id,
+                    survey_id: surveyId,
+                    nomor_urut: tiang.nomorUrut || 1,
+                    latitude: tiang.koordinat?.latitude || 0,
+                    longitude: tiang.koordinat?.longitude || 0,
+                    jenis_tiang: tiang.jenisTiang || 'Beton',
+                    tinggi_tiang: tiang.tinggiTiang || '12m',
+                    kekuatan_tiang: tiang.kekuatanTiang || '',
+                    jenis_jaringan: tiang.jenisJaringan || 'SUTM',
+                    konstruksi: tiang.konstruksi || '',
+                    perlengkapan: tiang.perlengkapan || [],
+                    foto: tiang.foto || [],
+                    catatan: tiang.catatan || '',
+                    updated_at: new Date().toISOString(),
+                };
 
-            await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+                await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+            } catch (err) {
+                console.error(`Error syncing tiang ${tiang.id}:`, err);
+            }
         }
     },
 
@@ -254,24 +286,28 @@ export const supabaseSurveyService = {
      */
     async syncGarduList(surveyId: string, garduList: Gardu[]): Promise<void> {
         for (const gardu of garduList) {
-            const garduRow: Partial<GarduRow> = {
-                id: gardu.id,
-                survey_id: surveyId,
-                nomor_gardu: gardu.nomorGardu,
-                nama_gardu: gardu.namaGardu,
-                latitude: gardu.koordinat.latitude,
-                longitude: gardu.koordinat.longitude,
-                jenis_gardu: gardu.jenisGardu,
-                kapasitas_kva: gardu.kapasitasKVA,
-                merek_trafo: gardu.merekTrafo,
-                tahun_pasang: gardu.tahunPasang,
-                peralatan_proteksi: gardu.peralatanProteksi,
-                foto: gardu.foto,
-                catatan: gardu.catatan,
-                updated_at: new Date().toISOString(),
-            };
+            try {
+                const garduRow: Partial<GarduRow> = {
+                    id: gardu.id,
+                    survey_id: surveyId,
+                    nomor_gardu: gardu.nomorGardu || '',
+                    nama_gardu: gardu.namaGardu || '',
+                    latitude: gardu.koordinat?.latitude || 0,
+                    longitude: gardu.koordinat?.longitude || 0,
+                    jenis_gardu: gardu.jenisGardu || 'Cantol',
+                    kapasitas_kva: gardu.kapasitasKVA || 0,
+                    merek_trafo: gardu.merekTrafo || '',
+                    tahun_pasang: gardu.tahunPasang || new Date().getFullYear(),
+                    peralatan_proteksi: gardu.peralatanProteksi || [],
+                    foto: gardu.foto || [],
+                    catatan: gardu.catatan || '',
+                    updated_at: new Date().toISOString(),
+                };
 
-            await supabase.from('gardu').upsert(garduRow, { onConflict: 'id' });
+                await supabase.from('gardu').upsert(garduRow, { onConflict: 'id' });
+            } catch (err) {
+                console.error(`Error syncing gardu ${gardu.id}:`, err);
+            }
         }
     },
 
@@ -280,22 +316,26 @@ export const supabaseSurveyService = {
      */
     async syncJalurList(surveyId: string, jalurList: JalurKabel[]): Promise<void> {
         for (const jalur of jalurList) {
-            const jalurRow: Partial<JalurRow> = {
-                id: jalur.id,
-                survey_id: surveyId,
-                nama_jalur: jalur.namaJalur,
-                koordinat: jalur.koordinat,
-                jenis_jaringan: jalur.jenisJaringan,
-                jenis_penghantar: jalur.jenisPenghantar,
-                penampang_mm: jalur.penampangMM,
-                panjang_meter: jalur.panjangMeter,
-                tiang_ids: jalur.tiangIds,
-                status: jalur.status,
-                catatan: jalur.catatan,
-                updated_at: new Date().toISOString(),
-            };
+            try {
+                const jalurRow: Partial<JalurRow> = {
+                    id: jalur.id,
+                    survey_id: surveyId,
+                    nama_jalur: jalur.namaJalur || '',
+                    koordinat: jalur.koordinat || [],
+                    jenis_jaringan: jalur.jenisJaringan || 'SUTM',
+                    jenis_penghantar: jalur.jenisPenghantar || '',
+                    penampang_mm: jalur.penampangMM || '',
+                    panjang_meter: jalur.panjangMeter || 0,
+                    tiang_ids: jalur.tiangIds || [],
+                    status: jalur.status || 'existing',
+                    catatan: jalur.catatan || '',
+                    updated_at: new Date().toISOString(),
+                };
 
-            await supabase.from('jalur').upsert(jalurRow, { onConflict: 'id' });
+                await supabase.from('jalur').upsert(jalurRow, { onConflict: 'id' });
+            } catch (err) {
+                console.error(`Error syncing jalur ${jalur.id}:`, err);
+            }
         }
     },
 
@@ -550,7 +590,8 @@ export const syncManager = {
                     if (item.action === 'delete') {
                         synced = await supabaseSurveyService.deleteSurvey(item.entityId);
                     } else {
-                        synced = await supabaseSurveyService.upsertSurvey(item.data);
+                        const res = await supabaseSurveyService.upsertSurvey(item.data);
+                        synced = typeof res === 'boolean' ? res : res.success;
                     }
                 }
 

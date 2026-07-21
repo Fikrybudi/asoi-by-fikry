@@ -28,7 +28,8 @@ const generateMapHTML = (
   selectedTiangIds: string[] = [],
   zoomLevel: number = 18,
   persilList: PersilPelanggan[] = [],
-  overlayLayers: OverlayFile[] = []
+  overlayLayers: OverlayFile[] = [],
+  activeBaseMap: string = 'streets'
 ) => {
   const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
 
@@ -43,7 +44,7 @@ const generateMapHTML = (
       .replace(/\r/g, '<br>');
   };
   // Tiang markers with labels
-  const tiangMarkers = tiangList.map(t => {
+  const tiangMarkers = tiangList.map((t, tiangIndex) => {
     // Color based on jenis jaringan
     let bgColor = '#2196F3'; // Default SUTM
     let borderColor = '#1565C0';
@@ -173,15 +174,17 @@ const generateMapHTML = (
 
     // Define 8 quadrants with their label offset directions
     // Position indices: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
+    // Define 8 quadrants with unified label offset directions
+    // Position indices: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
     const quadrants = [
-      { angle: -90, offsetX: 0, offsetY: 1 },   // 0: N - Label North (above)
-      { angle: -45, offsetX: -1, offsetY: 1 },   // 1: NE - Label NorthEast
-      { angle: 0, offsetX: -1, offsetY: 0 },     // 2: E - Label East (right)
-      { angle: 45, offsetX: -1, offsetY: -1 },   // 3: SE - Label SouthEast
-      { angle: 90, offsetX: 0, offsetY: -1 },   // 4: S - Label South (below)
-      { angle: 135, offsetX: 1, offsetY: -1 },   // 5: SW - Label SouthWest
-      { angle: 180, offsetX: 1, offsetY: 0 },   // 6: W - Label West (left)
-      { angle: -135, offsetX: 1, offsetY: 1 },   // 7: NW - Label NorthWest
+      { angle: 90, offsetX: 0, offsetY: 1 },      // 0: N - Label North (+lat)
+      { angle: 45, offsetX: 1, offsetY: 1 },      // 1: NE - Label NorthEast (+lat, +lng)
+      { angle: 0, offsetX: 1, offsetY: 0 },       // 2: E - Label East (+lng)
+      { angle: -45, offsetX: 1, offsetY: -1 },    // 3: SE - Label SouthEast (-lat, +lng)
+      { angle: -90, offsetX: 0, offsetY: -1 },    // 4: S - Label South (-lat)
+      { angle: -135, offsetX: -1, offsetY: -1 },  // 5: SW - Label SouthWest (-lat, -lng)
+      { angle: 180, offsetX: -1, offsetY: 0 },    // 6: W - Label West (-lng)
+      { angle: 135, offsetX: -1, offsetY: 1 },    // 7: NW - Label NorthWest (+lat, -lng)
     ];
 
     // Check if user has manually set label position
@@ -197,6 +200,7 @@ const generateMapHTML = (
       let maxMinDist = -1;
 
       if (normalizedAngles.length > 0) {
+        let candidates: typeof quadrants = [];
         for (const q of quadrants) {
           let minDist = 180;
 
@@ -208,16 +212,28 @@ const generateMapHTML = (
 
           if (minDist > maxMinDist) {
             maxMinDist = minDist;
-            bestQuadrant = q;
+            candidates = [q];
+          } else if (minDist === maxMinDist) {
+            candidates.push(q);
           }
         }
+
+        if (candidates.length > 1) {
+          // Stagger consecutive tiang labels if multiple equally good quadrants exist
+          bestQuadrant = candidates[tiangIndex % candidates.length];
+        } else if (candidates.length === 1) {
+          bestQuadrant = candidates[0];
+        }
+      } else {
+        // Alternate North and South if no angles detected
+        bestQuadrant = (tiangIndex % 2 === 0) ? quadrants[0] : quadrants[4];
       }
     }
 
-    // Calculate anchor offset (further from tiang to avoid overlapping jalur)
-    const offsetPx = 35;
-    const anchorX = (circleSize / 2) - (bestQuadrant.offsetX * offsetPx);
-    const anchorY = (circleSize / 2 + 10) - (bestQuadrant.offsetY * offsetPx);
+    // Calculate label offset position in geographic coordinates (~28 meters offset)
+    const labelOffsetDeg = 0.00028;
+    const labelLat = t.koordinat.latitude + (bestQuadrant.offsetY * labelOffsetDeg);
+    const labelLng = t.koordinat.longitude + (bestQuadrant.offsetX * labelOffsetDeg);
 
     // Create circular label HTML with 3 sections
     const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + borderColor + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
@@ -232,21 +248,54 @@ const generateMapHTML = (
     const escapedHtml = circleLabelHtml.replace(/"/g, '\\"');
 
     return `
-    // Tiang marker with Smart Label Placement
-    L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
+    // Thin Leader Line connecting tiang dot to circular label badge
+    var line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} = L.polyline([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [${labelLat}, ${labelLng}]], {
+      color: '#555555',
+      weight: 1.2,
+      dashArray: '2, 3',
+      opacity: 0.85,
+      interactive: false,
+      className: 'leader-line'
+    }).addTo(map);
+
+    // Draggable circular tiang label badge
+    var marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} = L.marker([${labelLat}, ${labelLng}], {
+      draggable: true,
       icon: L.divIcon({
         className: 'tiang-icon',
         html: "${escapedHtml}",
         iconSize: [${circleSize}, ${circleSize}],
-        iconAnchor: [${anchorX}, ${anchorY}]
-      })
-    }).addTo(map).bindPopup('<b>Tiang ${t.nomorUrut}</b><br>${t.konstruksi}<br>${t.jenisTiang} ${t.tinggiTiang}/${t.kekuatanTiang}<br><i>Tap label untuk geser</i>')
-      .on('click', function() {
-        // Send label shift message with current position
-        var currentPos = ${typeof t.labelPosition === 'number' ? t.labelPosition : -1};
-        var nextPos = (currentPos + 1) % 8;  // Cycle 0-7
-        window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiangLabelShift', id: '${t.id}', newPosition: nextPos}));
+        iconAnchor: [${circleSize / 2}, ${circleSize / 2}]
+      }),
+      zIndexOffset: 2000
+    }).addTo(map);
+
+    // Live update leader line position while dragging
+    marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('drag', function(e) {
+      line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], e.latlng]);
+    });
+
+    // Snap to nearest 8-direction quadrant on drag end
+    marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('dragend', function(e) {
+      var dy = e.latlng.lat - ${t.koordinat.latitude};
+      var dx = e.latlng.lng - ${t.koordinat.longitude};
+      var angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+
+      var quadrantAngles = [90, 45, 0, -45, -90, -135, 180, 135];
+      var bestIdx = 0;
+      var minDiff = 360;
+      quadrantAngles.forEach(function(ang, idx) {
+        var diff = Math.abs(ang - angleDeg);
+        if (diff > 180) diff = 360 - diff;
+        if (diff < minDiff) { minDiff = diff; bestIdx = idx; }
       });
+
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'tiangLabelShift',
+        id: '${t.id}',
+        newPosition: bestIdx
+      }));
+    });
     
     // Small dot at exact location
     L.circleMarker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
@@ -661,6 +710,7 @@ const generateMapHTML = (
         const uniqueFeeders = Array.from(new Set(ol.data.polylines.map(pl => pl.name || 'Unknown')));
 
         ol.data.polylines.forEach((pl) => {
+          if (ol.hiddenFeeders && ol.hiddenFeeders.includes(pl.name)) return;
           const feederIdx = uniqueFeeders.indexOf(pl.name || 'Unknown');
           const color = ol.color || feederColors[feederIdx % feederColors.length];
           const coords = pl.coords.map(c => `[${c.lat}, ${c.lng}]`).join(',');
@@ -707,6 +757,28 @@ const generateMapHTML = (
                                 pt.properties['TYPE_GARDU'] === 'GD' || 
                                 pt.name.match(/^[A-Za-z]{2,4}\d{3}[A-Za-z]?$/));
 
+          // Determine if this is a Proteksi point (by type, name, or properties)
+          const isProteksiPoint = ol.type === 'proteksi' || 
+                                  /lbs|gh|pmr|sso|recloser|fuse|cutout|fco|proteksi/i.test(pt.name) ||
+                                  /lbs|gh|pmr|sso|recloser|fuse|cutout|fco|proteksi/i.test(pt.properties['JENIS'] || pt.properties['jenis'] || '') ||
+                                  /lbs|gh|pmr|sso|recloser|fuse|cutout|fco|proteksi/i.test(pt.properties['TYPE'] || pt.properties['type'] || '');
+
+          const ptFeeder = pt.properties['feeder'] || pt.properties['FEEDER'] || pt.properties['PENYULANG'] || pt.properties['penyulang'] || '';
+
+          // 1. Hide point if its parent feeder is hidden
+          if (ptFeeder && ol.hiddenFeeders && ol.hiddenFeeders.includes(ptFeeder)) return;
+
+          // 2. Hide point if its specific type or type+feeder is hidden
+          if (isGarduPoint) {
+            if (ol.hiddenTypes && (ol.hiddenTypes.includes('gardu') || (ptFeeder && ol.hiddenTypes.includes('gardu_' + ptFeeder)))) return;
+          }
+          if (isProteksiPoint) {
+            if (ol.hiddenTypes && (ol.hiddenTypes.includes('proteksi') || (ptFeeder && ol.hiddenTypes.includes('proteksi_' + ptFeeder)))) return;
+          }
+          if (!isGarduPoint && !isProteksiPoint && !isObservation) {
+            if (ol.hiddenTypes && (ol.hiddenTypes.includes('custom') || (ptFeeder && ol.hiddenTypes.includes('custom_' + ptFeeder)))) return;
+          }
+
           if (isObservation) {
             // ── OBSERVATION POINT: Green small circle marker ──
             js += `
@@ -752,18 +824,28 @@ const generateMapHTML = (
               }).addTo(map);
             `;
 
-          } else if (ol.type === 'proteksi') {
-            // ── PROTEKSI: Orange circle marker (like Google Maps) ──
-            const jenis = escapeForJsString(pt.properties['JENIS'] || pt.properties['jenis']).toUpperCase();
+          } else if (isProteksiPoint) {
+            // ── PROTEKSI: Distinct marker colors per type (GH, LBS, PMR, SSO) ──
+            let jenis = escapeForJsString(pt.properties['JENIS'] || pt.properties['jenis'] || '').toUpperCase();
+            if (!jenis) {
+              const nameUpper = pt.name.toUpperCase();
+              if (nameUpper.includes('GH')) jenis = 'GH';
+              else if (nameUpper.includes('LBS')) jenis = 'LBS';
+              else if (nameUpper.includes('PMR') || nameUpper.includes('RECLOSER')) jenis = 'PMR';
+              else if (nameUpper.includes('SSO')) jenis = 'SSO';
+            }
+
             let markerColor = '#FF6600'; // default orange
-            if (jenis === 'GH') markerColor = '#FF6600';
-            else if (jenis === 'LBS') markerColor = '#FF6600';
-            else if (jenis === 'PMR') markerColor = '#FF0000';
-            else if (jenis === 'SSO') markerColor = '#FF6600';
+            if (jenis === 'GH') markerColor = '#D32F2F';       // Red for Gardu Hubung (GH)
+            else if (jenis === 'LBS') markerColor = '#E65100';  // Dark Orange for LBS
+            else if (jenis === 'PMR') markerColor = '#C2185B';  // Magenta/Red for PMR (Recloser)
+            else if (jenis === 'SSO') markerColor = '#F57C00';  // Orange for SSO
 
             const ulp = escapeForJsString(pt.properties['ULP'] || pt.properties['ulp']);
             const pnl1 = escapeForJsString(pt.properties['PNL1'] || pt.properties['pnl1']);
             popupExtra = (jenis ? '<br>Jenis: ' + jenis : '') + (ulp ? '<br>ULP: ' + ulp : '') + (pnl1 ? '<br>PNL: ' + pnl1 : '');
+
+            const labelText = jenis && !nameEsc.toUpperCase().startsWith(jenis) ? '[' + jenis + '] ' + nameEsc : nameEsc;
 
             js += `
               L.marker([${pt.lat}, ${pt.lng}], {
@@ -776,20 +858,20 @@ const generateMapHTML = (
                 interactive: true
               }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${olNameEsc}</i>');
 
-              // Proteksi name label
+              // Proteksi name & type label badge on map
               L.marker([${pt.lat}, ${pt.lng}], {
                 icon: L.divIcon({
                   className: 'overlay-proteksi-label overlay-layer overlay-${ol.id}',
-                  html: '<div style="color:#CC5500;font-size:9px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 3px white;opacity:${opacity};">${nameEsc}</div>',
+                  html: '<div style="color:${markerColor};font-size:10px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;opacity:${opacity};">${labelText}</div>',
                   iconSize: null,
-                  iconAnchor: [-12, 5]
+                  iconAnchor: [-12, 6]
                 }),
                 interactive: false
               }).addTo(map);
             `;
 
           } else {
-            // ── CUSTOM: simple circle marker ──
+            // ── CUSTOM: circle marker with name label badge ──
             js += `
               L.circleMarker([${pt.lat}, ${pt.lng}], {
                 radius: 5,
@@ -801,6 +883,16 @@ const generateMapHTML = (
                 className: 'overlay-custom overlay-layer overlay-${ol.id}',
                 interactive: true
               }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:#999">${olNameEsc}</i>');
+
+              L.marker([${pt.lat}, ${pt.lng}], {
+                icon: L.divIcon({
+                  className: 'overlay-custom-label overlay-layer overlay-${ol.id}',
+                  html: '<div style="color:#455A64;font-size:9px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 3px white;opacity:${opacity};">${nameEsc}</div>',
+                  iconSize: null,
+                  iconAnchor: [-10, 5]
+                }),
+                interactive: false
+              }).addTo(map);
             `;
           }
         });
@@ -832,10 +924,10 @@ const generateMapHTML = (
   <style>
     * { margin: 0; padding: 0; }
     html, body, #map { height: 100%; width: 100%; }
-    .gardu-icon { background: transparent !important; border: none !important; }
+    .tiang-icon, .gardu-icon, .persil-label, .segment-label { background: transparent !important; border: none !important; box-shadow: none !important; }
     .overlay-gardu, .overlay-gardu-label,
     .overlay-proteksi, .overlay-proteksi-label,
-    .overlay-custom { background: transparent !important; border: none !important; }
+    .overlay-custom { background: transparent !important; border: none !important; box-shadow: none !important; }
     .leaflet-control-attribution { display: none; }
     
     /* Disable blue/orange tap highlight on Android/iOS */
@@ -961,8 +1053,15 @@ const generateMapHTML = (
       attribution: '© Google Maps'
     });
     
-    // Default to streets
-    googleStreets.addTo(map);
+    // Set active base map based on activeBaseMap parameter
+    var initialBaseMap = '${activeBaseMap || 'streets'}';
+    if (initialBaseMap === 'satellite') {
+      googleSatellite.addTo(map);
+    } else if (initialBaseMap === 'hybrid') {
+      googleHybrid.addTo(map);
+    } else {
+      googleStreets.addTo(map);
+    }
     
     // Layer control
     var baseMaps = {
@@ -972,6 +1071,17 @@ const generateMapHTML = (
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+
+    // Notify React Native when user switches base layer in map
+    map.on('baselayerchange', function(e) {
+      var selectedType = 'streets';
+      if (e.name && e.name.indexOf('Satelit') !== -1) selectedType = 'satellite';
+      else if (e.name && e.name.indexOf('Hybrid') !== -1) selectedType = 'hybrid';
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'baseMapChange',
+        baseMap: selectedType
+      }));
+    });
 
     // User location marker
     var userMarker = L.circleMarker([${center.latitude}, ${center.longitude}], {
@@ -1083,10 +1193,27 @@ const generateMapHTML = (
       }
       isCapturing = true;
 
+      var mapEl = document.getElementById('map');
+      var origWidth = mapEl ? mapEl.style.width : '';
+      var origHeight = mapEl ? mapEl.style.height : '';
+      var origPos = mapEl ? mapEl.style.position : '';
+
+      // Force fixed A4 Landscape aspect ratio (1200px x 848px) for perfectly consistent capture across all devices
+      if (mapEl) {
+        mapEl.style.width = '1200px';
+        mapEl.style.height = '848px';
+        mapEl.style.position = 'fixed';
+        mapEl.style.top = '0';
+        mapEl.style.left = '0';
+        mapEl.style.zIndex = '99999';
+      }
+
+      // Re-evaluate container dimensions in Leaflet
+      map.invalidateSize();
+
       // First fit bounds if provided
       if (bounds) {
-        map.invalidateSize();
-        map.fitBounds(bounds, { animate: false, padding: [0, 0] });
+        map.fitBounds(bounds, { animate: false, padding: [15, 15] });
       }
       
       // Helper null-safe hide/show
@@ -1095,6 +1222,23 @@ const generateMapHTML = (
         if (el) el.style.display = val;
       }
       
+      function restoreMapUI() {
+        if (mapEl) {
+          mapEl.style.width = origWidth || '';
+          mapEl.style.height = origHeight || '';
+          mapEl.style.position = origPos || '';
+          mapEl.style.top = '';
+          mapEl.style.left = '';
+          mapEl.style.zIndex = '';
+        }
+        map.invalidateSize();
+        setDisplay('.legend', '');
+        setDisplay('.leaflet-control-zoom', '');
+        setDisplay('.crosshair', '');
+        setDisplay('.leaflet-control-layers', '');
+        isCapturing = false;
+      }
+
       // Hide UI elements
       setDisplay('.legend', 'none');
       setDisplay('.leaflet-control-zoom', 'none');
@@ -1104,12 +1248,7 @@ const generateMapHTML = (
       // Safety timeout to reset isCapturing if html2canvas locks up
       var safetyTimeout = setTimeout(function() {
         if (isCapturing) {
-          isCapturing = false;
-          // Restore UI
-          setDisplay('.legend', '');
-          setDisplay('.leaflet-control-zoom', '');
-          setDisplay('.crosshair', '');
-          setDisplay('.leaflet-control-layers', '');
+          restoreMapUI();
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'mapCaptureError',
             error: 'html2canvas capture timeout (15s)'
@@ -1117,7 +1256,7 @@ const generateMapHTML = (
         }
       }, 15000);
 
-      // Wait for tiles to render (3000ms â€” cukup untuk segmen baru)
+      // Wait for tiles & Leaflet layout to stabilize (2500ms)
       setTimeout(function() {
         try {
           if (typeof html2canvas === 'undefined') {
@@ -1127,91 +1266,141 @@ const generateMapHTML = (
             useCORS: true,
             allowTaint: false, // Prevent canvas taint SecurityError
             logging: false,
-            scale: 1 // Force scale: 1 to avoid Out-Of-Memory (OOM) on high-DPI screens (e.g. 3x/4x)
+            scale: 1, // Force scale: 1 to avoid Out-Of-Memory (OOM) on high-DPI screens
+            width: 1200,
+            height: 848
           }).then(function(canvas) {
             clearTimeout(safetyTimeout);
             var base64 = canvas.toDataURL('image/png').split(',')[1];
+            restoreMapUI();
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'mapCapture',
               base64: base64
             }));
-            
-            // Restore UI
-            setDisplay('.legend', '');
-            setDisplay('.leaflet-control-zoom', '');
-            setDisplay('.crosshair', '');
-            setDisplay('.leaflet-control-layers', '');
-            isCapturing = false;
           }).catch(function(err) {
             clearTimeout(safetyTimeout);
+            restoreMapUI();
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'mapCaptureError',
               error: err.message || 'html2canvas failed'
-  			}));
-            // Restore UI
-            setDisplay('.legend', '');
-            setDisplay('.leaflet-control-zoom', '');
-            setDisplay('.crosshair', '');
-            setDisplay('.leaflet-control-layers', '');
-            isCapturing = false;
+            }));
           });
         } catch (err) {
           clearTimeout(safetyTimeout);
+          restoreMapUI();
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'mapCaptureError',
             error: err.message || 'html2canvas failed'
           }));
-          // Restore UI
-          setDisplay('.legend', '');
-          setDisplay('.leaflet-control-zoom', '');
-          setDisplay('.crosshair', '');
-          setDisplay('.leaflet-control-layers', '');
-          isCapturing = false;
         }
-      }, 3000);
+      }, 2500);
     };
 
     window._segBoundaryMarkers = [];
 
     // Tambah marker huruf (A, B, C...) di titik batas segmen PDF
-    // Sekarang menampilkan label pasangan (misal A—A) + garis potong dashed merah
+    // Menggambar garis potong MERAH TERPOTONG TEGAK LURUS terhadap arah jalur kabel + pasang label A — A di ujung garis
+    // Tambah marker huruf (A, B, C...) di titik batas segmen PDF
+    // Menggambar garis potong MERAH TERPOTONG TEGAK LURUS terhadap arah jalur kabel + pasang label A — A di ujung garis
     window.addSegmentBoundaryMarkers = function(markers) {
       if (!markers || markers.length === 0) return;
       markers.forEach(function(m) {
-        // Label badge atas
-        var topHtml = [
-          '<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">',
-            '<div style="background:#D32F2F;color:white;font-weight:bold;font-size:14px;',
-              'padding:3px 8px;border-radius:4px;box-shadow:0 2px 5px rgba(0,0,0,0.5);',
-              'border:2px solid white;white-space:nowrap;">',
-              m.label + '—' + m.label,
+        var dx = 0;
+        var dy = 1; // Default jika tidak ditemukan
+        var minDistToSegment = Infinity;
+
+        try {
+          map.eachLayer(function(layer) {
+            // Exclude leader lines, boundary cut lines, and non-cable polylines
+            if (layer instanceof L.Polyline && 
+                !(layer instanceof L.Polygon) && 
+                layer.options.className !== 'leader-line' && 
+                layer.options.className !== 'tiang-label-leader-line' && 
+                !window._segBoundaryMarkers.includes(layer) && 
+                layer.getLatLngs) {
+              var latlngs = layer.getLatLngs();
+              if (Array.isArray(latlngs) && latlngs.length >= 2) {
+                // Flatten if nested polyline arrays
+                var pointsArray = Array.isArray(latlngs[0]) ? latlngs[0] : latlngs;
+                for (var i = 0; i < pointsArray.length - 1; i++) {
+                  var p1 = pointsArray[i];
+                  var p2 = pointsArray[i + 1];
+
+                  // Project m onto segment (p1, p2)
+                  var A = m.lng - p1.lng;
+                  var B = m.lat - p1.lat;
+                  var C = p2.lng - p1.lng;
+                  var D = p2.lat - p1.lat;
+
+                  var dot = A * C + B * D;
+                  var len_sq = C * C + D * D;
+                  var param = len_sq !== 0 ? dot / len_sq : -1;
+
+                  var projX, projY;
+                  if (param < 0) {
+                    projX = p1.lng; projY = p1.lat;
+                  } else if (param > 1) {
+                    projX = p2.lng; projY = p2.lat;
+                  } else {
+                    projX = p1.lng + param * C;
+                    projY = p1.lat + param * D;
+                  }
+
+                  var dist = Math.hypot(m.lat - projY, m.lng - projX);
+                  if (dist < minDistToSegment) {
+                    minDistToSegment = dist;
+                    dx = p2.lng - p1.lng;
+                    dy = p2.lat - p1.lat;
+                  }
+                }
+              }
+            }
+          });
+        } catch(e) {}
+
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (len === 0) { dx = 0; dy = 1; len = 1; }
+
+        // Vektor Normal (-dy/len, dx/len) tegak lurus sempurna dengan jalur kabel!
+        var normX = -dy / len;
+        var normY = dx / len;
+
+        var cutHalfLength = 0.00055; // ~55 meter ke masing-masing sisi tegak lurus
+        var lineP1 = [m.lat - normY * cutHalfLength, m.lng - normX * cutHalfLength];
+        var lineP2 = [m.lat + normY * cutHalfLength, m.lng + normX * cutHalfLength];
+
+        // Garis potong tegak lurus dashed merah
+        var cutLine = L.polyline([lineP1, lineP2], {
+          color: '#D32F2F',
+          weight: 2.8,
+          dashArray: '6, 4',
+          opacity: 0.95,
+          interactive: false
+        }).addTo(map);
+        window._segBoundaryMarkers.push(cutLine);
+
+        // Label Badge Pasangan A - A / B - B di kedua ujung garis potong
+        var badgeHtml = [
+          '<div style="display:flex;align-items:center;justify-content:center;pointer-events:none;">',
+            '<div style="background:#D32F2F;color:white;font-weight:bold;font-size:12px;',
+              'padding:3px 7px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.6);',
+              'border:1.5px solid white;white-space:nowrap;">',
+              m.label,
             '</div>',
-            '<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #D32F2F;"></div>',
           '</div>'
         ].join('');
-        var topIcon = L.divIcon({
-          html: topHtml,
-          className: '',
-          iconAnchor: [20, 32],
-          iconSize: [40, 32]
-        });
-        var topMarker = L.marker([m.lat, m.lng], {icon: topIcon, interactive: false, zIndexOffset: 9999}).addTo(map);
-        window._segBoundaryMarkers.push(topMarker);
 
-        // Garis potong vertikal dashed merah (polyline pendek di sekitar titik)
-        // Buat garis vertikal ~60m ke atas dan bawah dari titik batas
-        var offsetDeg = 0.0006; // ~60m
-        var cutLine = L.polyline(
-          [[m.lat - offsetDeg, m.lng], [m.lat + offsetDeg, m.lng]],
-          {
-            color: '#D32F2F',
-            weight: 2,
-            dashArray: '6, 4',
-            opacity: 0.7,
-            interactive: false
-          }
-        ).addTo(map);
-        window._segBoundaryMarkers.push(cutLine);
+        var badgeIcon = L.divIcon({
+          html: badgeHtml,
+          className: '',
+          iconAnchor: [12, 10],
+          iconSize: [24, 20]
+        });
+
+        var badge1 = L.marker(lineP2, { icon: badgeIcon, interactive: false, zIndexOffset: 9999 }).addTo(map);
+        var badge2 = L.marker(lineP1, { icon: badgeIcon, interactive: false, zIndexOffset: 9999 }).addTo(map);
+        window._segBoundaryMarkers.push(badge1);
+        window._segBoundaryMarkers.push(badge2);
       });
     };
 

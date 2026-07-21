@@ -177,21 +177,28 @@ export default function SurveyHistoryScreen({
                         let success = 0;
                         let failed = 0;
 
+                        let lastErrorMsg = '';
+
                         for (const id of selectedIds) {
                             const survey = surveys.find(s => s.id === id);
                             if (survey) {
                                 try {
                                     const result = await supabaseSurveyService.upsertSurvey(survey);
-                                    if (result) {
+                                    const isOk = typeof result === 'boolean' ? result : result.success;
+                                    if (isOk) {
                                         success++;
                                         // Mark as synced locally
                                         await surveyService.update(id, { isSynced: true });
                                     } else {
                                         failed++;
+                                        if (typeof result === 'object' && result.error) {
+                                            lastErrorMsg = result.error;
+                                        }
                                     }
-                                } catch (error) {
+                                } catch (error: any) {
                                     console.error('Sync error:', error);
                                     failed++;
+                                    lastErrorMsg = error?.message || String(error);
                                 }
                             }
                         }
@@ -202,9 +209,12 @@ export default function SurveyHistoryScreen({
                         await loadSurveys(); // Refresh list
 
                         if (failed === 0) {
-                            Alert.alert('✅ Berhasil', `${success} survey berhasil di - upload ke cloud!`);
+                            Alert.alert('✅ Berhasil', `${success} survey berhasil di-upload ke cloud!`);
                         } else {
-                            Alert.alert('⚠️ Selesai', `${success} berhasil, ${failed} gagal`);
+                            Alert.alert(
+                                '⚠️ Upload Gagal',
+                                `${success} berhasil, ${failed} gagal.\n\n` + (lastErrorMsg ? `Detail Error: ${lastErrorMsg}` : 'Pastikan Anda telah login ke akun Supabase & memiliki koneksi internet.')
+                            );
                         }
                     },
                 },

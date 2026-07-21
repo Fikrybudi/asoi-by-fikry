@@ -16,6 +16,8 @@ export interface OverlayFile {
     color?: string;                 // Optional colour override (polylines)
     data: OverlayGeoData;
     importedAt: string;             // ISO date string (serialisable)
+    hiddenFeeders?: string[];       // Polyline / feeder names toggled OFF
+    hiddenTypes?: string[];         // 'gardu' | 'proteksi' | 'custom' toggled OFF
 }
 
 export type OverlayDataType = 'jtm' | 'gardu' | 'proteksi' | 'custom';

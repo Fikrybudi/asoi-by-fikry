@@ -451,6 +451,9 @@ export default function App() {
       return;
     }
 
+    // Close summary modal so map is ready for capture
+    setShowSummary(false);
+
     const tiangList = currentSurvey.tiangList;
     const hasEnoughForSegment =
       tiangList.length > 8 ||
@@ -1341,6 +1344,8 @@ export default function App() {
         appDipasang: baData.appDipasang,
         konstruksiOleh: baData.konstruksiOleh,
         baChecklist: baData.checklist,
+        signaturePelanggan: baData.signaturePelanggan,
+        signatureSurveyor: baData.signatureSurveyor,
       });
 
       await surveyService.setCurrent(newSurvey.id);
@@ -1796,6 +1801,8 @@ export default function App() {
                 appDipasang: baData.appDipasang,
                 konstruksiOleh: baData.konstruksiOleh,
                 baChecklist: baData.checklist,
+                signaturePelanggan: baData.signaturePelanggan,
+                signatureSurveyor: baData.signatureSurveyor,
               });
               // Reload survey if it's the current one
               if (currentSurvey?.id === editingSurvey.id) {
@@ -1828,6 +1835,11 @@ export default function App() {
           setOverlayLayers(updated);
           overlayStorage.updateVisibility(id, v);
         }}
+        onOverlayUpdate={(updatedFile) => {
+          const updated = overlayLayers.map(o => o.id === updatedFile.id ? updatedFile : o);
+          setOverlayLayers(updated);
+          overlayStorage.saveAllOverlays(updated);
+        }}
       />
 
       {/* Restore UI Button */}
@@ -1842,41 +1854,63 @@ export default function App() {
         </View>
       )}
 
-      {/* Export Progress Overlay */}
-      {exportProgress !== null && (
+      {/* Export Progress Modal Splash Screen */}
+      <Modal
+        visible={exportProgress !== null}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => {}}
+      >
         <View style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.65)',
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
           justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 99999,
+          padding: 20,
         }}>
           <View style={{
             backgroundColor: 'white',
-            borderRadius: 16,
-            padding: 28,
-            width: '75%',
+            borderRadius: 20,
+            padding: 24,
+            width: '85%',
+            maxWidth: 360,
             alignItems: 'center',
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 10,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            elevation: 12,
           }}>
-            <ActivityIndicator size="large" color="#1565C0" />
-            <Text style={{ marginTop: 16, fontSize: 15, fontWeight: '600', color: '#1565C0', textAlign: 'center' }}>
-              Mengekspor PDF...
+            {/* Header Badge Icon */}
+            <View style={{
+              width: 60,
+              height: 60,
+              borderRadius: 30,
+              backgroundColor: '#E3F2FD',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 12,
+            }}>
+              <Ionicons name="document-text" size={32} color="#1565C0" />
+            </View>
+
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1565C0', textAlign: 'center', marginBottom: 4 }}>
+              Export PDF Gambar
             </Text>
-            <Text style={{ marginTop: 8, fontSize: 13, color: '#555', textAlign: 'center' }}>
-              {exportProgress}
+
+            <ActivityIndicator size="large" color="#1565C0" style={{ marginVertical: 14 }} />
+
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', textAlign: 'center', lineHeight: 20 }}>
+              {exportProgress || 'Mengekspor...'}
             </Text>
-            <Text style={{ marginTop: 8, fontSize: 11, color: '#999', textAlign: 'center' }}>
-              Mohon tunggu, jangan tutup aplikasi
+
+            <Text style={{ marginTop: 8, fontSize: 11, color: '#757575', textAlign: 'center' }}>
+              Memproses capture peta & penyusunan tata letak PDF
             </Text>
           </View>
         </View>
-      )}
+      </Modal>
 
 
       {/* Menu Modal */}

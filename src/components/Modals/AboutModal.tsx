@@ -27,35 +27,70 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
               <Ionicons name="location" size={50} color="#1565C0" />
               <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>ASOI</Text>
               <Text style={{ fontSize: 14, color: '#666' }}>Aplikasi Survey Online</Text>
-              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 1.9.0</Text>
+              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.0.0</Text>
             </View>
 
-            {/* Developer Info */}
+            {/* Developer & Team Info */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>👨‍💻 Informasi Pengembang</Text>
-              <Text style={{ fontSize: 13, color: '#555', marginBottom: 5 }}>Aplikasi ini dikembangkan dan dikelola oleh:</Text>
-              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#1565C0' }}>Fikry Budi H</Text>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>👨‍💻 Informasi Pengembang & Tim</Text>
+              
+              <Text style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>Pengembang Utama:</Text>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#1565C0', marginBottom: 4 }}>Fikry Budi H</Text>
+              
               <TouchableOpacity
                 onPress={() => Linking.openURL('https://wa.me/6287773068968')}
-                style={{ marginTop: 8 }}
+                style={{ marginBottom: 10 }}
               >
-                <Text style={{ fontSize: 13, color: '#25D366', textDecorationLine: 'underline' }}>087773068968</Text>
+                <Text style={{ fontSize: 13, color: '#25D366', fontWeight: '600' }}>💬 WhatsApp: 087773068968</Text>
               </TouchableOpacity>
+
+              <View style={{ height: 1, backgroundColor: '#e0e0e0', marginVertical: 8 }} />
+
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0', marginBottom: 6 }}>👥 TIM ASOI:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+                <Ionicons name="person-circle" size={18} color="#1565C0" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }}>Rifzki Yanika Sukoco</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="person-circle" size={18} color="#1565C0" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }}>Dinda Widi Mirna</Text>
+              </View>
             </View>
 
-            {/* Legal */}
+            {/* Legalitas & Kebijakan */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
               <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>⚖️ Legalitas & Kebijakan</Text>
-              <Text style={{ fontSize: 13, color: '#1565C0', marginBottom: 5 }}>• Ketentuan Layanan</Text>
-              <Text style={{ fontSize: 13, color: '#1565C0', marginBottom: 5 }}>• Kebijakan Privasi</Text>
-              <Text style={{ fontSize: 13, color: '#1565C0' }}>• Lisensi Pihak Ketiga</Text>
+              
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://web.pln.co.id/kebijakan-privasi')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
+              >
+                <Ionicons name="shield-checkmark-outline" size={16} color="#1565C0" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, color: '#1565C0', textDecorationLine: 'underline' }}>Kebijakan Privasi Portal PLN</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://web.pln.co.id/syarat-dan-ketentuan')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
+              >
+                <Ionicons name="document-text-outline" size={16} color="#1565C0" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, color: '#1565C0', textDecorationLine: 'underline' }}>Syarat & Ketentuan Layanan PLN</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Ionicons name="code-slash-outline" size={16} color="#1565C0" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, color: '#1565C0', textDecorationLine: 'underline' }}>Lisensi OpenStreetMap & Data Peta</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Copyright */}
             <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 20 }}>
-              <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2024 Fikry. All Rights Reserved.</Text>
+              <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2026 Fikry Budi H / PLN OPTADIS. All Rights Reserved.</Text>
               <Text style={{ fontSize: 11, color: '#aaa', textAlign: 'center', marginTop: 5, fontStyle: 'italic' }}>
-                Dibuat dengan semangat untuk memudahkan riset digital di Indonesia.
+                Aplikasi Survey Online Jaringan Listrik PLN
               </Text>
             </View>
           </ScrollView>

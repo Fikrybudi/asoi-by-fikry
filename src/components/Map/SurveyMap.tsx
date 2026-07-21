@@ -108,6 +108,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   const [liveDistance, setLiveDistance] = useState<number | null>(null);
   const [currentZoom, setCurrentZoom] = useState(18); // Track current zoom level
   const [mapViewCenter, setMapViewCenter] = useState<Coordinate | null>(null); // Persist user's viewed position
+  const [activeBaseMap, setActiveBaseMap] = useState<string>('streets'); // Lock active base map selection
   const captureResolverRef = useRef<((value: string | null) => void) | null>(null); // For Android WebView capture
   const [jalurModalVisible, setJalurModalVisible] = useState(false); // Jalur list modal
 
@@ -469,6 +470,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         if (persil && onPersilPress) onPersilPress(persil);
       } else if (data.type === 'zoomChange') {
         setCurrentZoom(data.zoom);
+      } else if (data.type === 'baseMapChange') {
+        setActiveBaseMap(data.baseMap);
       } else if (data.type === 'mapCapture') {
         // Resolve pending capture promise
         if (captureResolverRef.current) {
@@ -577,7 +580,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       selectedTiangIds,
       currentZoom,
       persilList,
-      overlayLayers
+      overlayLayers,
+      activeBaseMap
     );
   }, [
     // Structural changes that REQUIRE HTML regeneration:
@@ -592,7 +596,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     visibleLayers,
     selectedTiangIds,
     persilList,
-    overlayLayers
+    overlayLayers,
+    activeBaseMap
     // Note: mapCenter and currentZoom are EXCLUDED
   ]);
 
