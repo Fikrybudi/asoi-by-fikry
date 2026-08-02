@@ -171,7 +171,7 @@ export function formatCoordinate(coord: Coordinate): string {
 // MULTI-PAGE PDF SEGMENTATION HELPERS
 // =============================================================================
 
-export type SegmentMode = 'tm8' | 'tr10' | 'dist400' | 'full';
+export type SegmentMode = 'tm8' | 'tr10' | 'dist400' | 'scale' | 'full';
 
 export interface TiangSegment {
     tiangList: Tiang[];
@@ -187,12 +187,45 @@ export interface TiangSegment {
     totalPages: number;
 }
 
+export function getNumericScaleString(zoomLevel = 18, centerLat = -6.8): string {
+    const latRad = centerLat * Math.PI / 180;
+    const scaleRatio = (591657550.5 * Math.cos(latRad)) / Math.pow(2, zoomLevel);
+    let roundedRatio: number;
+    if (scaleRatio >= 15000) {
+        roundedRatio = Math.round(scaleRatio / 5000) * 5000;
+    } else if (scaleRatio >= 7500) {
+        roundedRatio = Math.round(scaleRatio / 2500) * 2500;
+    } else if (scaleRatio >= 3000) {
+        roundedRatio = Math.round(scaleRatio / 1000) * 1000;
+    } else if (scaleRatio >= 1500) {
+        roundedRatio = Math.round(scaleRatio / 500) * 500;
+    } else if (scaleRatio >= 750) {
+        roundedRatio = Math.round(scaleRatio / 250) * 250;
+    } else {
+        roundedRatio = Math.round(scaleRatio / 100) * 100;
+    }
+    return '1 : ' + roundedRatio.toLocaleString('id-ID');
+}
+
+export function calculateScaleSpanMeters(zoomLevel = 18, centerLat = -6.8): number {
+    const latRad = centerLat * Math.PI / 180;
+    const metersPerPx = (156543.03392 * Math.cos(latRad)) / Math.pow(2, zoomLevel);
+    // 1200px A4 landscape canvas x 0.57 = 680px span to give generous ~22% margin safety buffer (no edge clipping)
+    const spanMeters = metersPerPx * 680;
+    return Math.max(Math.round(spanMeters), 100);
+}
+
 /**
  * Kelompokkan tiang menjadi segmen-segmen untuk multi-page PDF.
  * Setiap tiang hanya masuk ke SATU segmen (tidak overlap data).
  * Untuk seamless tiling, gunakan calculateBoundsForGroup dengan anchor parameter.
  */
-export function groupTiangBySegment(tiangList: Tiang[], mode: SegmentMode): TiangSegment[] {
+export function groupTiangBySegment(
+    tiangList: Tiang[],
+    mode: SegmentMode,
+    zoomLevel = 18,
+    centerLat = -6.8
+): TiangSegment[] {
     if (tiangList.length === 0) return [];
 
     if (mode === 'full') {
@@ -210,51 +243,56 @@ export function groupTiangBySegment(tiangList: Tiang[], mode: SegmentMode): Tian
     }
 
     const maxPoles = mode === 'tm8' ? 9 : mode === 'tr10' ? 11 : Infinity;
-    const maxMeters = mode === 'dist400' ? 400 : Infinity;
+    let maxMeters = mode === 'dist400' ? 400 : Infinity;
 
-    const segments: Omit<TiangSegment, 'totalPages'>[] = [];
-    let currentGroup: Tiang[] = [];
-    let currentPanjang = 0;
-
-    for (let i = 0; i < tiangList.length; i++) {
-        const tiang = tiangList[i];
-
-        if (currentGroup.length === 0) {
-            currentGroup.push(tiang);
-            continue;
-        }
-
-        const dist = calculateDistance(currentGroup[currentGroup.length - 1].koordinat, tiang.koordinat);
-        const newPanjang = currentPanjang + dist;
-
-        const wouldExceedPoles = currentGroup.length >= maxPoles;
-        const wouldExceedMeters = newPanjang > maxMeters;
-
-        if (wouldExceedPoles || wouldExceedMeters) {
-            segments.push({
-                tiangList: [...currentGroup],
-                firstNomor: currentGroup[0].nomorUrut,
-                lastNomor: currentGroup[currentGroup.length - 1].nomorUrut,
-                panjangMeter: currentPanjang,
-                pageNumber: segments.length + 1,
-            });
-            // No overlap in data — each tiang belongs to one segment only
-            currentGroup = [tiang];
-            currentPanjang = 0;
-        } else {
-            currentGroup.push(tiang);
-            currentPanjang = newPanjang;
-        }
+    if (mode === 'scale') {
+        maxMeters = calculateScaleSpanMeters(zoomLevel, centerLat);
     }
 
-    if (currentGroup.length > 0) {
+    const segments: Omit<TiangSegment, 'totalPages'>[] = [];
+    let startIdx = 0;
+
+    while (startIdx < tiangList.length) {
+        let currPanjang = 0;
+        let endIdx = startIdx;
+
+        // Accumulate tiang from startIdx up to maxMeters or maxPoles
+        while (endIdx < tiangList.length - 1) {
+            const nextTiang = tiangList[endIdx + 1];
+            const dist = calculateDistance(tiangList[endIdx].koordinat, nextTiang.koordinat);
+            const countSoFar = (endIdx + 1) - startIdx + 1;
+
+            if (countSoFar > maxPoles || (currPanjang + dist > maxMeters && countSoFar >= 3)) {
+                break;
+            }
+            currPanjang += dist;
+            endIdx++;
+        }
+
+        // If not the last page, pull back 1 tiang for boundary marker
+        let boundaryIdx = endIdx;
+        if (endIdx < tiangList.length - 1 && (endIdx - startIdx) >= 2) {
+            boundaryIdx = endIdx - 1;
+        }
+
+        const segList = tiangList.slice(startIdx, boundaryIdx + 1);
+        const segPanjang = segList.length >= 2
+            ? segList.slice(0, -1).reduce((acc, t, idx) => acc + calculateDistance(t.koordinat, segList[idx + 1].koordinat), 0)
+            : 0;
+
         segments.push({
-            tiangList: [...currentGroup],
-            firstNomor: currentGroup[0].nomorUrut,
-            lastNomor: currentGroup[currentGroup.length - 1].nomorUrut,
-            panjangMeter: currentPanjang,
+            tiangList: segList,
+            firstNomor: segList[0].nomorUrut,
+            lastNomor: segList[segList.length - 1].nomorUrut,
+            panjangMeter: segPanjang,
             pageNumber: segments.length + 1,
         });
+
+        // Next page starts at boundaryIdx (shared boundary tiang)
+        if (boundaryIdx === startIdx || boundaryIdx >= tiangList.length - 1) {
+            break;
+        }
+        startIdx = boundaryIdx;
     }
 
     const totalPages = segments.length;

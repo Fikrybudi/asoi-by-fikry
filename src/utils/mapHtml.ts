@@ -247,13 +247,16 @@ const generateMapHTML = (
     // Escape double quotes for embedding in JS string
     const escapedHtml = circleLabelHtml.replace(/"/g, '\\"');
 
+    const isSatelliteMap = activeBaseMap === 'satellite' || activeBaseMap === 'hybrid';
+    const leaderLineColor = isSatelliteMap ? '#FFD600' : '#333333';
+
     return `
-    // Thin Leader Line connecting tiang dot to circular label badge
+    // Single Leader Line (Dynamic Color: #FFD600 Gold on Satellite, #333333 Dark on Standard Map)
     var line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} = L.polyline([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [${labelLat}, ${labelLng}]], {
-      color: '#555555',
-      weight: 1.2,
-      dashArray: '2, 3',
-      opacity: 0.85,
+      color: '${leaderLineColor}',
+      weight: 1.6,
+      dashArray: '3, 3',
+      opacity: 0.95,
       interactive: false,
       className: 'leader-line'
     }).addTo(map);
@@ -272,7 +275,8 @@ const generateMapHTML = (
 
     // Live update leader line position while dragging
     marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('drag', function(e) {
-      line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], e.latlng]);
+      var lineCoords = [[${t.koordinat.latitude}, ${t.koordinat.longitude}], e.latlng];
+      line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs(lineCoords);
     });
 
     // Snap to nearest 8-direction quadrant on drag end
@@ -457,10 +461,10 @@ const generateMapHTML = (
     }
 
     return `
-      // Visual polyline - ${j.jenisJaringan} - with high tolerance from global renderer
+      // Clean thin visual polyline - ${j.jenisJaringan} - weight 2.6
       L.polyline([${coords}], {
         color: '${color}',
-        weight: 4,
+        weight: 2.6,
         dashArray: '${dashArray}',
         interactive: true 
       }).addTo(map).bindPopup('${j.jenisJaringan}<br>${j.jenisPenghantar}<br>Total: ${totalDistance}<br>${j.koordinat.length} titik')
@@ -477,7 +481,7 @@ const generateMapHTML = (
   const currentJalurLine = currentJalurCoords.length >= 2
     ? `L.polyline([${currentJalurCoords.map(c => `[${c.latitude}, ${c.longitude}]`).join(',')}], {
         color: '#FF5722',
-        weight: 4,
+        weight: 2.6,
         dashArray: '5, 5'
       }).addTo(map);`
     : '';
@@ -718,7 +722,7 @@ const generateMapHTML = (
           js += `
             L.polyline([${coords}], {
               color: '${color}',
-              weight: 4,
+              weight: 2.6,
               opacity: ${opacity},
               interactive: true,
               className: 'overlay-jtm overlay-layer overlay-${ol.id}'
@@ -978,6 +982,46 @@ const generateMapHTML = (
     .legend-item { display: flex; align-items: center; margin: 3px 0; }
     .legend-line { width: 20px; height: 3px; margin-right: 8px; border-radius: 2px; }
     
+    /* Top Right Controls Side-By-Side Layout */
+    .leaflet-top.leaflet-right {
+      display: flex !important;
+      flex-direction: row-reverse !important;
+      align-items: flex-start !important;
+      gap: 6px !important;
+      margin-top: 10px !important;
+      margin-right: 10px !important;
+    }
+    .leaflet-control-scale {
+      margin: 0 !important;
+    }
+    .leaflet-control-scale-line {
+      background: rgba(255, 255, 255, 0.92) !important;
+      border: 2px solid #1565C0 !important;
+      border-top: none !important;
+      color: #0D47A1 !important;
+      font-weight: bold !important;
+      font-size: 11px !important;
+      padding: 3px 8px !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+      line-height: 1.2 !important;
+      border-radius: 0 0 4px 4px !important;
+    }
+    
+    /* Numeric Ratio Scale (1 : XXXX) Styling */
+    .leaflet-control-scale-ratio {
+      background: rgba(255, 255, 255, 0.92) !important;
+      border: 2px solid #1565C0 !important;
+      color: #0D47A1 !important;
+      font-weight: bold !important;
+      font-size: 11px !important;
+      padding: 3px 8px !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+      line-height: 1.2 !important;
+      border-radius: 4px !important;
+      white-space: nowrap !important;
+      margin: 0 !important;
+    }
+    
     ${isAddMode ? `
     .crosshair {
       position: fixed;
@@ -1072,11 +1116,75 @@ const generateMapHTML = (
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
+    // Realtime Metric Scale Control (Graphic Bar)
+    L.control.scale({
+      metric: true,
+      imperial: false,
+      position: 'topright',
+      maxWidth: 120
+    }).addTo(map);
+
+    // Numeric Scale Ratio Control (1 : XXXX)
+    var scaleRatioControl = L.control({ position: 'topright' });
+    scaleRatioControl.onAdd = function() {
+      var div = L.DomUtil.create('div', 'leaflet-control-scale-ratio');
+      div.id = 'scale-ratio-text';
+      div.innerHTML = '1 : --';
+      return div;
+    };
+    scaleRatioControl.addTo(map);
+
+    // Calculate & update numeric scale ratio (1 : XXXX) directly from GIS math (100% reliable)
+    function updateScaleRatio() {
+      try {
+        var ratioEl = document.getElementById('scale-ratio-text');
+        if (!ratioEl) return;
+
+        var center = map.getCenter();
+        var zoom = map.getZoom();
+        var latRad = center.lat * Math.PI / 180;
+
+        // Ground resolution in meters/pixel at 96 DPI:
+        // Scale Ratio N = (591657550.5 * cos(lat)) / (2 ^ zoom)
+        var scaleRatio = (591657550.5 * Math.cos(latRad)) / Math.pow(2, zoom);
+
+        // Standard cartographic rounding for clean engineering scale display
+        var roundedRatio;
+        if (scaleRatio >= 15000) {
+          roundedRatio = Math.round(scaleRatio / 5000) * 5000;
+        } else if (scaleRatio >= 7500) {
+          roundedRatio = Math.round(scaleRatio / 2500) * 2500;
+        } else if (scaleRatio >= 3000) {
+          roundedRatio = Math.round(scaleRatio / 1000) * 1000;
+        } else if (scaleRatio >= 1500) {
+          roundedRatio = Math.round(scaleRatio / 500) * 500;
+        } else if (scaleRatio >= 750) {
+          roundedRatio = Math.round(scaleRatio / 250) * 250;
+        } else {
+          roundedRatio = Math.round(scaleRatio / 100) * 100;
+        }
+
+        ratioEl.textContent = '1 : ' + roundedRatio.toLocaleString('id-ID');
+      } catch(e) {}
+    }
+
+    map.on('zoom move zoomend moveend viewreset', updateScaleRatio);
+    updateScaleRatio();
+
     // Notify React Native when user switches base layer in map
     map.on('baselayerchange', function(e) {
       var selectedType = 'streets';
       if (e.name && e.name.indexOf('Satelit') !== -1) selectedType = 'satellite';
       else if (e.name && e.name.indexOf('Hybrid') !== -1) selectedType = 'hybrid';
+
+      // Dynamic Leader Line Color Switch: #FFD600 Gold on Satellite/Hybrid, #333333 Dark on Streets
+      var isSat = selectedType === 'satellite' || selectedType === 'hybrid';
+      var targetColor = isSat ? '#FFD600' : '#333333';
+      var leaderElements = document.querySelectorAll('.leader-line');
+      leaderElements.forEach(function(el) {
+        el.setAttribute('stroke', targetColor);
+      });
+
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'baseMapChange',
         baseMap: selectedType
@@ -1182,7 +1290,7 @@ const generateMapHTML = (
     var isCapturing = false;
 
     // Function to capture map as base64 image (called from React Native)
-    window.captureMapToBase64 = function(bounds) {
+    window.captureMapToBase64 = function(bounds, lockedZoom, centerCoords) {
       // Guard: prevent concurrent captures
       if (isCapturing) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -1211,8 +1319,10 @@ const generateMapHTML = (
       // Re-evaluate container dimensions in Leaflet
       map.invalidateSize();
 
-      // First fit bounds if provided
-      if (bounds) {
+      // If lockedZoom and centerCoords provided, LOCK ZOOM & SCALE!
+      if (lockedZoom && centerCoords && centerCoords.lat && centerCoords.lng) {
+        map.setView([centerCoords.lat, centerCoords.lng], lockedZoom, { animate: false });
+      } else if (bounds) {
         map.fitBounds(bounds, { animate: false, padding: [15, 15] });
       }
       
@@ -1315,6 +1425,7 @@ const generateMapHTML = (
             if (layer instanceof L.Polyline && 
                 !(layer instanceof L.Polygon) && 
                 layer.options.className !== 'leader-line' && 
+                layer.options.className !== 'leader-line-bg' && 
                 layer.options.className !== 'tiang-label-leader-line' && 
                 !window._segBoundaryMarkers.includes(layer) && 
                 layer.getLatLngs) {
@@ -1365,7 +1476,7 @@ const generateMapHTML = (
         var normX = -dy / len;
         var normY = dx / len;
 
-        var cutHalfLength = 0.00055; // ~55 meter ke masing-masing sisi tegak lurus
+        var cutHalfLength = 0.00028; // ~28 meter ke masing-masing sisi tegak lurus (panjang ideal & pas di dalam bingkai)
         var lineP1 = [m.lat - normY * cutHalfLength, m.lng - normX * cutHalfLength];
         var lineP2 = [m.lat + normY * cutHalfLength, m.lng + normX * cutHalfLength];
 

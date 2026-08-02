@@ -1,65 +1,36 @@
 // =============================================================================
-// PDF Export with Map Screenshot - ASOI
-// Dual template support (portrait/landscape) with text overlay
+// PDF Export with Map Screenshot - Official PT PLN (Persero) Kop Format
+// Standar Gambar Teknik & Survey Peta Jaringan PLN (OPTADIS GIS System)
 // =============================================================================
 
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { decode as base64Decode } from 'base64-arraybuffer';
-import { Dimensions } from 'react-native';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-type Orientation = 'portrait' | 'landscape';
-
-interface SurveyInfo {
+export interface SurveyInfo {
     name: string;
     location: string;
-    /** Optional: rincian pekerjaan lines to draw on the map area */
+    up3Name?: string;         // e.g. "UP3 SURABAYA SELATAN"
+    ulpName?: string;         // e.g. "ULP RUNGKUT"
+    surveyorName?: string;    // e.g. "Fikry"
+    pemeriksaTitle?: string;  // e.g. "SPV PEMELIHARAAN" or "SPV PERENCANAAN"
+    pemeriksaName?: string;   // e.g. "Budi Santoso"
+    managerName?: string;     // e.g. "Ahmad Hidayat"
     rincianLines?: string[];
 }
 
-// =============================================================================
-// LAYOUT CONSTANTS (in points, 1cm = 28.35 points)
-// =============================================================================
-
-// Landscape layout (blangko.pdf)
-const LANDSCAPE_PADDING = {
-    left: 28.35,    // 1cm
-    right: 28.35,   // 1cm
-    top: 28.35,     // 1cm
-    bottom: 113.4,  // 4cm (kop area)
-};
-
-// Portrait layout (blangko_potrait.pdf)
-const PORTRAIT_PADDING = {
-    left: 28.35,    // 1cm
-    right: 28.35,   // 1cm
-    top: 28.35,     // 1cm
-    bottom: 141.75, // 5cm (kop area - taller for portrait)
-};
-
-// Text position offsets from bottom-left corner of page
-// Adjusted for bottom-right positioning
-const TEXT_POSITIONS = {
-    landscape: {
-        projectName: { x: 720, y: 38 },   // Bottom-right area, name on top
-        location: { x: 720, y: 26 },       // Location below name
-    },
-    portrait: {
-        projectName: { x: 470, y: 38 },   // Bottom-right area for portrait
-        location: { x: 470, y: 26 },       // Location below name
-    },
-};
-
-// Text sizes (smaller for cleaner look)
-const TEXT_SIZE = {
-    projectName: 8,
-    location: 7,
-};
+export interface PageMeta {
+    pageNumber: number;
+    totalPages: number;
+    firstNomor: number;
+    lastNomor: number;
+    panjangMeter: number;
+}
 
 // Rincian Pekerjaan box style
 const RINCIAN = {
@@ -69,25 +40,260 @@ const RINCIAN = {
     paddingY: 5,          // inner padding vertical
     headerFontSize: 7,    // slightly bigger for headers
     margin: 8,            // margin from map edge
-    bgOpacity: 0.85,      // background transparency
+    bgOpacity: 0.88,      // background transparency
 };
 
 // =============================================================================
-// HELPER FUNCTIONS
+// OFFICIAL PLN KOP & FRAME DRAWING
 // =============================================================================
 
 /**
- * Determine orientation based on current device screen dimensions
+ * Draw Official PT PLN (Persero) Kop Gambar Teknik & Double Frame Border
  */
-function detectOrientation(): Orientation {
-    const { width, height } = Dimensions.get('window');
-    console.log(`Device screen: ${width} x ${height}`);
+function drawOfficialPlnKop(
+    page: any,
+    font: any,
+    fontBold: any,
+    surveyInfo: SurveyInfo,
+    meta?: PageMeta,
+    pageWidth: number = 841.89,
+    pageHeight: number = 595.28
+) {
+    // 1. Double CAD Page Frame
+    page.drawRectangle({
+        x: 12,
+        y: 12,
+        width: pageWidth - 24,
+        height: pageHeight - 24,
+        borderColor: rgb(0.0, 0.22, 0.45),
+        borderWidth: 1.5,
+    });
+    page.drawRectangle({
+        x: 15,
+        y: 15,
+        width: pageWidth - 30,
+        height: pageHeight - 30,
+        borderColor: rgb(0.0, 0.22, 0.45),
+        borderWidth: 0.5,
+    });
 
-    // If height > width, device is in portrait mode
-    return height > width ? 'portrait' : 'landscape';
+    // 2. Kop Box Outer Box (Height: 88pt, Bottom Y: 18pt)
+    const kopX = 18;
+    const kopY = 18;
+    const kopWidth = pageWidth - 36;
+    const kopHeight = 88;
+
+    page.drawRectangle({
+        x: kopX,
+        y: kopY,
+        width: kopWidth,
+        height: kopHeight,
+        color: rgb(0.98, 0.99, 1.0),
+        borderColor: rgb(0.0, 0.22, 0.45),
+        borderWidth: 1.2,
+    });
+
+    // Header Blue Banner Bar (Top Row: y = kopY + kopHeight - 26 = 80pt)
+    const headerY = kopY + kopHeight - 26;
+    page.drawRectangle({
+        x: kopX,
+        y: headerY,
+        width: kopWidth,
+        height: 26,
+        color: rgb(0.02, 0.22, 0.45), // PLN Dark Blue
+    });
+
+    // --- PLN Vector Shield & Lightning Logo ---
+    const logoX = kopX + 8;
+    const logoY = headerY + 4;
+    const logoW = 14;
+    const logoH = 18;
+
+    // Yellow shield
+    page.drawRectangle({
+        x: logoX,
+        y: logoY,
+        width: logoW,
+        height: logoH,
+        color: rgb(1.0, 0.88, 0.05),
+        borderColor: rgb(1, 1, 1),
+        borderWidth: 0.6,
+    });
+    // Red lightning bolt
+    page.drawLine({
+        start: { x: logoX + 10, y: logoY + 15 },
+        end: { x: logoX + 4, y: logoY + 9 },
+        thickness: 2.2,
+        color: rgb(0.9, 0.1, 0.1),
+    });
+    page.drawLine({
+        start: { x: logoX + 4, y: logoY + 9 },
+        end: { x: logoX + 8, y: logoY + 9 },
+        thickness: 2.2,
+        color: rgb(0.9, 0.1, 0.1),
+    });
+    page.drawLine({
+        start: { x: logoX + 8, y: logoY + 9 },
+        end: { x: logoX + 2, y: logoY + 3 },
+        thickness: 2.2,
+        color: rgb(0.9, 0.1, 0.1),
+    });
+
+    // Left Header Text: PT PLN (PERSERO)
+    page.drawText('PT PLN (PERSERO)', {
+        x: logoX + logoW + 8,
+        y: headerY + 14,
+        size: 8.5,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+    });
+    const subHeaderUnit = `UNIT INDUK DISTRIBUSI / ${surveyInfo.up3Name ? surveyInfo.up3Name.toUpperCase() : 'UP3'} / ${surveyInfo.ulpName ? surveyInfo.ulpName.toUpperCase() : 'ULP'}`;
+    page.drawText(subHeaderUnit, {
+        x: logoX + logoW + 8,
+        y: headerY + 5,
+        size: 6.5,
+        font: font,
+        color: rgb(0.85, 0.92, 1.0),
+    });
+
+    // Center Title Banner Text
+    const centerTitle = 'SURVEY PETA JALUR JARINGAN TENAGA LISTRIK';
+    const titleW = fontBold.widthOfTextAtSize(centerTitle, 9.5);
+    page.drawText(centerTitle, {
+        x: (pageWidth - titleW) / 2 + 35,
+        y: headerY + 9,
+        size: 9.5,
+        font: fontBold,
+        color: rgb(1.0, 0.9, 0.2), // Gold
+    });
+
+    // Right System Badge
+    const rightBadge = 'PLN-OPTADIS GIS SYSTEM';
+    const badgeW = fontBold.widthOfTextAtSize(rightBadge, 7);
+    page.drawText(rightBadge, {
+        x: kopX + kopWidth - badgeW - 8,
+        y: headerY + 9,
+        size: 7,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+    });
+
+    // --- Grid Lines for Middle & Bottom Rows ---
+    const midY = kopY + 30; // Horizontal divider between data row and signature row
+
+    page.drawLine({
+        start: { x: kopX, y: midY },
+        end: { x: kopX + kopWidth, y: midY },
+        thickness: 0.8,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+
+    // 3 Column Grid Widths
+    const col1W = 320;
+    const col2W = 240;
+
+    const col1X = kopX;
+    const col2X = kopX + col1W;
+    const col3X = col2X + col2W;
+
+    // Vertical Divider lines
+    page.drawLine({
+        start: { x: col2X, y: kopY },
+        end: { x: col2X, y: headerY },
+        thickness: 0.8,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+    page.drawLine({
+        start: { x: col3X, y: kopY },
+        end: { x: col3X, y: headerY },
+        thickness: 0.8,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+
+    // --- MIDDLE ROW: DATA PEKERJAAN, PETA, SEGMEN ---
+    // Column 1: Judul Pekerjaan & Lokasi
+    page.drawText('JUDUL PEKERJAAN / SURVEY:', {
+        x: col1X + 8,
+        y: midY + 19,
+        size: 6,
+        font: fontBold,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+    const nameText = surveyInfo.name ? (surveyInfo.name.length > 48 ? surveyInfo.name.substring(0, 45) + '...' : surveyInfo.name) : '-';
+    page.drawText(nameText, {
+        x: col1X + 8,
+        y: midY + 8,
+        size: 8.5,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
+    });
+
+    // Column 2: Data Teknis Peta
+    const dateToday = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    page.drawText('DATA TEKNIS PETA:', {
+        x: col2X + 8,
+        y: midY + 19,
+        size: 6,
+        font: fontBold,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+    page.drawText(`Skala  : 1 : 2.500 (Fixed Scale)  |  Tgl: ${dateToday}`, {
+        x: col2X + 8,
+        y: midY + 8,
+        size: 7.5,
+        font: font,
+        color: rgb(0.2, 0.2, 0.2),
+    });
+
+    // Column 3: Informasi Segmen Lembar
+    page.drawText('INFORMASI SEGMEN LEMBAR:', {
+        x: col3X + 8,
+        y: midY + 19,
+        size: 6,
+        font: fontBold,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+    if (meta) {
+        const panjangLabel = meta.panjangMeter >= 1000
+            ? (meta.panjangMeter / 1000).toFixed(2) + ' km'
+            : Math.round(meta.panjangMeter) + 'm';
+        page.drawText(`Halaman ${meta.pageNumber} dari ${meta.totalPages}  |  Tiang T.${meta.firstNomor} s/d T.${meta.lastNomor} (${panjangLabel})`, {
+            x: col3X + 8,
+            y: midY + 8,
+            size: 7.5,
+            font: fontBold,
+            color: rgb(0.85, 0.1, 0.1), // Red accent
+        });
+    } else {
+        page.drawText(`Halaman 1 dari 1 (Single Full Map)`, {
+            x: col3X + 8,
+            y: midY + 8,
+            size: 7.5,
+            font: fontBold,
+            color: rgb(0.1, 0.5, 0.1),
+        });
+    }
+
+    // --- BOTTOM ROW: LEMBAR PENGESAHAN / SIGNATURE BLOCK ---
+    const colSig1 = col1X + 8;
+    const colSig2 = col2X + 8;
+    const colSig3 = col3X + 8;
+
+    const survNameText = surveyInfo.surveyorName ? `( ${surveyInfo.surveyorName} )` : '( ..................................................... )';
+    const spvTitleText = surveyInfo.pemeriksaTitle ? surveyInfo.pemeriksaTitle.toUpperCase() : 'SPV PERENCANAAN';
+    const spvNameText = surveyInfo.pemeriksaName ? `( ${surveyInfo.pemeriksaName} )` : '( ..................................................... )';
+    const mgrTitleText = `DISETUJUI (MANAGER ${surveyInfo.ulpName ? surveyInfo.ulpName.toUpperCase() : 'ULP'}):`;
+    const mgrNameText = surveyInfo.managerName ? `( ${surveyInfo.managerName} )` : '( ..................................................... )';
+
+    page.drawText('DISURVEY OLEH:', { x: colSig1, y: kopY + 18, size: 5.8, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(survNameText, { x: colSig1, y: kopY + 7, size: 7.5, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+
+    page.drawText(`DIPERIKSA (${spvTitleText}):`, { x: colSig2, y: kopY + 18, size: 5.8, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(spvNameText, { x: colSig2, y: kopY + 7, size: 7.5, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+
+    page.drawText(mgrTitleText, { x: colSig3, y: kopY + 18, size: 5.8, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(mgrNameText, { x: colSig3, y: kopY + 7, size: 7.5, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
 }
-
-
 
 // =============================================================================
 // HELPER: Draw Rincian Pekerjaan block 
@@ -103,7 +309,6 @@ function drawRincianBlock(
 ) {
     if (!rincianLines || rincianLines.length === 0) return;
 
-    // Measure the width needed
     let maxWidth = 0;
     for (const line of rincianLines) {
         const isHeader = line.endsWith(':') || line === '';
@@ -114,10 +319,8 @@ function drawRincianBlock(
     }
 
     const boxWidth = maxWidth + RINCIAN.paddingX * 2;
-    // Filter out trailing empty lines for height calculation
     const visibleLines = rincianLines.filter((l, i) => {
         if (l !== '') return true;
-        // keep empty lines that are between content lines
         return i < rincianLines.length - 1 && rincianLines.slice(i + 1).some(r => r !== '');
     });
     const boxHeight = visibleLines.length * RINCIAN.lineHeight + RINCIAN.paddingY * 2;
@@ -133,15 +336,14 @@ function drawRincianBlock(
         height: boxHeight,
         color: rgb(1, 1, 1),
         opacity: RINCIAN.bgOpacity,
-        borderColor: rgb(0.6, 0.6, 0.6),
-        borderWidth: 0.5,
+        borderColor: rgb(0.0, 0.22, 0.45),
+        borderWidth: 0.8,
     });
 
-    // Draw each line of text (top to bottom)
     let textY = boxY + boxHeight - RINCIAN.paddingY - RINCIAN.fontSize;
     for (const line of visibleLines) {
         if (line === '') {
-            textY -= RINCIAN.lineHeight * 0.6; // smaller gap for empty lines
+            textY -= RINCIAN.lineHeight * 0.6;
             continue;
         }
         const isHeader = line.endsWith(':');
@@ -153,186 +355,76 @@ function drawRincianBlock(
             y: textY,
             size: fs,
             font: f,
-            color: rgb(0.05, 0.1, 0.6), // dark blue
+            color: rgb(0.02, 0.22, 0.45),
         });
         textY -= RINCIAN.lineHeight;
     }
 }
 
 // =============================================================================
-// MAIN EXPORT FUNCTION
+// MAIN EXPORT FUNCTION (SINGLE PAGE)
 // =============================================================================
 
-function drawProjectTitleCallout(
-    page: any,
-    font: any,
-    fontBold: any,
-    surveyInfo: SurveyInfo,
-    pageWidth: number,
-    imageBottomY: number
-) {
-    if (!surveyInfo.name && !surveyInfo.location) return;
-
-    const nameSize = 10;
-    const locSize = 8;
-
-    let nameWidth = 0;
-    if (surveyInfo.name) {
-        nameWidth = fontBold.widthOfTextAtSize(surveyInfo.name, nameSize);
-    }
-    let locWidth = 0;
-    if (surveyInfo.location) {
-        locWidth = font.widthOfTextAtSize(surveyInfo.location, locSize);
-    }
-
-    const maxTextWidth = Math.max(nameWidth, locWidth);
-
-    const paddingX = 14;
-    const paddingY = 7;
-    const numLines = (surveyInfo.name ? 1 : 0) + (surveyInfo.location ? 1 : 0);
-    const lineHeight = 12;
-    const boxHeight = (numLines * lineHeight) + (paddingY * 2) - 2;
-    const boxWidth = maxTextWidth + (paddingX * 2);
-
-    // Center horizontally
-    const boxX = (pageWidth - boxWidth) / 2;
-    // Center vertically in the kop area (between 0 and imageBottomY)
-    const boxY = (imageBottomY - boxHeight) / 2;
-
-    page.drawRectangle({
-        x: boxX,
-        y: boxY,
-        width: boxWidth,
-        height: boxHeight,
-        color: rgb(1, 1, 1),
-        opacity: 1,
-        borderColor: rgb(0.6, 0.6, 0.6),
-        borderWidth: 0.8,
-    });
-
-    let currentY = boxY + boxHeight - paddingY - nameSize + 2;
-
-    if (surveyInfo.name) {
-        const textX = boxX + (boxWidth - nameWidth) / 2;
-        page.drawText(surveyInfo.name, {
-            x: textX,
-            y: currentY,
-            size: nameSize,
-            font: fontBold,
-            color: rgb(0.05, 0.1, 0.5),
-        });
-        currentY -= lineHeight;
-    }
-
-    if (surveyInfo.location) {
-        const textX = boxX + (boxWidth - locWidth) / 2;
-        page.drawText(surveyInfo.location, {
-            x: textX,
-            y: currentY,
-            size: locSize,
-            font: font,
-            color: rgb(0.2, 0.2, 0.2),
-        });
-    }
-}
-
-
-/**
- * Generate PDF with map screenshot overlaid on template
- * @param mapBase64 - Base64 encoded PNG of the map screenshot
- * @param surveyInfo - Survey name and location for text overlay
- * @returns Path to the generated PDF file, or null on failure
- */
 export async function generatePdfWithMap(
     mapBase64: string,
     surveyInfo: SurveyInfo
 ): Promise<string | null> {
     try {
-        console.log('Starting PDF generation...');
+        console.log('Starting official PLN PDF generation...');
 
-        // Determine orientation from current device screen
-        const orientation: Orientation = detectOrientation();
-        console.log(`Using ${orientation} template`);
-
-        // Create a blank A4 page based on orientation
+        // Fixed A4 Landscape (841.89 x 595.28 pt)
         const pdfDoc = await PDFDocument.create();
-        const pageWidth = orientation === 'portrait' ? 595.28 : 841.89;
-        const pageHeight = orientation === 'portrait' ? 841.89 : 595.28;
-        const firstPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        const pageWidth = 841.89;
+        const pageHeight = 595.28;
+        const page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-        console.log(`PDF Page size: ${pageWidth} x ${pageHeight}`);
+        const embeddedFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const embeddedFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-        // Get padding based on orientation
-        const padding = orientation === 'portrait' ? PORTRAIT_PADDING : LANDSCAPE_PADDING;
+        // Map Canvas Box
+        const mapX = 18;
+        const mapY = 110;
+        const mapWidth = pageWidth - 36;
+        const mapHeight = pageHeight - 126;
 
-        // Embed the map image (PNG)
+        // Embed the map image
         const mapImageBytes = base64Decode(mapBase64);
         const mapImage = await pdfDoc.embedPng(mapImageBytes);
 
-        // Get original image dimensions
-        const imgWidth = mapImage.width;
-        const imgHeight = mapImage.height;
-        const imgAspectRatio = imgWidth / imgHeight;
-
-        // Available area in PDF
-        const availableWidth = pageWidth - padding.left - padding.right;
-        const availableHeight = pageHeight - padding.top - padding.bottom;
-        const areaAspectRatio = availableWidth / availableHeight;
-
-        // Calculate scaled dimensions preserving aspect ratio
-        let finalWidth: number;
-        let finalHeight: number;
-
-        if (imgAspectRatio > areaAspectRatio) {
-            // Image is wider - fit to width
-            finalWidth = availableWidth;
-            finalHeight = availableWidth / imgAspectRatio;
-        } else {
-            // Image is taller - fit to height
-            finalHeight = availableHeight;
-            finalWidth = availableHeight * imgAspectRatio;
-        }
-
-        // Center the image in the available area
-        const imageX = padding.left + (availableWidth - finalWidth) / 2;
-        const imageY = padding.bottom + (availableHeight - finalHeight) / 2;
-
-        console.log(`Original image: ${imgWidth}x${imgHeight}, aspect=${imgAspectRatio.toFixed(2)}`);
-        console.log(`Final placement: x=${imageX.toFixed(1)}, y=${imageY.toFixed(1)}, w=${finalWidth.toFixed(1)}, h=${finalHeight.toFixed(1)}`);
-
-        // Draw the map image onto the page
-        firstPage.drawImage(mapImage, {
-            x: imageX,
-            y: imageY,
-            width: finalWidth,
-            height: finalHeight,
+        page.drawImage(mapImage, {
+            x: mapX,
+            y: mapY,
+            width: mapWidth,
+            height: mapHeight,
         });
 
-        // Add text overlay for project name and location (Top Center Callout)
-        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        
-        // Judul survey di area kop (di BAWAH gambar peta, tidak menimpa peta)
-        drawProjectTitleCallout(firstPage, font, fontBold, surveyInfo, pageWidth, imageY);
+        // Draw solid border line around map canvas
+        page.drawRectangle({
+            x: mapX,
+            y: mapY,
+            width: mapWidth,
+            height: mapHeight,
+            borderColor: rgb(0.0, 0.22, 0.45),
+            borderWidth: 1.2,
+        });
+
+        // Draw Official Kop PLN
+        drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, undefined, pageWidth, pageHeight);
 
         // Draw Rincian Pekerjaan block (bottom-left of map area)
         if (surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
-            drawRincianBlock(firstPage, font, fontBold, surveyInfo.rincianLines, imageX, imageY);
+            drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, mapX, mapY);
         }
 
-        // Save modified PDF
         const modifiedPdfBytes = await pdfDoc.save();
         const modifiedPdfBase64 = uint8ArrayToBase64(modifiedPdfBytes);
 
-        // Write to file system
-        const filename = `Survey_${surveyInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+        const filename = `Survey_PLN_${surveyInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
         const outputPath = `${FileSystem.cacheDirectory}${filename}`;
 
-        await FileSystem.writeAsStringAsync(outputPath, modifiedPdfBase64, {
-            encoding: 'base64',
-        });
+        await FileSystem.writeAsStringAsync(outputPath, modifiedPdfBase64, { encoding: 'base64' });
 
-        console.log(`PDF saved to: ${outputPath}`);
+        console.log(`Official PLN PDF saved to: ${outputPath}`);
         return outputPath;
     } catch (error) {
         console.error('PDF generation failed:', error);
@@ -341,45 +433,28 @@ export async function generatePdfWithMap(
 }
 
 // =============================================================================
-// MULTI-PAGE PDF EXPORT
+// MULTI-PAGE PDF EXPORT (OFFICIAL PLN KOP FORMAT)
 // =============================================================================
 
-export interface PageMeta {
-    pageNumber: number;
-    totalPages: number;
-    firstNomor: number;
-    lastNomor: number;
-    panjangMeter: number;
-}
-
-/**
- * Generate multi-page PDF: setiap elemen mapBase64s menjadi satu halaman.
- * @param mapBase64s - Array screenshot base64, satu per segmen
- * @param surveyInfo - Nama & lokasi survey
- * @param pageMetas - Metadata per halaman (nomor tiang, panjang segmen, dll)
- * @returns Path ke file PDF multi-halaman, atau null jika gagal
- */
 export async function generateMultiPagePdf(
     mapBase64s: string[],
     surveyInfo: SurveyInfo,
     pageMetas: PageMeta[]
 ): Promise<string | null> {
     try {
-        console.log(`Starting multi-page PDF: ${mapBase64s.length} pages`);
+        console.log(`Starting official PLN multi-page PDF: ${mapBase64s.length} pages`);
 
-        const orientation: Orientation = detectOrientation();
-
-        // Create a fresh PDFDocument for the output
         const outputDoc = await PDFDocument.create();
         const embeddedFont = await outputDoc.embedFont(StandardFonts.Helvetica);
         const embeddedFontBold = await outputDoc.embedFont(StandardFonts.HelveticaBold);
 
-        const padding = orientation === 'portrait' ? PORTRAIT_PADDING : LANDSCAPE_PADDING;
-        const textPositions = TEXT_POSITIONS[orientation];
+        const pageWidth = 841.89;
+        const pageHeight = 595.28;
 
-        // A4 dimensions
-        const pageWidth = orientation === 'portrait' ? 595.28 : 841.89;
-        const pageHeight = orientation === 'portrait' ? 841.89 : 595.28;
+        const mapX = 18;
+        const mapY = 110;
+        const mapWidth = pageWidth - 36;
+        const mapHeight = pageHeight - 126;
 
         for (let i = 0; i < mapBase64s.length; i++) {
             const mapBase64 = mapBase64s[i];
@@ -391,64 +466,41 @@ export async function generateMultiPagePdf(
             const mapImageBytes = base64Decode(mapBase64);
             const mapImage = await outputDoc.embedPng(mapImageBytes);
 
-            const imgAspectRatio = mapImage.width / mapImage.height;
-            const availableWidth = pageWidth - padding.left - padding.right;
-            const availableHeight = pageHeight - padding.top - padding.bottom;
-            const areaAspectRatio = availableWidth / availableHeight;
-
-            let finalWidth: number;
-            let finalHeight: number;
-            if (imgAspectRatio > areaAspectRatio) {
-                finalWidth = availableWidth;
-                finalHeight = availableWidth / imgAspectRatio;
-            } else {
-                finalHeight = availableHeight;
-                finalWidth = availableHeight * imgAspectRatio;
-            }
-
-            const imageX = padding.left + (availableWidth - finalWidth) / 2;
-            const imageY = padding.bottom + (availableHeight - finalHeight) / 2;
-
             page.drawImage(mapImage, {
-                x: imageX,
-                y: imageY,
-                width: finalWidth,
-                height: finalHeight,
+                x: mapX,
+                y: mapY,
+                width: mapWidth,
+                height: mapHeight,
             });
 
-            // --- Judul survey di area kop (di BAWAH gambar peta, tidak menimpa peta) ---
-            drawProjectTitleCallout(page, embeddedFont, embeddedFontBold, surveyInfo, pageWidth, imageY);
-
-            // --- Segment info: "Hal. 1/3 | T.1 - T.8 | 320m" ---
-            const panjangLabel = meta.panjangMeter >= 1000
-                ? (meta.panjangMeter / 1000).toFixed(2) + ' km'
-                : Math.round(meta.panjangMeter) + 'm';
-            const segInfo = `Hal. ${meta.pageNumber}/${meta.totalPages}  |  T.${meta.firstNomor} - T.${meta.lastNomor}  |  ${panjangLabel}`;
-
-            // Draw segment info bottom-left of kop area
-            page.drawText(segInfo, {
-                x: padding.left,
-                y: textPositions.location.y,   // same Y as location text
-                size: 7,
-                font: embeddedFont,
-                color: rgb(0.3, 0.3, 0.3),
+            // Draw solid border line around map canvas
+            page.drawRectangle({
+                x: mapX,
+                y: mapY,
+                width: mapWidth,
+                height: mapHeight,
+                borderColor: rgb(0.0, 0.22, 0.45),
+                borderWidth: 1.2,
             });
+
+            // Draw Official Kop PLN
+            drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, meta, pageWidth, pageHeight);
 
             // Draw Rincian Pekerjaan block on FIRST PAGE ONLY
             if (i === 0 && surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
-                drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, imageX, imageY);
+                drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, mapX, mapY);
             }
         }
 
         const pdfBytes = await outputDoc.save();
         const pdfBase64 = uint8ArrayToBase64(pdfBytes);
 
-        const filename = `Survey_${surveyInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${pageMetas.length}hal_${Date.now()}.pdf`;
+        const filename = `Survey_PLN_${surveyInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${pageMetas.length}hal_${Date.now()}.pdf`;
         const outputPath = `${FileSystem.cacheDirectory}${filename}`;
 
         await FileSystem.writeAsStringAsync(outputPath, pdfBase64, { encoding: 'base64' });
 
-        console.log(`Multi-page PDF saved: ${outputPath} (${pageMetas.length} pages)`);
+        console.log(`Official PLN Multi-page PDF saved: ${outputPath} (${pageMetas.length} pages)`);
         return outputPath;
     } catch (error) {
         console.error('Multi-page PDF generation failed:', error);
@@ -457,12 +509,9 @@ export async function generateMultiPagePdf(
 }
 
 // =============================================================================
-// LEGACY FUNCTION (for backward compatibility)
+// LEGACY FUNCTION
 // =============================================================================
 
-/**
- * @deprecated Use generatePdfWithMap with SurveyInfo instead
- */
 export async function generatePdfWithMapLegacy(
     mapBase64: string,
     surveyName: string
@@ -474,17 +523,13 @@ export async function generatePdfWithMapLegacy(
 // SHARE FUNCTION
 // =============================================================================
 
-/**
- * Share the generated PDF file
- * @param filePath - Path to the PDF file
- */
 export async function sharePdf(filePath: string): Promise<void> {
     try {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
             await Sharing.shareAsync(filePath, {
                 mimeType: 'application/pdf',
-                dialogTitle: 'Bagikan PDF Survey',
+                dialogTitle: 'Bagikan PDF Survey Resmi PLN',
             });
         } else {
             console.warn('Sharing not available on this platform');
@@ -498,20 +543,15 @@ export async function sharePdf(filePath: string): Promise<void> {
 // UTILITY FUNCTIONS
 // =============================================================================
 
-/**
- * Convert Uint8Array to Base64 string
- */
 function uint8ArrayToBase64(bytes: Uint8Array): string {
     let binary = '';
     const len = bytes.byteLength;
     for (let i = 0; i < len; i++) {
         binary += String.fromCharCode(bytes[i]);
     }
-    // Use btoa if available (browser), otherwise use a simple polyfill
     if (typeof btoa !== 'undefined') {
         return btoa(binary);
     }
-    // Fallback for React Native
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     let result = '';
     let i = 0;

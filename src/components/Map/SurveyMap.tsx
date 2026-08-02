@@ -45,6 +45,7 @@ interface SurveyMapProps {
   persilList?: PersilPelanggan[];
   onPersilPress?: (persil: PersilPelanggan) => void;
   overlayLayers?: OverlayFile[];
+  onZoomChange?: (zoom: number) => void;
 }
 
 
@@ -62,7 +63,9 @@ export interface SurveyMapRef {
   /** Capture peta pada bounds tertentu (untuk multi-page PDF) */
   captureSegment: (
     bounds: [[number, number], [number, number]],
-    boundaryMarkers?: BoundaryMarker[]
+    boundaryMarkers?: BoundaryMarker[],
+    lockedZoom?: number,
+    centerCoords?: { lat: number; lng: number }
   ) => Promise<string | null>;
 }
 
@@ -96,6 +99,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   persilList = [],
   onPersilPress,
   overlayLayers = [],
+  onZoomChange,
 }, ref) => {
   const webviewRef = useRef<WebView>(null);
   const containerRef = useRef<View>(null);
@@ -285,7 +289,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     // Capture peta pada bounds tertentu (untuk multi-page segmented PDF)
     captureSegment: async (
       bounds: [[number, number], [number, number]],
-      boundaryMarkers?: BoundaryMarker[]
+      boundaryMarkers?: BoundaryMarker[],
+      lockedZoom?: number,
+      centerCoords?: { lat: number; lng: number }
     ) => {
       if (!webviewRef.current || !containerRef.current) return null;
 
@@ -310,6 +316,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
+      const lockedZoomVal = lockedZoom ? lockedZoom : 'null';
+      const centerCoordsVal = centerCoords ? JSON.stringify(centerCoords) : 'null';
+
       // Android: gunakan html2canvas via WebView
       if (Platform.OS === 'android') {
         return new Promise<string | null>((resolve) => {
@@ -328,7 +337,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
             // Retry logic: if captureMapToBase64 not ready (WebView may have reloaded), wait and retry
             function tryCapture(attempt) {
               if (window.captureMapToBase64) {
-                window.captureMapToBase64(${JSON.stringify(bounds)});
+                window.captureMapToBase64(${JSON.stringify(bounds)}, ${lockedZoomVal}, ${centerCoordsVal});
               } else if (attempt < 3) {
                 setTimeout(function() { tryCapture(attempt + 1); }, 1500);
               } else {
@@ -470,6 +479,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         if (persil && onPersilPress) onPersilPress(persil);
       } else if (data.type === 'zoomChange') {
         setCurrentZoom(data.zoom);
+        if (onZoomChange) onZoomChange(data.zoom);
       } else if (data.type === 'baseMapChange') {
         setActiveBaseMap(data.baseMap);
       } else if (data.type === 'mapCapture') {

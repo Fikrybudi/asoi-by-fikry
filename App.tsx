@@ -3,12 +3,13 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView, TextInput } from 'react-native';
 import LayerControlModal from './src/components/Modals/LayerControlModal';
 import MenuModal from './src/components/Modals/MenuModal';
 import AboutModal from './src/components/Modals/AboutModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import SurveyMap, { SurveyMapRef, BoundaryMarker } from './src/components/Map/SurveyMap';
 import Toolbar, { ToolMode } from './src/components/Toolbar/Toolbar';
 import TiangForm from './src/components/Forms/TiangForm';
@@ -19,8 +20,8 @@ import SurveySummaryScreen from './src/screens/SurveySummaryScreen';
 import SurveyHistoryScreen from './src/screens/SurveyHistoryScreen';
 import { Coordinate, Tiang, Gardu, JalurKabel, JembatanKabel, Survey, PersilPelanggan } from './src/types';
 import { surveyService, tiangService, garduService, jalurService, jembatanKabelService, persilService } from './src/services/database';
-import { calculateDistance, generatePointsAlongPolyline, groupTiangBySegment, calculateBoundsForGroup, SegmentMode } from './src/utils/geoUtils';
-import { generatePdfWithMap, generateMultiPagePdf, sharePdf, PageMeta } from './src/utils/pdfExport';
+import { calculateDistance, generatePointsAlongPolyline, groupTiangBySegment, calculateBoundsForGroup, SegmentMode, getNumericScaleString } from './src/utils/geoUtils';
+import { generatePdfWithMap, generateMultiPagePdf, sharePdf, PageMeta, SurveyInfo } from './src/utils/pdfExport';
 import { buildRincianPekerjaan } from './src/utils/rincianPekerjaan';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './src/services/supabaseClient';
@@ -72,6 +73,43 @@ export default function App() {
   // Edit jalur state
   const [editingJalur, setEditingJalur] = useState<JalurKabel | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Active map zoom tracked live from SurveyMap WebView
+  const [currentZoom, setCurrentZoom] = useState<number>(18);
+
+  // Modal Export PDF & Kop PLN Metadata State
+  const [showExportPdfModal, setShowExportPdfModal] = useState(false);
+  const [pdfUp3Name, setPdfUp3Name] = useState('');
+  const [pdfUlpName, setPdfUlpName] = useState('');
+  const [pdfSurveyorName, setPdfSurveyorName] = useState('');
+  const [pdfPemeriksaTitle, setPdfPemeriksaTitle] = useState('SPV PEMELIHARAAN');
+  const [pdfPemeriksaName, setPdfPemeriksaName] = useState('');
+  const [pdfManagerName, setPdfManagerName] = useState('');
+  const [selectedSegmentMode, setSelectedSegmentMode] = useState<SegmentMode | 'single'>('scale');
+
+  const CONFIG_PATH = `${FileSystem.documentDirectory}pln_pdf_config.json`;
+
+  const loadPdfConfig = async () => {
+    try {
+      const exists = await FileSystem.getInfoAsync(CONFIG_PATH);
+      if (exists.exists) {
+        const json = await FileSystem.readAsStringAsync(CONFIG_PATH);
+        const data = JSON.parse(json);
+        if (data.up3Name) setPdfUp3Name(data.up3Name);
+        if (data.ulpName) setPdfUlpName(data.ulpName);
+        if (data.surveyorName) setPdfSurveyorName(data.surveyorName);
+        if (data.pemeriksaTitle) setPdfPemeriksaTitle(data.pemeriksaTitle);
+        if (data.pemeriksaName) setPdfPemeriksaName(data.pemeriksaName);
+        if (data.managerName) setPdfManagerName(data.managerName);
+      }
+    } catch (e) {}
+  };
+
+  const savePdfConfig = async (configData: any) => {
+    try {
+      await FileSystem.writeAsStringAsync(CONFIG_PATH, JSON.stringify(configData));
+    } catch (e) {}
+  };
 
   // Edit tiang/gardu state
   const [editingTiang, setEditingTiang] = useState<Tiang | null>(null);
@@ -444,59 +482,55 @@ export default function App() {
     setToolMode('none');
   };
 
-  // Handler untuk memilih mode export PDF Gambar
-  const handleExportPDFGambar = async () => {
-    if (!mapRef.current || !currentSurvey) {
-      Alert.alert('Error', 'Tidak ada survey aktif');
+  // Handle klik tombol Export PDF -> Buka Modal Form Metadata Kop PLN
+  const handleExportPdf = async () => {
+    if (!currentSurvey) {
+      Alert.alert('Info', 'Buka atau buat survey terlebih dahulu');
       return;
     }
-
     // Close summary modal so map is ready for capture
     setShowSummary(false);
-
-    const tiangList = currentSurvey.tiangList;
-    const hasEnoughForSegment =
-      tiangList.length > 8 ||
-      tiangList.reduce((acc, t, i, arr) =>
-        i > 0 ? acc + calculateDistance(arr[i - 1].koordinat, t.koordinat) : acc, 0) > 400;
-
-    if (!hasEnoughForSegment) {
-      // Survey kecil: langsung export satu halaman seperti biasa
-      await doExportSinglePage();
-      return;
-    }
-
-    // Survey besar: tawarkan pilihan mode
-    Alert.alert(
-      '📄 Export PDF Gambar',
-      'Pilih mode segmentasi halaman PDF:',
-      [
-        {
-          text: '8 Tiang TM/Hal',
-          onPress: () => doExportMultiPage('tm8'),
-        },
-        {
-          text: '10 Tiang TR/Hal',
-          onPress: () => doExportMultiPage('tr10'),
-        },
-        {
-          text: 'Per 400m',
-          onPress: () => doExportMultiPage('dist400'),
-        },
-        {
-          text: '1 Halaman',
-          onPress: () => doExportSinglePage(),
-        },
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-      ]
-    );
+    await loadPdfConfig();
+    setShowExportPdfModal(true);
   };
 
-  // Export single-page PDF (perilaku lama)
-  const doExportSinglePage = async () => {
+  // Proses utama setelah user mengisi form di Modal PDF
+  const doProcessExportPdf = async () => {
+    if (!currentSurvey) return;
+
+    const fullSurveyInfo: SurveyInfo = {
+      name: currentSurvey.namaSurvey,
+      location: currentSurvey.lokasi || '',
+      up3Name: pdfUp3Name.trim(),
+      ulpName: pdfUlpName.trim(),
+      surveyorName: pdfSurveyorName.trim(),
+      pemeriksaTitle: pdfPemeriksaTitle.trim() || 'SPV PEMELIHARAAN',
+      pemeriksaName: pdfPemeriksaName.trim(),
+      managerName: pdfManagerName.trim(),
+      rincianLines: buildRincianPekerjaan(currentSurvey),
+    };
+
+    // Auto-save remembered inputs
+    await savePdfConfig({
+      up3Name: pdfUp3Name.trim(),
+      ulpName: pdfUlpName.trim(),
+      surveyorName: pdfSurveyorName.trim(),
+      pemeriksaTitle: pdfPemeriksaTitle.trim(),
+      pemeriksaName: pdfPemeriksaName.trim(),
+      managerName: pdfManagerName.trim(),
+    });
+
+    setShowExportPdfModal(false);
+
+    if (selectedSegmentMode === 'single') {
+      await doExportSinglePage(fullSurveyInfo);
+    } else {
+      await doExportMultiPage(selectedSegmentMode as SegmentMode, fullSurveyInfo);
+    }
+  };
+
+  // Export single-page PDF
+  const doExportSinglePage = async (surveyInfo: SurveyInfo) => {
     if (!mapRef.current || !currentSurvey) return;
     setExportProgress('Mengambil gambar peta...');
     try {
@@ -505,17 +539,13 @@ export default function App() {
         Alert.alert('Error', 'Gagal capture peta');
         return;
       }
-      setExportProgress('Membuat PDF...');
-      const pdfPath = await generatePdfWithMap(mapBase64, {
-        name: currentSurvey.namaSurvey,
-        location: currentSurvey.lokasi || '',
-        rincianLines: buildRincianPekerjaan(currentSurvey),
-      });
+      setExportProgress('Membuat PDF Kop Resmi PLN...');
+      const pdfPath = await generatePdfWithMap(mapBase64, surveyInfo);
       if (!pdfPath) {
         Alert.alert('Error', 'Gagal generate PDF');
         return;
       }
-      Alert.alert('✅ Berhasil', 'PDF Gambar berhasil dibuat!');
+      Alert.alert('✅ Berhasil', 'PDF Gambar Resmi PLN berhasil dibuat!');
       await sharePdf(pdfPath);
     } finally {
       setExportProgress(null);
@@ -523,7 +553,7 @@ export default function App() {
   };
 
   // Export multi-page PDF (segmented)
-  const doExportMultiPage = async (mode: SegmentMode) => {
+  const doExportMultiPage = async (mode: SegmentMode, surveyInfo: SurveyInfo) => {
     if (!mapRef.current || !currentSurvey) return;
 
     const tiangList = currentSurvey.tiangList;
@@ -533,8 +563,9 @@ export default function App() {
     }
 
     try {
-      // Segmentasi tiang
-      const segments = groupTiangBySegment(tiangList, mode);
+      const currentLat = centerCoordinate?.latitude ?? tiangList[0]?.koordinat.latitude ?? -6.8;
+      // Segmentasi tiang berdasarkan mode (termasuk mode 'scale' menggunakan live currentZoom)
+      const segments = groupTiangBySegment(tiangList, mode, currentZoom, currentLat);
       const totalPages = segments.length;
 
       const mapBase64s: string[] = [];
@@ -544,21 +575,10 @@ export default function App() {
         const seg = segments[i];
         setExportProgress(`Mengambil gambar halaman ${i + 1} dari ${totalPages}...`);
 
-        // Fungsi helper untuk mendapatkan titik batas antara dua segmen
-        // Menggunakan tiang terakhir dari segmen pertama agar pembatas jatuh tepat di tiang
-        const getBoundaryPoint = (segA: any, segB: any) => {
-          if (!segA || !segB) return undefined;
-          return segA.tiangList[segA.tiangList.length - 1].koordinat;
-        };
-
-        const prevSegment = i > 0 ? segments[i - 1] : null;
-        const nextSegment = i < segments.length - 1 ? segments[i + 1] : null;
-
-        // Titik batas = tiang terakhir segmen sebelumnya.
-        // Menjamin titik batas memiliki koordinat geografis yang 100% SAMA untuk kedua halaman,
-        // sehingga visual marker boundary posisinya sejajar/tepat di tiang tersebut.
-        const prevAnchor = getBoundaryPoint(prevSegment, seg);
-        const nextAnchor = getBoundaryPoint(seg, nextSegment);
+        // Titik batas kiri halaman ini = tiang pertama segmen ini (yang merupakan tiang pembatas dari halaman sebelumnya)
+        const prevAnchor = i > 0 ? seg.tiangList[0].koordinat : undefined;
+        // Titik batas kanan halaman ini = tiang terakhir segmen ini (yang akan menjadi tiang pembatas untuk halaman berikutnya)
+        const nextAnchor = i < segments.length - 1 ? seg.tiangList[seg.tiangList.length - 1].koordinat : undefined;
 
         const bounds = calculateBoundsForGroup(seg.tiangList, prevAnchor, nextAnchor);
 
@@ -592,7 +612,16 @@ export default function App() {
           });
         }
 
-        const base64 = await mapRef.current.captureSegment(bounds, boundaryMarkers);
+        // Hitung titik tengah segmen agar peta bisa di-set ke zoom/skala LOCKED yang 100% konsisten di setiap halaman
+        // Hitung titik tengah dari tiang awal dan tiang akhir segmen ini
+        // Menjamin tiang awal terletak di UJUNG KIRI halaman dan tiang pembatas di UJUNG KANAN halaman (100% efisien tanpa buang space)
+        const firstCoord = seg.tiangList[0].koordinat;
+        const lastCoord = seg.tiangList[seg.tiangList.length - 1].koordinat;
+        const centerLat = (firstCoord.latitude + lastCoord.latitude) / 2;
+        const centerLng = (firstCoord.longitude + lastCoord.longitude) / 2;
+        const centerCoords = { lat: centerLat, lng: centerLng };
+
+        const base64 = await mapRef.current.captureSegment(bounds, boundaryMarkers, currentZoom, centerCoords);
 
         if (!base64) {
           Alert.alert('Error', `Gagal capture halaman ${i + 1}`);
@@ -616,18 +645,14 @@ export default function App() {
       }
 
       setExportProgress(`Membuat PDF ${totalPages} halaman...`);
-      const pdfPath = await generateMultiPagePdf(mapBase64s, {
-        name: currentSurvey.namaSurvey,
-        location: currentSurvey.lokasi || '',
-        rincianLines: buildRincianPekerjaan(currentSurvey),
-      }, pageMetas);
+      const pdfPath = await generateMultiPagePdf(mapBase64s, surveyInfo, pageMetas);
 
       if (!pdfPath) {
         Alert.alert('Error', 'Gagal generate PDF multi-halaman');
         return;
       }
 
-      Alert.alert('✅ Berhasil', `PDF ${totalPages} halaman berhasil dibuat!`);
+      Alert.alert('✅ Berhasil', `PDF Gambar Resmi PLN (${totalPages} hal) berhasil dibuat!`);
       await sharePdf(pdfPath);
     } catch (error) {
       console.error('doExportMultiPage error:', error);
@@ -1524,6 +1549,7 @@ export default function App() {
           }
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}
+          onZoomChange={setCurrentZoom}
           selectedTiangIds={underbuildTiangIds}
           onTiangLabelShift={handleTiangLabelShift}
           persilList={currentSurvey?.persilList || []}
@@ -1752,7 +1778,7 @@ export default function App() {
           onClose={() => setShowSummary(false)}
           onSaveAndClose={handleSaveAndClose}
           onNewSurvey={handleNewSurvey}
-          onExportPDFGambar={handleExportPDFGambar}
+          onExportPDFGambar={handleExportPdf}
           overlayLayers={overlayLayers}
         />
       )}
@@ -1935,6 +1961,155 @@ export default function App() {
         visible={showAbout}
         onClose={() => setShowAbout(false)}
       />
+
+      {/* Modal Export PDF Kop Gambar PLN */}
+      <Modal
+        visible={showExportPdfModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowExportPdfModal(false)}
+      >
+        <View style={styles.exportModalOverlay}>
+          <View style={styles.exportModalContainer}>
+            <View style={styles.exportModalHeader}>
+              <Text style={styles.exportModalTitle}>⚡ Form Data Kop Gambar PLN</Text>
+              <TouchableOpacity onPress={() => setShowExportPdfModal(false)}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.exportModalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.exportSectionSubtitle}>Isi data pengesahan resmi untuk Kop Gambar PLN (Tersimpan otomatis):</Text>
+
+              <View style={styles.exportFormRow}>
+                <View style={[styles.exportFormGroup, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.exportFormLabel}>🏢 Nama UP3</Text>
+                  <TextInput
+                    style={styles.exportFormInput}
+                    value={pdfUp3Name}
+                    onChangeText={setPdfUp3Name}
+                    placeholder="Contoh: UP3 Banten Selatan"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+                <View style={[styles.exportFormGroup, { flex: 1 }]}>
+                  <Text style={styles.exportFormLabel}>📍 Nama ULP</Text>
+                  <TextInput
+                    style={styles.exportFormInput}
+                    value={pdfUlpName}
+                    onChangeText={setPdfUlpName}
+                    placeholder="Contoh: ULP Labuan"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.exportFormGroup}>
+                <Text style={styles.exportFormLabel}>👷 Disurvey Oleh (Nama Surveyor)</Text>
+                <TextInput
+                  style={styles.exportFormInput}
+                  value={pdfSurveyorName}
+                  onChangeText={setPdfSurveyorName}
+                  placeholder="Nama Lengkap Surveyor / Tim Field"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <View style={styles.exportFormGroup}>
+                <Text style={styles.exportFormLabel}>🔍 Diperiksa Oleh (Pemeriksa)</Text>
+                <View style={styles.exportPillContainer}>
+                  {['SPV PEMELIHARAAN', 'SPV PERENCANAAN', 'SPV KONSTRUKSI'].map((title) => (
+                    <TouchableOpacity
+                      key={title}
+                      style={[
+                        styles.exportPill,
+                        pdfPemeriksaTitle === title && styles.exportPillActive
+                      ]}
+                      onPress={() => setPdfPemeriksaTitle(title)}
+                    >
+                      <Text style={[
+                        styles.exportPillText,
+                        pdfPemeriksaTitle === title && styles.exportPillTextActive
+                      ]}>
+                        {title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={styles.exportFormInput}
+                  value={pdfPemeriksaName}
+                  onChangeText={setPdfPemeriksaName}
+                  placeholder="Nama Lengkap Spv / Pemeriksa"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <View style={styles.exportFormGroup}>
+                <Text style={styles.exportFormLabel}>👔 Disetujui Oleh (Manager ULP / UP3)</Text>
+                <TextInput
+                  style={styles.exportFormInput}
+                  value={pdfManagerName}
+                  onChangeText={setPdfManagerName}
+                  placeholder="Nama Lengkap Manager PLN"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <Text style={[styles.exportFormLabel, { marginTop: 14, fontSize: 13, color: '#0D47A1' }]}>📐 Mode Segmentasi Halaman PDF:</Text>
+              <View style={styles.exportModeContainer}>
+                <TouchableOpacity
+                  style={[styles.exportModeCard, selectedSegmentMode === 'scale' && styles.exportModeCardActive]}
+                  onPress={() => setSelectedSegmentMode('scale')}
+                >
+                  <Text style={styles.exportModeCardTitle}>📐 Skala Saat Ini ({getNumericScaleString(currentZoom)})</Text>
+                  <Text style={styles.exportModeCardSub}>Multi-page dengan skala terkunci (Rekomendasi)</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.exportModeCard, selectedSegmentMode === 'tm8' && styles.exportModeCardActive]}
+                  onPress={() => setSelectedSegmentMode('tm8')}
+                >
+                  <Text style={styles.exportModeCardTitle}>⚡ 8 Tiang TM / Halaman</Text>
+                  <Text style={styles.exportModeCardSub}>Dipotong per 8 tiang SUTM</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.exportModeCard, selectedSegmentMode === 'dist400' && styles.exportModeCardActive]}
+                  onPress={() => setSelectedSegmentMode('dist400')}
+                >
+                  <Text style={styles.exportModeCardTitle}>📏 Per 400 Meter / Halaman</Text>
+                  <Text style={styles.exportModeCardSub}>Dipotong per 400m fisik jalur</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.exportModeCard, selectedSegmentMode === 'single' && styles.exportModeCardActive]}
+                  onPress={() => setSelectedSegmentMode('single')}
+                >
+                  <Text style={styles.exportModeCardTitle}>📄 1 Halaman Full</Text>
+                  <Text style={styles.exportModeCardSub}>Seluruh jalur dalam 1 lembar PDF</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+
+            <View style={styles.exportModalFooter}>
+              <TouchableOpacity
+                style={styles.exportCancelButton}
+                onPress={() => setShowExportPdfModal(false)}
+              >
+                <Text style={styles.exportCancelButtonText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.exportSubmitButton}
+                onPress={doProcessExportPdf}
+              >
+                <Text style={styles.exportSubmitButtonText}>🚀 EXPORT PDF RESMI</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2101,5 +2276,150 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  // Export PDF Modal Styles
+  exportModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  exportModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '90%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  exportModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#0D47A1',
+  },
+  exportModalTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  exportModalBody: {
+    padding: 20,
+  },
+  exportSectionSubtitle: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 14,
+  },
+  exportFormRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  exportFormGroup: {
+    marginBottom: 12,
+  },
+  exportFormLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
+  },
+  exportFormInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#222',
+    backgroundColor: '#F9FAFB',
+  },
+  exportPillContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  exportPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: '#E0E0E0',
+  },
+  exportPillActive: {
+    backgroundColor: '#0D47A1',
+  },
+  exportPillText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  exportPillTextActive: {
+    color: '#fff',
+  },
+  exportModeContainer: {
+    gap: 8,
+    marginTop: 8,
+  },
+  exportModeCard: {
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FAFAFA',
+  },
+  exportModeCardActive: {
+    borderColor: '#0D47A1',
+    backgroundColor: '#E3F2FD',
+  },
+  exportModeCardTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+  },
+  exportModeCardSub: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 2,
+  },
+  exportModalFooter: {
+    flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
+    borderColor: '#EEEEEE',
+    backgroundColor: '#F9FAFB',
+    gap: 12,
+  },
+  exportCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#EEEEEE',
+    alignItems: 'center',
+  },
+  exportCancelButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  exportSubmitButton: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#0D47A1',
+    alignItems: 'center',
+  },
+  exportSubmitButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 });
