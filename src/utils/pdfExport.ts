@@ -324,7 +324,7 @@ function drawOfficialPlnKop(
     const colSig3 = col3X + 8;
 
     const survNameText = surveyInfo.surveyorName ? `( ${surveyInfo.surveyorName} )` : '( ..................................................... )';
-    const spvTitleText = surveyInfo.pemeriksaTitle ? surveyInfo.pemeriksaTitle.toUpperCase() : 'SPV PERENCANAAN';
+    const spvTitleText = surveyInfo.pemeriksaTitle ? surveyInfo.pemeriksaTitle.toUpperCase() : 'TL HAR';
     const spvNameText = surveyInfo.pemeriksaName ? `( ${surveyInfo.pemeriksaName} )` : '( ..................................................... )';
     const mgrTitleText = `DISETUJUI (MANAGER ${ulpStr}):`;
     const mgrNameText = surveyInfo.managerName ? `( ${surveyInfo.managerName} )` : '( ..................................................... )';

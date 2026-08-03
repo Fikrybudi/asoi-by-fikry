@@ -83,7 +83,7 @@ export default function App() {
   const [pdfUp3Name, setPdfUp3Name] = useState('UP3 Banten Selatan');
   const [pdfUlpName, setPdfUlpName] = useState('ULP Labuan');
   const [pdfSurveyorName, setPdfSurveyorName] = useState('');
-  const [pdfPemeriksaTitle, setPdfPemeriksaTitle] = useState('SPV PEMELIHARAAN');
+  const [pdfPemeriksaTitle, setPdfPemeriksaTitle] = useState('TL HAR');
   const [pdfPemeriksaName, setPdfPemeriksaName] = useState('');
   const [pdfManagerName, setPdfManagerName] = useState('');
   const [selectedSegmentMode, setSelectedSegmentMode] = useState<SegmentMode | 'single'>('scale');
@@ -507,7 +507,7 @@ export default function App() {
       up3Name: pdfUp3Name.trim() || 'UP3 Banten Selatan',
       ulpName: pdfUlpName.trim() || 'ULP Labuan',
       surveyorName: pdfSurveyorName.trim(),
-      pemeriksaTitle: pdfPemeriksaTitle.trim() || 'SPV PEMELIHARAAN',
+      pemeriksaTitle: pdfPemeriksaTitle.trim() || 'TL HAR',
       pemeriksaName: pdfPemeriksaName.trim(),
       managerName: pdfManagerName.trim(),
       rincianLines: buildRincianPekerjaan(currentSurvey),
@@ -2032,7 +2032,7 @@ export default function App() {
               <View style={styles.exportFormGroup}>
                 <Text style={styles.exportFormLabel}>🔍 Diperiksa Oleh (Pemeriksa)</Text>
                 <View style={styles.exportPillContainer}>
-                  {['SPV PEMELIHARAAN', 'SPV PERENCANAAN', 'SPV KONSTRUKSI'].map((title) => (
+                  {['TL HAR', 'TL RENSIS', 'ASMAN KONS'].map((title) => (
                     <TouchableOpacity
                       key={title}
                       style={[
