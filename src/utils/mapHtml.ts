@@ -1476,7 +1476,7 @@ const generateMapHTML = (
         var normX = -dy / len;
         var normY = dx / len;
 
-        var cutHalfLength = 0.00028; // ~28 meter ke masing-masing sisi tegak lurus (panjang ideal & pas di dalam bingkai)
+        var cutHalfLength = 0.00042; // ~42 meter ke masing-masing sisi tegak lurus (bebas overlap label tiang & pas di dalam frame)
         var lineP1 = [m.lat - normY * cutHalfLength, m.lng - normX * cutHalfLength];
         var lineP2 = [m.lat + normY * cutHalfLength, m.lng + normX * cutHalfLength];
 
