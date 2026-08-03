@@ -5,6 +5,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { Asset } from 'expo-asset';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { decode as base64Decode } from 'base64-arraybuffer';
 
@@ -15,8 +16,9 @@ import { decode as base64Decode } from 'base64-arraybuffer';
 export interface SurveyInfo {
     name: string;
     location: string;
-    up3Name?: string;         // e.g. "UP3 SURABAYA SELATAN"
-    ulpName?: string;         // e.g. "ULP RUNGKUT"
+    uidName?: string;         // e.g. "UID Banten"
+    up3Name?: string;         // e.g. "UP3 Banten Selatan"
+    ulpName?: string;         // e.g. "ULP Labuan"
     surveyorName?: string;    // e.g. "Fikry"
     pemeriksaTitle?: string;  // e.g. "SPV PEMELIHARAAN" or "SPV PERENCANAAN"
     pemeriksaName?: string;   // e.g. "Budi Santoso"
@@ -43,6 +45,29 @@ const RINCIAN = {
     bgOpacity: 0.88,      // background transparency
 };
 
+/**
+ * Helper to embed PNG logo from assets/logo_pln.png into pdfDoc
+ */
+async function getPlnLogoImage(pdfDoc: PDFDocument) {
+    try {
+        const asset = Asset.fromModule(require('../../assets/logo_pln.png'));
+        if (!asset.downloaded) {
+            await asset.downloadAsync();
+        }
+        const uri = asset.localUri || asset.uri;
+        if (uri) {
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            if (base64) {
+                const bytes = base64Decode(base64);
+                return await pdfDoc.embedPng(bytes);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to embed assets/logo_pln.png:', e);
+    }
+    return null;
+}
+
 // =============================================================================
 // OFFICIAL PLN KOP & FRAME DRAWING
 // =============================================================================
@@ -57,7 +82,8 @@ function drawOfficialPlnKop(
     surveyInfo: SurveyInfo,
     meta?: PageMeta,
     pageWidth: number = 841.89,
-    pageHeight: number = 595.28
+    pageHeight: number = 595.28,
+    plnLogoImage?: any
 ) {
     // 1. Double CAD Page Frame
     page.drawRectangle({
@@ -103,41 +129,49 @@ function drawOfficialPlnKop(
         color: rgb(0.02, 0.22, 0.45), // PLN Dark Blue
     });
 
-    // --- PLN Vector Shield & Lightning Logo ---
+    // --- PLN LOGO (PNG from assets/logo_pln.png or Vector Fallback) ---
     const logoX = kopX + 8;
-    const logoY = headerY + 4;
-    const logoW = 14;
-    const logoH = 18;
+    const logoY = headerY + 3;
+    const logoW = 15;
+    const logoH = 20;
 
-    // Yellow shield
-    page.drawRectangle({
-        x: logoX,
-        y: logoY,
-        width: logoW,
-        height: logoH,
-        color: rgb(1.0, 0.88, 0.05),
-        borderColor: rgb(1, 1, 1),
-        borderWidth: 0.6,
-    });
-    // Red lightning bolt
-    page.drawLine({
-        start: { x: logoX + 10, y: logoY + 15 },
-        end: { x: logoX + 4, y: logoY + 9 },
-        thickness: 2.2,
-        color: rgb(0.9, 0.1, 0.1),
-    });
-    page.drawLine({
-        start: { x: logoX + 4, y: logoY + 9 },
-        end: { x: logoX + 8, y: logoY + 9 },
-        thickness: 2.2,
-        color: rgb(0.9, 0.1, 0.1),
-    });
-    page.drawLine({
-        start: { x: logoX + 8, y: logoY + 9 },
-        end: { x: logoX + 2, y: logoY + 3 },
-        thickness: 2.2,
-        color: rgb(0.9, 0.1, 0.1),
-    });
+    if (plnLogoImage) {
+        page.drawImage(plnLogoImage, {
+            x: logoX,
+            y: logoY,
+            width: logoW,
+            height: logoH,
+        });
+    } else {
+        // Fallback vector shield & lightning bolt
+        page.drawRectangle({
+            x: logoX,
+            y: logoY + 1,
+            width: 14,
+            height: 18,
+            color: rgb(1.0, 0.88, 0.05),
+            borderColor: rgb(1, 1, 1),
+            borderWidth: 0.6,
+        });
+        page.drawLine({
+            start: { x: logoX + 10, y: logoY + 16 },
+            end: { x: logoX + 4, y: logoY + 10 },
+            thickness: 2.2,
+            color: rgb(0.9, 0.1, 0.1),
+        });
+        page.drawLine({
+            start: { x: logoX + 4, y: logoY + 10 },
+            end: { x: logoX + 8, y: logoY + 10 },
+            thickness: 2.2,
+            color: rgb(0.9, 0.1, 0.1),
+        });
+        page.drawLine({
+            start: { x: logoX + 8, y: logoY + 10 },
+            end: { x: logoX + 2, y: logoY + 4 },
+            thickness: 2.2,
+            color: rgb(0.9, 0.1, 0.1),
+        });
+    }
 
     // Left Header Text: PT PLN (PERSERO)
     page.drawText('PT PLN (PERSERO)', {
@@ -147,7 +181,17 @@ function drawOfficialPlnKop(
         font: fontBold,
         color: rgb(1, 1, 1),
     });
-    const subHeaderUnit = `UNIT INDUK DISTRIBUSI / ${surveyInfo.up3Name ? surveyInfo.up3Name.toUpperCase() : 'UP3'} / ${surveyInfo.ulpName ? surveyInfo.ulpName.toUpperCase() : 'ULP'}`;
+
+    const rawUid = (surveyInfo.uidName || 'UID Banten').trim().toUpperCase();
+    const uidStr = rawUid.startsWith('UID') ? rawUid : `UID ${rawUid}`;
+
+    const rawUp3 = (surveyInfo.up3Name || 'UP3 Banten Selatan').trim().toUpperCase();
+    const up3Str = rawUp3.startsWith('UP3') ? rawUp3 : `UP3 ${rawUp3}`;
+
+    const rawUlp = (surveyInfo.ulpName || 'ULP Labuan').trim().toUpperCase();
+    const ulpStr = rawUlp.startsWith('ULP') ? rawUlp : `ULP ${rawUlp}`;
+
+    const subHeaderUnit = `${uidStr} / ${up3Str} / ${ulpStr}`;
     page.drawText(subHeaderUnit, {
         x: logoX + logoW + 8,
         y: headerY + 5,
@@ -282,7 +326,7 @@ function drawOfficialPlnKop(
     const survNameText = surveyInfo.surveyorName ? `( ${surveyInfo.surveyorName} )` : '( ..................................................... )';
     const spvTitleText = surveyInfo.pemeriksaTitle ? surveyInfo.pemeriksaTitle.toUpperCase() : 'SPV PERENCANAAN';
     const spvNameText = surveyInfo.pemeriksaName ? `( ${surveyInfo.pemeriksaName} )` : '( ..................................................... )';
-    const mgrTitleText = `DISETUJUI (MANAGER ${surveyInfo.ulpName ? surveyInfo.ulpName.toUpperCase() : 'ULP'}):`;
+    const mgrTitleText = `DISETUJUI (MANAGER ${ulpStr}):`;
     const mgrNameText = surveyInfo.managerName ? `( ${surveyInfo.managerName} )` : '( ..................................................... )';
 
     page.drawText('DISURVEY OLEH:', { x: colSig1, y: kopY + 18, size: 5.8, font: fontBold, color: rgb(0.4, 0.4, 0.4) });
@@ -409,7 +453,8 @@ export async function generatePdfWithMap(
         });
 
         // Draw Official Kop PLN
-        drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, undefined, pageWidth, pageHeight);
+        const plnLogoImage = await getPlnLogoImage(pdfDoc);
+        drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, undefined, pageWidth, pageHeight, plnLogoImage);
 
         // Draw Rincian Pekerjaan block (bottom-left of map area)
         if (surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
@@ -456,6 +501,8 @@ export async function generateMultiPagePdf(
         const mapWidth = pageWidth - 36;
         const mapHeight = pageHeight - 126;
 
+        const plnLogoImage = await getPlnLogoImage(outputDoc);
+
         for (let i = 0; i < mapBase64s.length; i++) {
             const mapBase64 = mapBase64s[i];
             const meta = pageMetas[i];
@@ -484,7 +531,7 @@ export async function generateMultiPagePdf(
             });
 
             // Draw Official Kop PLN
-            drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, meta, pageWidth, pageHeight);
+            drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, meta, pageWidth, pageHeight, plnLogoImage);
 
             // Draw Rincian Pekerjaan block on FIRST PAGE ONLY
             if (i === 0 && surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {

@@ -79,8 +79,9 @@ export default function App() {
 
   // Modal Export PDF & Kop PLN Metadata State
   const [showExportPdfModal, setShowExportPdfModal] = useState(false);
-  const [pdfUp3Name, setPdfUp3Name] = useState('');
-  const [pdfUlpName, setPdfUlpName] = useState('');
+  const [pdfUidName, setPdfUidName] = useState('UID Banten');
+  const [pdfUp3Name, setPdfUp3Name] = useState('UP3 Banten Selatan');
+  const [pdfUlpName, setPdfUlpName] = useState('ULP Labuan');
   const [pdfSurveyorName, setPdfSurveyorName] = useState('');
   const [pdfPemeriksaTitle, setPdfPemeriksaTitle] = useState('SPV PEMELIHARAAN');
   const [pdfPemeriksaName, setPdfPemeriksaName] = useState('');
@@ -95,12 +96,13 @@ export default function App() {
       if (exists.exists) {
         const json = await FileSystem.readAsStringAsync(CONFIG_PATH);
         const data = JSON.parse(json);
-        if (data.up3Name) setPdfUp3Name(data.up3Name);
-        if (data.ulpName) setPdfUlpName(data.ulpName);
-        if (data.surveyorName) setPdfSurveyorName(data.surveyorName);
-        if (data.pemeriksaTitle) setPdfPemeriksaTitle(data.pemeriksaTitle);
-        if (data.pemeriksaName) setPdfPemeriksaName(data.pemeriksaName);
-        if (data.managerName) setPdfManagerName(data.managerName);
+        if (data.uidName !== undefined) setPdfUidName(data.uidName);
+        if (data.up3Name !== undefined) setPdfUp3Name(data.up3Name);
+        if (data.ulpName !== undefined) setPdfUlpName(data.ulpName);
+        if (data.surveyorName !== undefined) setPdfSurveyorName(data.surveyorName);
+        if (data.pemeriksaTitle !== undefined) setPdfPemeriksaTitle(data.pemeriksaTitle);
+        if (data.pemeriksaName !== undefined) setPdfPemeriksaName(data.pemeriksaName);
+        if (data.managerName !== undefined) setPdfManagerName(data.managerName);
       }
     } catch (e) {}
   };
@@ -501,8 +503,9 @@ export default function App() {
     const fullSurveyInfo: SurveyInfo = {
       name: currentSurvey.namaSurvey,
       location: currentSurvey.lokasi || '',
-      up3Name: pdfUp3Name.trim(),
-      ulpName: pdfUlpName.trim(),
+      uidName: pdfUidName.trim() || 'UID Banten',
+      up3Name: pdfUp3Name.trim() || 'UP3 Banten Selatan',
+      ulpName: pdfUlpName.trim() || 'ULP Labuan',
       surveyorName: pdfSurveyorName.trim(),
       pemeriksaTitle: pdfPemeriksaTitle.trim() || 'SPV PEMELIHARAAN',
       pemeriksaName: pdfPemeriksaName.trim(),
@@ -512,6 +515,7 @@ export default function App() {
 
     // Auto-save remembered inputs
     await savePdfConfig({
+      uidName: pdfUidName.trim(),
       up3Name: pdfUp3Name.trim(),
       ulpName: pdfUlpName.trim(),
       surveyorName: pdfSurveyorName.trim(),
@@ -1982,7 +1986,17 @@ export default function App() {
               <Text style={styles.exportSectionSubtitle}>Isi data pengesahan resmi untuk Kop Gambar PLN (Tersimpan otomatis):</Text>
 
               <View style={styles.exportFormRow}>
-                <View style={[styles.exportFormGroup, { flex: 1, marginRight: 8 }]}>
+                <View style={[styles.exportFormGroup, { flex: 1, marginRight: 6 }]}>
+                  <Text style={styles.exportFormLabel}>⚡ Nama UID</Text>
+                  <TextInput
+                    style={styles.exportFormInput}
+                    value={pdfUidName}
+                    onChangeText={setPdfUidName}
+                    placeholder="Contoh: UID Banten"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+                <View style={[styles.exportFormGroup, { flex: 1, marginRight: 6 }]}>
                   <Text style={styles.exportFormLabel}>🏢 Nama UP3</Text>
                   <TextInput
                     style={styles.exportFormInput}
