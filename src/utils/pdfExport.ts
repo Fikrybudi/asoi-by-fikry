@@ -45,25 +45,17 @@ const RINCIAN = {
     bgOpacity: 0.88,      // background transparency
 };
 
+import { PLN_LOGO_PNG_BASE64 } from './plnLogoBase64';
+
 /**
- * Helper to embed PNG logo from assets/logo_pln.png into pdfDoc
+ * Helper to embed PNG logo into pdfDoc (100% offline & reliable in all builds)
  */
 async function getPlnLogoImage(pdfDoc: PDFDocument) {
     try {
-        const asset = Asset.fromModule(require('../../assets/logo_pln.png'));
-        if (!asset.downloaded) {
-            await asset.downloadAsync();
-        }
-        const uri = asset.localUri || asset.uri;
-        if (uri) {
-            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
-            if (base64) {
-                const bytes = base64Decode(base64);
-                return await pdfDoc.embedPng(bytes);
-            }
-        }
+        const logoBytes = base64Decode(PLN_LOGO_PNG_BASE64);
+        return await pdfDoc.embedPng(logoBytes);
     } catch (e) {
-        console.warn('Failed to embed assets/logo_pln.png:', e);
+        console.warn('Failed to embed PLN logo:', e);
     }
     return null;
 }

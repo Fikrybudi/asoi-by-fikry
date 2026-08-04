@@ -76,10 +76,10 @@ const generateMapHTML = (
     const konstruksiLabel = t.konstruksi || '-';
     const nomorLabel = t.nomorUrut || '-';
 
-    // Circle label size
-    const circleSize = isSelected ? 48 : 44;
-    const fontSize = isSelected ? 8 : 7;
-    const ukuranFontSize = isSelected ? 6 : 5; // Smaller font for ukuran tiang (9/200)
+    // Circle label size & font sizes for ultra-sharp legibility
+    const circleSize = isSelected ? 52 : 46;
+    const fontSize = isSelected ? 10 : 9.5;
+    const ukuranFontSize = isSelected ? 8 : 7.5; // Font for ukuran tiang (9/200)
 
     // =========================================================================
     // IMPROVED SMART LABEL PLACEMENT
@@ -304,10 +304,10 @@ const generateMapHTML = (
     // Small dot at exact location
     L.circleMarker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
-      radius: ${isSelected ? 8 : 5},
+      radius: ${isSelected ? 9 : 6.5},
       fillColor: '${bgColor}',
       color: '${borderColor}',
-      weight: 2,
+      weight: 2.5,
       fillOpacity: 1,
       className: 'titik-tiang'
     }).addTo(map)
@@ -1376,7 +1376,7 @@ const generateMapHTML = (
             useCORS: true,
             allowTaint: false, // Prevent canvas taint SecurityError
             logging: false,
-            scale: 1, // Force scale: 1 to avoid Out-Of-Memory (OOM) on high-DPI screens
+            scale: Math.max(3, window.devicePixelRatio || 3), // 3x Ultra High-DPI sampling for 100% crisp vector-sharp PDF prints
             width: 1200,
             height: 848
           }).then(function(canvas) {
