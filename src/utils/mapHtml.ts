@@ -1366,7 +1366,7 @@ const generateMapHTML = (
         }
       }, 15000);
 
-      // Wait for tiles & Leaflet layout to stabilize (2500ms)
+      // Wait for tiles & Leaflet layout to stabilize (600ms)
       setTimeout(function() {
         try {
           if (typeof html2canvas === 'undefined') {
@@ -1376,7 +1376,7 @@ const generateMapHTML = (
             useCORS: true,
             allowTaint: false, // Prevent canvas taint SecurityError
             logging: false,
-            scale: Math.max(3, window.devicePixelRatio || 3), // 3x Ultra High-DPI sampling for 100% crisp vector-sharp PDF prints
+            scale: 2, // 2x Ultra HD Crisp High-DPI resolution (~2400x1696px, ultra fast & sharp)
             width: 1200,
             height: 848
           }).then(function(canvas) {

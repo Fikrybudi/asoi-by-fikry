@@ -642,9 +642,9 @@ export default function App() {
           panjangMeter: seg.panjangMeter,
         });
 
-        // Delay agar WebView reset state sebelum capture berikutnya
+        // Delay minim agar WebView reset state sebelum capture berikutnya
         if (i < segments.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 400));
         }
       }
 
