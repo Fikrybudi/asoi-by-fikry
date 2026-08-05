@@ -416,6 +416,121 @@ function drawRincianBlock(
 }
 
 // =============================================================================
+// HELPER: Draw Official Legenda Peta block (Page 1 Only - Bottom Right Corner)
+// =============================================================================
+
+function drawPdfLegendBlock(
+    page: any,
+    font: any,
+    fontBold: any,
+    mapX: number,
+    mapY: number,
+    mapWidth: number,
+    hasJtmOverlay = true,
+    hasGarduOverlay = true
+) {
+    const margin = 8;
+    const paddingX = 6;
+    const paddingY = 5;
+    const boxWidth = 122;
+
+    const items = [
+        { label: 'SUTM', color: rgb(0.91, 0.12, 0.39), dash: [6, 2, 1.5, 2] },
+        { label: 'SKTM', color: rgb(0.61, 0.15, 0.69), dash: [1.5, 2.5] },
+        { label: 'SKUTM', color: rgb(0.0, 0.74, 0.83), dash: [5, 3] },
+        { label: 'SUTR', color: rgb(0.30, 0.69, 0.31), dash: undefined },
+    ];
+
+    if (hasJtmOverlay) {
+        items.push({ label: 'JTM Eksisting', color: rgb(1, 0.4, 0), dash: undefined, isRainbow: true } as any);
+    }
+    if (hasGarduOverlay) {
+        items.push({ label: 'Gardu Eksisting', color: rgb(1, 0.6, 0), dash: undefined, isGardu: true } as any);
+    }
+
+    const lineHeight = 8.5;
+    const headerHeight = 10;
+    const boxHeight = headerHeight + (items.length * lineHeight) + paddingY * 2;
+
+    const boxX = mapX + mapWidth - margin - boxWidth;
+    const boxY = mapY + margin; // Aligned horizontally with Rincian Pekerjaan bottom Y
+
+    // Draw white semi-transparent background
+    page.drawRectangle({
+        x: boxX,
+        y: boxY,
+        width: boxWidth,
+        height: boxHeight,
+        color: rgb(1, 1, 1),
+        opacity: 0.88,
+        borderColor: rgb(0.0, 0.22, 0.45),
+        borderWidth: 0.8,
+    });
+
+    // Header: LEGENDA PETA:
+    let currY = boxY + boxHeight - paddingY - 7;
+    page.drawText('LEGENDA PETA:', {
+        x: boxX + paddingX,
+        y: currY,
+        size: 6.8,
+        font: fontBold,
+        color: rgb(0.0, 0.22, 0.45),
+    });
+
+    currY -= 10;
+
+    // Draw Legend Items
+    for (const item of items) {
+        const lineXStart = boxX + paddingX;
+        const lineXEnd = lineXStart + 18;
+        const lineY = currY + 2.2;
+
+        if ((item as any).isRainbow) {
+            // Draw 4 color segments (Red, Yellow, Green, Blue) to represent Rainbow 🌈
+            const segW = 4.5;
+            const colors = [rgb(0.9, 0.1, 0.1), rgb(1, 0.8, 0), rgb(0.2, 0.8, 0.2), rgb(0.1, 0.5, 0.9)];
+            for (let cIdx = 0; cIdx < 4; cIdx++) {
+                page.drawLine({
+                    start: { x: lineXStart + cIdx * segW, y: lineY },
+                    end: { x: lineXStart + (cIdx + 1) * segW, y: lineY },
+                    thickness: 2.2,
+                    color: colors[cIdx],
+                });
+            }
+        } else if ((item as any).isGardu) {
+            // Draw Gardu Orange Dot
+            page.drawCircle({
+                x: lineXStart + 9,
+                y: lineY,
+                size: 2.5,
+                color: rgb(1.0, 0.6, 0.0),
+                borderColor: rgb(0.9, 0.3, 0.0),
+                borderWidth: 0.6,
+            });
+        } else {
+            // Standard Cable Line with matching dash pattern
+            page.drawLine({
+                start: { x: lineXStart, y: lineY },
+                end: { x: lineXEnd, y: lineY },
+                thickness: 2.0,
+                color: item.color,
+                dashArray: item.dash,
+            });
+        }
+
+        page.drawText(item.label, {
+            x: lineXStart + 24,
+            y: currY,
+            size: 6.2,
+            font: font,
+            color: rgb(0.15, 0.15, 0.15),
+        });
+
+        currY -= lineHeight;
+    }
+}
+
+// =============================================================================
 // MAIN EXPORT FUNCTION (SINGLE PAGE)
 // =============================================================================
 
@@ -470,6 +585,9 @@ export async function generatePdfWithMap(
         if (surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
             drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, mapX, mapY);
         }
+
+        // Draw Official Legenda Peta block on Page 1 (bottom-right of map area)
+        drawPdfLegendBlock(page, embeddedFont, embeddedFontBold, mapX, mapY, mapWidth);
 
         const modifiedPdfBytes = await pdfDoc.save();
         const modifiedPdfBase64 = uint8ArrayToBase64(modifiedPdfBytes);
@@ -546,6 +664,11 @@ export async function generateMultiPagePdf(
             // Draw Rincian Pekerjaan block on FIRST PAGE ONLY
             if (i === 0 && surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
                 drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, mapX, mapY);
+            }
+
+            // Draw Official Legenda Peta block on FIRST PAGE ONLY (bottom-right of map area)
+            if (i === 0) {
+                drawPdfLegendBlock(page, embeddedFont, embeddedFontBold, mapX, mapY, mapWidth);
             }
         }
 
