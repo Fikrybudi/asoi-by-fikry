@@ -430,9 +430,9 @@ function drawPdfLegendBlock(
     hasGarduOverlay = true
 ) {
     const margin = 8;
-    const paddingX = 6;
-    const paddingY = 5;
-    const boxWidth = 122;
+    const paddingX = 7;
+    const paddingY = 6;
+    const boxWidth = 126;
 
     const items = [
         { label: 'SUTM', color: rgb(0.91, 0.12, 0.39), dash: [6, 2, 1.5, 2] },
@@ -454,8 +454,8 @@ function drawPdfLegendBlock(
         items.push({ label: 'Gardu Eksisting', color: rgb(0.08, 0.40, 0.75), isGarduEksisting: true } as any);
     }
 
-    const lineHeight = 8.0;
-    const headerHeight = 10;
+    const lineHeight = 11.5; // Generous line height so items never overlap vertically
+    const headerHeight = 12;
     const boxHeight = headerHeight + (items.length * lineHeight) + paddingY * 2;
 
     const boxX = mapX + mapWidth - margin - boxWidth;
@@ -474,22 +474,22 @@ function drawPdfLegendBlock(
     });
 
     // Header: LEGENDA PETA:
-    let currY = boxY + boxHeight - paddingY - 7;
+    let currY = boxY + boxHeight - paddingY - 8;
     page.drawText('LEGENDA PETA:', {
         x: boxX + paddingX,
         y: currY,
-        size: 6.8,
+        size: 7.0,
         font: fontBold,
         color: rgb(0.0, 0.22, 0.45),
     });
 
-    currY -= 9.5;
+    currY -= 12;
 
     // Draw Legend Items
     for (const item of items) {
         const lineXStart = boxX + paddingX;
         const lineXEnd = lineXStart + 18;
-        const lineY = currY + 2.2;
+        const lineY = currY + 2.5;
 
         if ((item as any).isRainbow) {
             // Draw 4 color segments (Red, Yellow, Green, Blue) to represent Rainbow 🌈
@@ -518,25 +518,25 @@ function drawPdfLegendBlock(
             page.drawRectangle({
                 x: lineXStart + 4,
                 y: lineY - 3,
-                width: 9,
-                height: 9,
+                width: 8.5,
+                height: 8.5,
                 color: rgb(1.0, 0.60, 0.0),
                 borderColor: rgb(0.9, 0.32, 0.0),
                 borderWidth: 0.6,
             });
             page.drawRectangle({
-                x: lineXStart + 6.2,
+                x: lineXStart + 6,
                 y: lineY - 1.8,
-                width: 4.6,
-                height: 6.6,
+                width: 4.5,
+                height: 6.0,
                 color: rgb(1.0, 0.92, 0.23),
                 borderColor: rgb(1, 1, 1),
                 borderWidth: 0.3,
             });
             page.drawLine({
-                start: { x: lineXStart + 9.5, y: lineY + 3 },
-                end: { x: lineXStart + 7, y: lineY - 0.5 },
-                thickness: 1.0,
+                start: { x: lineXStart + 9, y: lineY + 2.8 },
+                end: { x: lineXStart + 6.8, y: lineY - 0.5 },
+                thickness: 0.9,
                 color: rgb(0.85, 0.1, 0.1),
             });
         } else if ((item as any).isGarduEksisting) {
@@ -544,8 +544,8 @@ function drawPdfLegendBlock(
             page.drawRectangle({
                 x: lineXStart + 4,
                 y: lineY - 3,
-                width: 9,
-                height: 9,
+                width: 8.5,
+                height: 8.5,
                 color: rgb(0.08, 0.40, 0.75),
                 borderColor: rgb(0.05, 0.28, 0.63),
                 borderWidth: 0.6,
@@ -564,7 +564,7 @@ function drawPdfLegendBlock(
         page.drawText(item.label, {
             x: lineXStart + 24,
             y: currY,
-            size: 6.2,
+            size: 6.5,
             font: font,
             color: rgb(0.15, 0.15, 0.15),
         });
