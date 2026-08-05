@@ -990,12 +990,11 @@ export default function App() {
       return;
     }
 
-    // Normal mode - show tiang info
+    // Normal mode - show tiang info with 3 primary action buttons (100% Android compatible)
     Alert.alert(
       `Tiang ${tiang.nomorUrut}`,
       `${tiang.konstruksi} - ${tiang.jenisTiang}\nTinggi: ${tiang.tinggiTiang}\nKekuatan: ${tiang.kekuatanTiang}${tiang.status === 'existing' ? '\n(Existing)' : ''}`,
       [
-        { text: 'OK' },
         {
           text: '📍 Geser Posisi',
           onPress: () => {
@@ -1004,14 +1003,31 @@ export default function App() {
           }
         },
         {
-          text: '✏️ Edit',
+          text: '✏️ Edit Data',
           onPress: () => {
             setEditingTiang(tiang);
             setSelectedCoordinate(tiang.koordinat);
             setShowTiangForm(true);
           }
         },
-        { text: 'Hapus', style: 'destructive', onPress: () => deleteTiang(tiang.id) },
+        {
+          text: '🗑️ Hapus Tiang',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Hapus Tiang',
+              `Yakin ingin menghapus Tiang ${tiang.nomorUrut} (${tiang.konstruksi})?`,
+              [
+                { text: 'Batal', style: 'cancel' },
+                {
+                  text: 'Hapus',
+                  style: 'destructive',
+                  onPress: () => deleteTiang(tiang.id)
+                }
+              ]
+            );
+          }
+        },
       ]
     );
   };
