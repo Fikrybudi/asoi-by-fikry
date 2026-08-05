@@ -255,11 +255,29 @@ function drawOfficialPlnKop(
         font: fontBold,
         color: rgb(0.0, 0.22, 0.45),
     });
-    const nameText = surveyInfo.name ? (surveyInfo.name.length > 48 ? surveyInfo.name.substring(0, 45) + '...' : surveyInfo.name) : '-';
-    page.drawText(nameText, {
+    let titleFontSize = 8.5;
+    let fullTitleStr = surveyInfo.name ? surveyInfo.name.trim() : '-';
+    let titleWidth = fontBold.widthOfTextAtSize(fullTitleStr, titleFontSize);
+
+    // Auto-scale font size down to 5.5pt if title is long so full text fits completely
+    while (titleWidth > 300 && titleFontSize > 5.5) {
+        titleFontSize -= 0.5;
+        titleWidth = fontBold.widthOfTextAtSize(fullTitleStr, titleFontSize);
+    }
+
+    // If still exceeds 300pt even at 5.5pt font, fit with ellipsis cleanly based on width
+    if (titleWidth > 300) {
+        let trimmed = fullTitleStr;
+        while (trimmed.length > 0 && fontBold.widthOfTextAtSize(trimmed + '...', 5.5) > 300) {
+            trimmed = trimmed.slice(0, -1);
+        }
+        fullTitleStr = trimmed + '...';
+    }
+
+    page.drawText(fullTitleStr, {
         x: col1X + 8,
         y: midY + 8,
-        size: 8.5,
+        size: titleFontSize,
         font: fontBold,
         color: rgb(0.1, 0.1, 0.1),
     });
