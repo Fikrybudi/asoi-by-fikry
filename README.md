@@ -7,7 +7,7 @@
 ## 🆕 What's New in v2.1 (Asoi v2.1)
 
 - **⚡ Standar Kop Gambar Teknik PT PLN (PERSERO)**: Hasil export PDF Gambar kini dilengkapi Kop Gambar Resmi PLN standar CAD/GIS dengan Logo Vector PLN (Perisai Kuning & Petir Merah), Double Outer Frame Border, Data Teknis Peta, dan **Kolom Pengesahan Tanda Tangan Resmi** (Disurvey Oleh, Diperiksa Oleh, Disetujui Oleh Manager PLN ULP/UP3).
-- **📋 Form Modal Metadata Export PLN (Persistent & Auto-Remember)**: Modal pre-export yang interaktif untuk menginput Nama UID, UP3, ULP, Surveyor, Jabatan Pemeriksa (*TL HAR*, *TL RENSIS*, atau *ASMAN KONS*), Nama Pemeriksa, dan Manager. Data tersimpan otomatis di perangkat HP sehingga tidak perlu mengetik ulang untuk survey berikutnya.
+- **📋 Form Modal Metadata Export PLN (Persistent & Auto-Remember)**: Modal pre-export yang interaktif untuk menginput Nama UID, UP3, ULP, Surveyor, Jabatan Pemeriksa (*TL HAR*, *TL RENSIS*, *ASMAN KONS*, atau *TL TEKNIK*), Nama Pemeriksa, dan Manager. Data tersimpan otomatis di perangkat HP sehingga tidak perlu mengetik ulang untuk survey berikutnya.
 - **📐 Fixed-Scale Multi-Page PDF Export (`📐 Skala Saat Ini`)**: Export PDF multi-halaman berbasis **skala mengunci (misal `1 : 2.500`)** yang 100% konsisten & seragam dari halaman 1 hingga akhir.
 - **📍 Penanda Sambungan Berurutan (`A-A`, `B-B`, `C-C`)**: Sambungan antar halaman berurutan presisi dengan *1-span safety buffer* & margin ~22% sehingga garis potong merah dan badge huruf dijamin 100% utuh, tebal, dan tidak terpotong tepi kertas.
 - **👁️ Peningkatan Kontras & Live Skala Peta**:

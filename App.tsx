@@ -2048,7 +2048,7 @@ export default function App() {
               <View style={styles.exportFormGroup}>
                 <Text style={styles.exportFormLabel}>🔍 Diperiksa Oleh (Pemeriksa)</Text>
                 <View style={styles.exportPillContainer}>
-                  {['TL HAR', 'TL RENSIS', 'ASMAN KONS'].map((title) => (
+                  {['TL HAR', 'TL RENSIS', 'ASMAN KONS', 'TL TEKNIK'].map((title) => (
                     <TouchableOpacity
                       key={title}
                       style={[

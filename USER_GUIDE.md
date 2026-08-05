@@ -139,7 +139,7 @@ Saat Anda menekan tombol **`📄 Export PDF Gambar`**, akan muncul Form Modal Is
 - 🏢 **Nama UP3**: Contoh `UP3 Banten Selatan`
 - 📍 **Nama ULP**: Contoh `ULP Labuan`
 - 👷 **Disurvey Oleh**: Nama Surveyor / Tim Field
-- 🔍 **Diperiksa Oleh & Jabatan**: Tombol Cepat (`TL HAR`, `TL RENSIS`, `ASMAN KONS`) + Nama Spv/Pemeriksa.
+- 🔍 **Diperiksa Oleh & Jabatan**: Tombol Cepat (`TL HAR`, `TL RENSIS`, `ASMAN KONS`, `TL TEKNIK`) + Nama Spv/Pemeriksa.
 - 👔 **Disetujui Oleh**: Nama Manager PLN ULP / UP3.
 
 > **Auto-Remember**: Semua data pengesahan di atas tersimpan otomatis di HP. Untuk export selanjutnya di survey lain, form sudah terisi otomatis dan Anda cukup 1-klik `🚀 EXPORT PDF RESMI`.
