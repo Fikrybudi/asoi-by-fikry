@@ -37,7 +37,7 @@ interface TiangFormProps {
     onCancel: () => void;
     initialData?: Partial<Tiang>;
     // Remember last selection from previous tiang
-    lastJenisJaringan?: 'SUTM' | 'SUTR' | 'SKUTM';
+    lastJenisJaringan?: 'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR';
 }
 
 // =============================================================================
@@ -56,7 +56,7 @@ export default function TiangForm({
     const initialJenis = lastJenisJaringan || initialData?.jenisJaringan || 'SUTM';
     const defaults = DEFAULT_TIANG[initialJenis];
 
-    const [jenisJaringan, setJenisJaringan] = useState<'SUTM' | 'SUTR' | 'SKUTM'>(initialJenis);
+    const [jenisJaringan, setJenisJaringan] = useState<'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR'>(initialJenis);
     const [statusTiang, setStatusTiang] = useState<'existing' | 'planned'>(initialData?.status || 'planned');
     const [konstruksi, setKonstruksi] = useState(initialData?.konstruksi || defaults.konstruksi);
     const [jenisTiang, setJenisTiang] = useState<'Beton' | 'Besi/Baja' | 'Kayu'>(
@@ -205,7 +205,7 @@ export default function TiangForm({
                     <View style={styles.section}>
                         <Text style={styles.label}>Jenis Jaringan</Text>
                         <View style={styles.optionRow}>
-                            {(['SUTM', 'SUTR', 'SKUTM'] as const).map((type) => (
+                            {(['SUTM', 'SKTM', 'SKUTM', 'SUTR'] as const).map((type) => (
                                 <TouchableOpacity
                                     key={type}
                                     style={[

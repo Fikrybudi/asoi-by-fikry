@@ -31,6 +31,7 @@ function formatKekuatan(kekuatan?: string): string {
  * - PEKERJAAN SUTM: tiang TM + jalur TM + konstruksi TM
  * - PEKERJAAN SUTR: tiang TR + jalur TR + konstruksi TR
  * - PEKERJAAN SKUTM: (jika ada)
+ * - PEKERJAAN SKTM: (jika ada)
  * - GARDU: terpisah sendiri
  */
 export function buildRincianPekerjaan(survey: Survey): string[] {
@@ -224,7 +225,72 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
     }
 
     // ─────────────────────────────────────────────
-    // 4. GARDU (section terpisah)
+    // 4. PEKERJAAN SKTM (kabel tanah TM - jika ada)
+    // ─────────────────────────────────────────────
+    const tiangSKTM = tiangList.filter(
+        t => t.jenisJaringan === 'SKTM' && t.status !== 'existing' && !t.konstruksi?.startsWith('JOINTING-')
+    );
+    const jalurSKTM = jalurList.filter(
+        j => j.jenisJaringan === 'SKTM' && j.status !== 'existing' && j.status !== 'remove'
+    );
+    const jointingSKTM = tiangList.filter(
+        t => t.jenisJaringan === 'SKTM' && t.konstruksi?.startsWith('JOINTING-')
+    );
+
+    if (tiangSKTM.length > 0 || jalurSKTM.length > 0 || jointingSKTM.length > 0) {
+        lines.push('PEKERJAAN SKTM :');
+        let nomor = 1;
+
+        if (tiangSKTM.length > 0) {
+            const tiangGroups: Record<string, number> = {};
+            for (const t of tiangSKTM) {
+                const h = formatTinggi(t.tinggiTiang);
+                const k = formatKekuatan(t.kekuatanTiang);
+                const key = k ? `TIANG ${h}/${k}` : `TIANG ${h}`;
+                tiangGroups[key] = (tiangGroups[key] || 0) + 1;
+            }
+            for (const [label, count] of Object.entries(tiangGroups)) {
+                lines.push(`${label} : ${count} Btg`);
+            }
+        }
+
+        if (jalurSKTM.length > 0) {
+            const cableGroups: Record<string, { panjang: number; gawang: number }> = {};
+            for (const j of jalurSKTM) {
+                const key = `${j.jenisPenghantar} ${j.penampangMM.replace('mm²', '')}`;
+                if (!cableGroups[key]) cableGroups[key] = { panjang: 0, gawang: 0 };
+                cableGroups[key].panjang += j.panjangMeter;
+                const jumlahGawang = Math.max(0, j.koordinat.length - 1);
+                cableGroups[key].gawang += jumlahGawang;
+            }
+            for (const [cable, data] of Object.entries(cableGroups)) {
+                lines.push(`${nomor}. Penarikan SKTM ${cable} : ${Math.round(data.panjang)} mtr (${data.gawang} Gwg)`);
+                nomor++;
+            }
+        }
+
+        if (jointingSKTM.length > 0) {
+            lines.push(`${nomor}. Pemasangan Jointing SKTM : ${jointingSKTM.length} set`);
+            nomor++;
+        }
+
+        if (tiangSKTM.length > 0) {
+            const konstGroups: Record<string, number> = {};
+            for (const t of tiangSKTM) {
+                if (t.konstruksi) {
+                    konstGroups[t.konstruksi] = (konstGroups[t.konstruksi] || 0) + 1;
+                }
+            }
+            for (const [konst, count] of Object.entries(konstGroups)) {
+                lines.push(`${nomor}. Konstruksi ${konst} : ${count} set`);
+                nomor++;
+            }
+        }
+        lines.push('');
+    }
+
+    // ─────────────────────────────────────────────
+    // 5. GARDU (section terpisah)
     // ─────────────────────────────────────────────
     if (garduList.length > 0) {
         lines.push('GARDU :');

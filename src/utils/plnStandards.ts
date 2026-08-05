@@ -371,10 +371,16 @@ export interface TiangDefaults {
     kekuatan: string;
 }
 
-export const DEFAULT_TIANG: Record<'SUTM' | 'SUTR' | 'SKUTM', TiangDefaults> = {
+export const DEFAULT_TIANG: Record<JenisJaringan, TiangDefaults> = {
     'SUTM': {
         konstruksi: 'TM1B',
         tinggi: '12m',
+        bahan: 'Beton',
+        kekuatan: '200 daN',
+    },
+    'SKTM': {
+        konstruksi: 'JOINTING-SKTM',
+        tinggi: '0m',
         bahan: 'Beton',
         kekuatan: '200 daN',
     },
@@ -389,5 +395,11 @@ export const DEFAULT_TIANG: Record<'SUTM' | 'SUTR' | 'SKUTM', TiangDefaults> = {
         tinggi: '12m',
         bahan: 'Beton',
         kekuatan: '350 daN',
+    },
+    'SKTR': {
+        konstruksi: 'TR-1B',
+        tinggi: '9m',
+        bahan: 'Beton',
+        kekuatan: '200 daN',
     },
 };

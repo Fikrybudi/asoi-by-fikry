@@ -22,7 +22,7 @@ export interface Tiang {
     kekuatanTiang?: string; // '200 daN', '350 daN', etc.
 
     // Konstruksi
-    jenisJaringan: 'SUTM' | 'SUTR' | 'SKUTM';
+    jenisJaringan: 'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR';
     konstruksi: string; // 'TM1B', 'TM2B', 'TR-1B', etc. (Standar Lokal Banten Selatan)
 
     // Status (for existing vs new poles)

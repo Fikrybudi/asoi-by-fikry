@@ -68,7 +68,7 @@ export default function App() {
   const [movingTiangId, setMovingTiangId] = useState<string | null>(null);
 
   // Remember last jenis jaringan for next tiang
-  const [lastJenisJaringan, setLastJenisJaringan] = useState<'SUTM' | 'SUTR' | 'SKUTM'>('SUTM');
+  const [lastJenisJaringan, setLastJenisJaringan] = useState<'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR'>('SUTM');
 
   // Edit jalur state
   const [editingJalur, setEditingJalur] = useState<JalurKabel | null>(null);
