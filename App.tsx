@@ -688,7 +688,10 @@ export default function App() {
           oldData: editingTiang,
           newData: { ...editingTiang, ...data } as Tiang
         }]);
-        const updated = await tiangService.update(currentSurvey.id, editingTiang.id, data);
+        const updated = await tiangService.update(currentSurvey.id, editingTiang.id, {
+          ...data,
+          labelPosition: editingTiang.labelPosition,
+        });
         if (updated) {
           setCurrentSurvey(prev => prev ? {
             ...prev,

@@ -49,6 +49,7 @@ interface TiangRow {
     perlengkapan: string[];
     foto?: string[];
     catatan?: string;
+    label_position?: number;
     created_at: string;
     updated_at: string;
 }
@@ -271,6 +272,7 @@ export const supabaseSurveyService = {
                     perlengkapan: tiang.perlengkapan || [],
                     foto: tiang.foto || [],
                     catatan: tiang.catatan || '',
+                    label_position: tiang.labelPosition,
                     updated_at: new Date().toISOString(),
                 };
 
@@ -409,6 +411,7 @@ export const supabaseSurveyService = {
             perlengkapan: t.perlengkapan || [],
             foto: t.foto,
             catatan: t.catatan,
+            labelPosition: t.label_position,
             createdAt: new Date(t.created_at),
             updatedAt: new Date(t.updated_at),
             isSynced: true,
