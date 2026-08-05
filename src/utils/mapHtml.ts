@@ -982,6 +982,13 @@ const generateMapHTML = (
     .legend-item { display: flex; align-items: center; margin: 3px 0; }
     .legend-line { width: 20px; height: 3px; margin-right: 8px; border-radius: 2px; }
     
+    /* Rainbow Line Style for JTM Eksisting Overlay */
+    path.overlay-jtm {
+      stroke: url(#rainbowGrad) !important;
+      stroke-width: 3.5px !important;
+      stroke-dasharray: none !important;
+    }
+    
     /* Top Right Controls Side-By-Side Layout */
     .leaflet-top.leaflet-right {
       display: flex !important;
@@ -1056,13 +1063,25 @@ const generateMapHTML = (
 <body>
   <div id="map"></div>
   ${isAddMode ? '<div class="crosshair"></div>' : ''}
+  <svg style="width:0;height:0;position:absolute;">
+    <defs>
+      <linearGradient id="rainbowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#FF0000"/>
+        <stop offset="20%" stop-color="#FF7F00"/>
+        <stop offset="40%" stop-color="#FFFF00"/>
+        <stop offset="60%" stop-color="#00FF00"/>
+        <stop offset="80%" stop-color="#0000FF"/>
+        <stop offset="100%" stop-color="#8B00FF"/>
+      </linearGradient>
+    </defs>
+  </svg>
   <div class="legend">
     <div style="font-weight:bold;margin-bottom:5px;">Legenda:</div>
-    <div class="legend-item"><div class="legend-line" style="background:#E91E63;"></div>SUTM</div>
-    <div class="legend-item"><div class="legend-line" style="background:#9C27B0;"></div>SKTM</div>
-    <div class="legend-item"><div class="legend-line" style="background:#00BCD4;"></div>SKUTM</div>
-    <div class="legend-item"><div class="legend-line" style="background:#4CAF50;"></div>SUTR</div>
-    ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><div class="legend-line" style="background:#FFC107;"></div>JTM Eksisting</div>' : ''}
+    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#E91E63" stroke-width="3" stroke-dasharray="8,2,2,2"/></svg>SUTM</div>
+    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#9C27B0" stroke-width="3" stroke-dasharray="2,3"/></svg>SKTM</div>
+    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
+    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#4CAF50" stroke-width="3"/></svg>SUTR</div>
+    ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="url(#rainbowGrad)" stroke-width="3.5"/></svg>JTM Eksisting</div>' : ''}
     ${overlayLayers.some(o => o.visible && o.type === 'gardu') ? '<div class="legend-item"><div class="legend-line" style="background:#FF9800;height:6px;width:6px;border-radius:50%;"></div>Gardu Eksisting</div>' : ''}
     ${overlayLayers.some(o => o.visible && o.type === 'proteksi') ? '<div class="legend-item"><div class="legend-line" style="background:#F44336;height:6px;width:6px;border-radius:50%;"></div>Proteksi</div>' : ''}
   </div>
