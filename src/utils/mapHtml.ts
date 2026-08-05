@@ -1074,6 +1074,9 @@ const generateMapHTML = (
 
     var map = L.map('map', {
       zoomControl: true,
+      maxZoom: 21,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
       preferCanvas: true  // Export-safe mode
     }).setView([${center.latitude}, ${center.longitude}], ${zoomLevel});
 
@@ -1148,17 +1151,16 @@ const generateMapHTML = (
         // Scale Ratio N = (591657550.5 * cos(lat)) / (2 ^ zoom)
         var scaleRatio = (591657550.5 * Math.cos(latRad)) / Math.pow(2, zoom);
 
-        // Standard cartographic rounding for clean engineering scale display
+        // Standard cartographic rounding for clean engineering scale display (500-step precision)
         var roundedRatio;
         if (scaleRatio >= 15000) {
           roundedRatio = Math.round(scaleRatio / 5000) * 5000;
-        } else if (scaleRatio >= 7500) {
+        } else if (scaleRatio >= 10000) {
           roundedRatio = Math.round(scaleRatio / 2500) * 2500;
-        } else if (scaleRatio >= 3000) {
-          roundedRatio = Math.round(scaleRatio / 1000) * 1000;
-        } else if (scaleRatio >= 1500) {
-          roundedRatio = Math.round(scaleRatio / 500) * 500;
         } else if (scaleRatio >= 750) {
+          // High-precision 500-step scale increments (1:500, 1:1.000, 1:1.500, 1:2.000, 1:2.500, 1:3.000, ...)
+          roundedRatio = Math.round(scaleRatio / 500) * 500;
+        } else if (scaleRatio >= 350) {
           roundedRatio = Math.round(scaleRatio / 250) * 250;
         } else {
           roundedRatio = Math.round(scaleRatio / 100) * 100;

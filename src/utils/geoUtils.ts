@@ -193,13 +193,12 @@ export function getNumericScaleString(zoomLevel = 18, centerLat = -6.8): string 
     let roundedRatio: number;
     if (scaleRatio >= 15000) {
         roundedRatio = Math.round(scaleRatio / 5000) * 5000;
-    } else if (scaleRatio >= 7500) {
+    } else if (scaleRatio >= 10000) {
         roundedRatio = Math.round(scaleRatio / 2500) * 2500;
-    } else if (scaleRatio >= 3000) {
-        roundedRatio = Math.round(scaleRatio / 1000) * 1000;
-    } else if (scaleRatio >= 1500) {
-        roundedRatio = Math.round(scaleRatio / 500) * 500;
     } else if (scaleRatio >= 750) {
+        // High-precision 500-step scale increments (1:500, 1:1.000, 1:1.500, 1:2.000, 1:2.500, 1:3.000, ...)
+        roundedRatio = Math.round(scaleRatio / 500) * 500;
+    } else if (scaleRatio >= 350) {
         roundedRatio = Math.round(scaleRatio / 250) * 250;
     } else {
         roundedRatio = Math.round(scaleRatio / 100) * 100;
