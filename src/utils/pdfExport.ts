@@ -442,13 +442,19 @@ function drawPdfLegendBlock(
     ];
 
     if (hasJtmOverlay) {
-        items.push({ label: 'JTM Eksisting', color: rgb(1, 0.4, 0), dash: undefined, isRainbow: true } as any);
+        items.push({ label: 'JTM Eksisting', color: rgb(1, 0.4, 0), isRainbow: true } as any);
     }
+    items.push(
+        { label: 'Tiang Existing', color: rgb(0.46, 0.46, 0.46), isTiangCircle: true, fillColor: rgb(0.46, 0.46, 0.46), borderColor: rgb(0.26, 0.26, 0.26) } as any,
+        { label: 'Tiang Baru TM', color: rgb(0.08, 0.40, 0.75), isTiangCircle: true, fillColor: rgb(0.08, 0.40, 0.75), borderColor: rgb(0.05, 0.28, 0.63) } as any,
+        { label: 'Tiang Baru TR', color: rgb(0.30, 0.69, 0.31), isTiangCircle: true, fillColor: rgb(0.30, 0.69, 0.31), borderColor: rgb(0.18, 0.49, 0.20) } as any,
+        { label: 'Gardu Baru', color: rgb(1, 0.6, 0), isGarduBaru: true } as any
+    );
     if (hasGarduOverlay) {
-        items.push({ label: 'Gardu Eksisting', color: rgb(1, 0.6, 0), dash: undefined, isGardu: true } as any);
+        items.push({ label: 'Gardu Eksisting', color: rgb(0.08, 0.40, 0.75), isGarduEksisting: true } as any);
     }
 
-    const lineHeight = 8.5;
+    const lineHeight = 8.0;
     const headerHeight = 10;
     const boxHeight = headerHeight + (items.length * lineHeight) + paddingY * 2;
 
@@ -477,7 +483,7 @@ function drawPdfLegendBlock(
         color: rgb(0.0, 0.22, 0.45),
     });
 
-    currY -= 10;
+    currY -= 9.5;
 
     // Draw Legend Items
     for (const item of items) {
@@ -497,14 +503,51 @@ function drawPdfLegendBlock(
                     color: colors[cIdx],
                 });
             }
-        } else if ((item as any).isGardu) {
-            // Draw Gardu Orange Dot
+        } else if ((item as any).isTiangCircle) {
+            // Draw Tiang Circle Marker
             page.drawCircle({
                 x: lineXStart + 9,
                 y: lineY,
                 size: 2.5,
-                color: rgb(1.0, 0.6, 0.0),
-                borderColor: rgb(0.9, 0.3, 0.0),
+                color: (item as any).fillColor,
+                borderColor: (item as any).borderColor,
+                borderWidth: 0.8,
+            });
+        } else if ((item as any).isGarduBaru) {
+            // Draw Gardu Baru Bright Orange Square + Yellow Shield + Red Lightning
+            page.drawRectangle({
+                x: lineXStart + 4,
+                y: lineY - 3,
+                width: 9,
+                height: 9,
+                color: rgb(1.0, 0.60, 0.0),
+                borderColor: rgb(0.9, 0.32, 0.0),
+                borderWidth: 0.6,
+            });
+            page.drawRectangle({
+                x: lineXStart + 6.2,
+                y: lineY - 1.8,
+                width: 4.6,
+                height: 6.6,
+                color: rgb(1.0, 0.92, 0.23),
+                borderColor: rgb(1, 1, 1),
+                borderWidth: 0.3,
+            });
+            page.drawLine({
+                start: { x: lineXStart + 9.5, y: lineY + 3 },
+                end: { x: lineXStart + 7, y: lineY - 0.5 },
+                thickness: 1.0,
+                color: rgb(0.85, 0.1, 0.1),
+            });
+        } else if ((item as any).isGarduEksisting) {
+            // Draw Gardu Eksisting Blue Square
+            page.drawRectangle({
+                x: lineXStart + 4,
+                y: lineY - 3,
+                width: 9,
+                height: 9,
+                color: rgb(0.08, 0.40, 0.75),
+                borderColor: rgb(0.05, 0.28, 0.63),
                 borderWidth: 0.6,
             });
         } else {

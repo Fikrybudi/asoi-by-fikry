@@ -331,16 +331,16 @@ const generateMapHTML = (
         window.ReactNativeWebView.postMessage(JSON.stringify({type: 'gardu', id: '${g.id}'}));
       });
     
-    // Gardu circle marker - slightly larger than tiang, orange color, offset to not overlap with tiang
-    var garduOffset = -0.000015; // ~1.5m offset to the left
-    L.circleMarker([${g.koordinat.latitude}, ${g.koordinat.longitude} + garduOffset], {
+    // Gardu Baru Marker - Bright Orange Square with PLN Logo
+    var garduOffset = -0.000015;
+    L.marker([${g.koordinat.latitude}, ${g.koordinat.longitude} + garduOffset], {
       pane: 'tiangPane',
-      radius: 7,
-      fillColor: '#FF9800',
-      color: '#E65100',
-      weight: 2,
-      fillOpacity: 1,
-      className: 'titik-gardu'
+      icon: L.divIcon({
+        className: 'gardu-baru-icon',
+        html: '<div style="width:20px;height:20px;background:#FF9800;border:2px solid #E65100;border-radius:3px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);"><svg width="12" height="14" viewBox="0 0 14 18"><rect width="14" height="18" fill="#FFEB3B" stroke="#FFFFFF" stroke-width="0.8" rx="1"/><polygon points="9,2 3,9 7,9 2,16 11,8 7,8" fill="#D32F2F"/></svg></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      })
     }).addTo(map)
       .on('click', function() {
         window.ReactNativeWebView.postMessage(JSON.stringify({type: 'gardu', id: '${g.id}'}));
@@ -1076,13 +1076,24 @@ const generateMapHTML = (
     </defs>
   </svg>
   <div class="legend">
-    <div style="font-weight:bold;margin-bottom:5px;">Legenda:</div>
+    <div style="font-weight:bold;margin-bottom:4px;">Legenda Peta:</div>
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#E91E63" stroke-width="3" stroke-dasharray="8,2,2,2"/></svg>SUTM</div>
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#9C27B0" stroke-width="3" stroke-dasharray="2,3"/></svg>SKTM</div>
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#4CAF50" stroke-width="3"/></svg>SUTR</div>
     ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="url(#rainbowGrad)" stroke-width="3.5"/></svg>JTM Eksisting</div>' : ''}
-    ${overlayLayers.some(o => o.visible && o.type === 'gardu') ? '<div class="legend-item"><div class="legend-line" style="background:#FF9800;height:6px;width:6px;border-radius:50%;"></div>Gardu Eksisting</div>' : ''}
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#757575" stroke="#424242" stroke-width="1.5"/></svg>Tiang Existing</div>
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/></svg>Tiang Baru TM</div>
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#4CAF50" stroke="#2E7D32" stroke-width="1.5"/></svg>Tiang Baru TR</div>
+    <div class="legend-item">
+      <svg width="18" height="14" style="margin-right:6px;">
+        <rect x="2" y="1" width="13" height="12" rx="2" fill="#FF9800" stroke="#E65100" stroke-width="1.2"/>
+        <rect x="4.5" y="2.5" width="8" height="9" fill="#FFEB3B" rx="1"/>
+        <polygon points="9.5,3.5 6,7.5 8.5,7.5 5.5,10.5 11,6 8.5,6" fill="#D32F2F"/>
+      </svg>
+      Gardu Baru
+    </div>
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.2"/></svg>Gardu Eksisting</div>
     ${overlayLayers.some(o => o.visible && o.type === 'proteksi') ? '<div class="legend-item"><div class="legend-line" style="background:#F44336;height:6px;width:6px;border-radius:50%;"></div>Proteksi</div>' : ''}
   </div>
   <script>
