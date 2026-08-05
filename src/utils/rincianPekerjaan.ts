@@ -233,11 +233,11 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
     const jalurSKTM = jalurList.filter(
         j => j.jenisJaringan === 'SKTM' && j.status !== 'existing' && j.status !== 'remove'
     );
-    const jointingSKTM = tiangList.filter(
+    const jointingSKTMMarkers = tiangList.filter(
         t => t.jenisJaringan === 'SKTM' && t.konstruksi?.startsWith('JOINTING-')
     );
 
-    if (tiangSKTM.length > 0 || jalurSKTM.length > 0 || jointingSKTM.length > 0) {
+    if (tiangSKTM.length > 0 || jalurSKTM.length > 0 || jointingSKTMMarkers.length > 0) {
         lines.push('PEKERJAAN SKTM :');
         let nomor = 1;
 
@@ -254,25 +254,35 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
             }
         }
 
+        let totalSktmPanjang = 0;
         if (jalurSKTM.length > 0) {
-            const cableGroups: Record<string, { panjang: number; gawang: number }> = {};
+            const cableGroups: Record<string, number> = {};
             for (const j of jalurSKTM) {
                 const key = `${j.jenisPenghantar} ${j.penampangMM.replace('mm²', '')}`;
-                if (!cableGroups[key]) cableGroups[key] = { panjang: 0, gawang: 0 };
-                cableGroups[key].panjang += j.panjangMeter;
-                const jumlahGawang = Math.max(0, j.koordinat.length - 1);
-                cableGroups[key].gawang += jumlahGawang;
+                cableGroups[key] = (cableGroups[key] || 0) + j.panjangMeter;
+                totalSktmPanjang += j.panjangMeter;
             }
-            for (const [cable, data] of Object.entries(cableGroups)) {
-                lines.push(`${nomor}. Penarikan SKTM ${cable} : ${Math.round(data.panjang)} mtr (${data.gawang} Gwg)`);
+            for (const [cable, panjang] of Object.entries(cableGroups)) {
+                // SKTM does NOT use Gawang, just meters!
+                lines.push(`${nomor}. Penarikan SKTM ${cable} : ${Math.round(panjang)} mtr`);
                 nomor++;
             }
         }
 
-        if (jointingSKTM.length > 0) {
-            lines.push(`${nomor}. Pemasangan Jointing SKTM : ${jointingSKTM.length} set`);
+        // Jointing SKTM: calculate based on 300m Haspel standard or explicit markers
+        let jointingCount = jointingSKTMMarkers.length;
+        if (jointingCount === 0 && totalSktmPanjang >= 300) {
+            jointingCount = Math.floor(totalSktmPanjang / 300);
+        }
+
+        if (jointingCount > 0) {
+            lines.push(`${nomor}. Pemasangan Jointing SKTM : ${jointingCount} Set`);
             nomor++;
         }
+
+        // Pemasangan Terminasi (always 2 Titik for start and end of SKTM line)
+        lines.push(`${nomor}. Pemasangan Terminasi : 2 Titik`);
+        nomor++;
 
         if (tiangSKTM.length > 0) {
             const konstGroups: Record<string, number> = {};
