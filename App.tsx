@@ -1348,10 +1348,16 @@ export default function App() {
     if (!currentSurvey) return;
 
     try {
-      // Survey is already saved to AsyncStorage via surveyService
-      // Just close the summary screen
+      // Explicitly persist latest tiangList (with labelPosition) and all survey data to AsyncStorage & Database!
+      await surveyService.update(currentSurvey.id, {
+        tiangList: currentSurvey.tiangList,
+        garduList: currentSurvey.garduList,
+        jalurList: currentSurvey.jalurList,
+        jembatanKabelList: currentSurvey.jembatanKabelList,
+        persilList: currentSurvey.persilList,
+      });
       setShowSummary(false);
-      console.log('Survey saved:', currentSurvey.id);
+      console.log('Survey saved cleanly with label positions preserved:', currentSurvey.id);
     } catch (error) {
       console.error('Error saving survey:', error);
       Alert.alert('Error', 'Gagal menyimpan survey');
@@ -1678,7 +1684,18 @@ export default function App() {
             shadowRadius: 4,
             elevation: 5,
           }}
-          onPress={() => setShowSummary(true)}
+          onPress={async () => {
+            if (currentSurvey) {
+              await surveyService.update(currentSurvey.id, {
+                tiangList: currentSurvey.tiangList,
+                garduList: currentSurvey.garduList,
+                jalurList: currentSurvey.jalurList,
+                jembatanKabelList: currentSurvey.jembatanKabelList,
+                persilList: currentSurvey.persilList,
+              });
+            }
+            setShowSummary(true);
+          }}
         >
           <Text style={{ fontSize: 16, marginRight: 6 }}>🏁</Text>
           <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 14 }}>
