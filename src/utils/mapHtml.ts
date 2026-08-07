@@ -46,19 +46,23 @@ const generateMapHTML = (
   // Tiang markers with labels
   const tiangMarkers = tiangList.map((t, tiangIndex) => {
     // Color based on jenis jaringan
-    let bgColor = '#2196F3'; // Default SUTM
+    let bgColor = '#1565C0';
     let borderColor = '#1565C0';
+    let labelTextColor = '#1565C0';
 
     // Check if existing (gray out)
     if (t.status === 'existing') {
       bgColor = '#757575'; // Dark gray for existing
       borderColor = '#424242';
+      labelTextColor = '#757575';
     } else if (t.jenisJaringan === 'SUTR') {
-      bgColor = '#00E676'; // High-contrast vivid neon green for hybrid map legibility
-      borderColor = '#00A844';
+      bgColor = '#00E676'; // High-contrast vivid neon green for hybrid map line/symbols
+      borderColor = '#00E676';
+      labelTextColor = '#2E7D32'; // Reverted to original green color for label text (konstruksi & nomor)
     } else if (t.jenisJaringan === 'SKUTM') {
       bgColor = '#00BCD4';
       borderColor = '#00838F';
+      labelTextColor = '#00BCD4';
     }
 
     // Check if selected (override all)
@@ -238,10 +242,10 @@ const generateMapHTML = (
     // Create circular label HTML with 3 sections
     const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + borderColor + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
       '<div style="display:flex;flex:1;border-bottom:1px solid ' + borderColor + ';">' +
-      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + bgColor + ';border-right:1px solid ' + borderColor + ';">' + nomorLabel + '</div>' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + labelTextColor + ';border-right:1px solid ' + borderColor + ';">' + nomorLabel + '</div>' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + ukuranFontSize + 'px;font-weight:bold;color:#333;">' + ukuranLabel + '</div>' +
       '</div>' +
-      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;font-weight:bold;color:' + bgColor + ';">' + konstruksiLabel + '</div>' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;font-weight:bold;color:' + labelTextColor + ';">' + konstruksiLabel + '</div>' +
       '</div>';
 
     // Escape double quotes for embedding in JS string
@@ -445,6 +449,8 @@ const generateMapHTML = (
     if (j.jenisJaringan === 'SKUTM') color = '#00BCD4';
     if (j.jenisJaringan === 'SUTR') color = '#00E676';
 
+    const distanceLabelColor = j.jenisJaringan === 'SUTR' ? '#2E7D32' : color;
+
     // Dash pattern based on cable type
     let dashArray = '';
     switch (j.jenisJaringan) {
@@ -511,7 +517,7 @@ const generateMapHTML = (
           L.marker([${adjustedMidLat}, ${midLng}], {
             icon: L.divIcon({
               className: 'segment-label segment-label-${j.jenisJaringan}',
-              html: '<div style="color:${color};font-size:8px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 2px white;">${segDistLabel}</div>',
+              html: '<div style="color:${distanceLabelColor};font-size:8px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 2px white;">${segDistLabel}</div>',
               iconSize: [40, 16],
               iconAnchor: [20, -4]
             }),
