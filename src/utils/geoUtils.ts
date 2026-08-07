@@ -209,8 +209,8 @@ export function getNumericScaleString(zoomLevel = 18, centerLat = -6.8): string 
 export function calculateScaleSpanMeters(zoomLevel = 18, centerLat = -6.8): number {
     const latRad = centerLat * Math.PI / 180;
     const metersPerPx = (156543.03392 * Math.cos(latRad)) / Math.pow(2, zoomLevel);
-    // 1200px A4 landscape canvas x 0.57 = 680px span to give generous ~22% margin safety buffer (no edge clipping)
-    const spanMeters = metersPerPx * 680;
+    // 1200px A4 landscape canvas x 0.80 = 960px usable span (10% padding margin on left/right for 100% efficient page coverage)
+    const spanMeters = metersPerPx * 960;
     return Math.max(Math.round(spanMeters), 100);
 }
 
@@ -268,10 +268,10 @@ export function groupTiangBySegment(
             endIdx++;
         }
 
-        // If not the last page, pull back 1 tiang for boundary marker
+        // Boundary tiang placement: position marker near outer edge (endIdx) without pulling back into the middle
         let boundaryIdx = endIdx;
-        if (endIdx < tiangList.length - 1 && (endIdx - startIdx) >= 2) {
-            boundaryIdx = endIdx - 1;
+        if (endIdx < tiangList.length - 1 && (endIdx - startIdx) >= 3) {
+            boundaryIdx = endIdx;
         }
 
         const segList = tiangList.slice(startIdx, boundaryIdx + 1);
