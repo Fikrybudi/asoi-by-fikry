@@ -104,6 +104,23 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
                 nomor++;
             }
         }
+
+        // Stayset, Pondasi, Grounding TM
+        const staysetCount = tiangSUTM.filter(t => t.penguat === 'Stayset').length;
+        if (staysetCount > 0) {
+            lines.push(`${nomor}. Pemasangan Stay Set TM : ${staysetCount} set`);
+            nomor++;
+        }
+        const pondasiCount = tiangSUTM.filter(t => t.penguat === 'Pondasi').length;
+        if (pondasiCount > 0) {
+            lines.push(`${nomor}. Pemasangan Pondasi Tiang : ${pondasiCount} set`);
+            nomor++;
+        }
+        const groundingCount = tiangSUTM.filter(t => t.grounding).length;
+        if (groundingCount > 0) {
+            lines.push(`${nomor}. Pemasangan Grounding : ${groundingCount} set`);
+            nomor++;
+        }
         lines.push('');
     }
 
@@ -163,6 +180,23 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
                 lines.push(`${nomor}. Konstruksi ${konst} : ${count} set`);
                 nomor++;
             }
+        }
+
+        // Stayset, Pondasi, Grounding TR
+        const staysetCount = tiangSUTR.filter(t => t.penguat === 'Stayset').length;
+        if (staysetCount > 0) {
+            lines.push(`${nomor}. Pemasangan Stay Set TR : ${staysetCount} set`);
+            nomor++;
+        }
+        const pondasiCount = tiangSUTR.filter(t => t.penguat === 'Pondasi').length;
+        if (pondasiCount > 0) {
+            lines.push(`${nomor}. Pemasangan Pondasi Tiang : ${pondasiCount} set`);
+            nomor++;
+        }
+        const groundingCount = tiangSUTR.filter(t => t.grounding).length;
+        if (groundingCount > 0) {
+            lines.push(`${nomor}. Pemasangan Grounding : ${groundingCount} set`);
+            nomor++;
         }
         lines.push('');
     }

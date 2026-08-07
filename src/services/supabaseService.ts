@@ -50,6 +50,8 @@ interface TiangRow {
     foto?: string[];
     catatan?: string;
     label_position?: number;
+    penguat?: string;
+    grounding?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -273,6 +275,8 @@ export const supabaseSurveyService = {
                     foto: tiang.foto || [],
                     catatan: tiang.catatan || '',
                     label_position: tiang.labelPosition,
+                    penguat: tiang.penguat,
+                    grounding: tiang.grounding,
                     updated_at: new Date().toISOString(),
                 };
 
@@ -412,6 +416,8 @@ export const supabaseSurveyService = {
             foto: t.foto,
             catatan: t.catatan,
             labelPosition: t.label_position,
+            penguat: t.penguat as any,
+            grounding: t.grounding,
             createdAt: new Date(t.created_at),
             updatedAt: new Date(t.updated_at),
             isSynced: true,

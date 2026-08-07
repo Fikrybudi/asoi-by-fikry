@@ -301,6 +301,48 @@ const generateMapHTML = (
       }));
     });
     
+    // Pondasi Tiang: Transparent square box surrounding the tiang circle marker
+    ${t.penguat === 'Pondasi' ? `
+    L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
+      pane: 'tiangPane',
+      icon: L.divIcon({
+        className: 'pondasi-icon',
+        html: '<div style="width:19px;height:19px;border:2.2px solid ${borderColor};background:transparent;border-radius:2px;box-shadow:0 0 2px rgba(0,0,0,0.2);"></div>',
+        iconSize: [19, 19],
+        iconAnchor: [9.5, 9.5]
+      }),
+      interactive: false
+    }).addTo(map);
+    ` : ''}
+
+    // Stay Set / Skur: Inverted Y (⅄) symbol with tail touching the tiang point
+    ${t.penguat === 'Stayset' ? `
+    L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
+      pane: 'tiangPane',
+      icon: L.divIcon({
+        className: 'stayset-icon',
+        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:-12px;top:-22px;"><path d="M12,22 L12,11 L4,2 M12,11 L20,2" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>',
+        iconSize: [24, 24],
+        iconAnchor: [0, 0]
+      }),
+      interactive: false
+    }).addTo(map);
+    ` : ''}
+
+    // Grounding / Pembumian: Grounding symbol (⏚) attached to the tiang point
+    ${t.grounding ? `
+    L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
+      pane: 'tiangPane',
+      icon: L.divIcon({
+        className: 'grounding-icon',
+        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:4px;top:-12px;"><line x1="0" y1="12" x2="7" y2="12" stroke="${borderColor}" stroke-width="2"/><line x1="7" y1="4" x2="7" y2="20" stroke="${borderColor}" stroke-width="2.2" stroke-linecap="round"/><line x1="11" y1="7" x2="11" y2="17" stroke="${borderColor}" stroke-width="2.2" stroke-linecap="round"/><line x1="15" y1="10" x2="15" y2="14" stroke="${borderColor}" stroke-width="2.2" stroke-linecap="round"/></svg></div>',
+        iconSize: [24, 24],
+        iconAnchor: [0, 0]
+      }),
+      interactive: false
+    }).addTo(map);
+    ` : ''}
+
     // Small dot at exact location
     L.circleMarker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
@@ -1085,6 +1127,9 @@ const generateMapHTML = (
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#757575" stroke="#424242" stroke-width="1.5"/></svg>Tiang Existing</div>
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/></svg>Tiang Baru TM</div>
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#4CAF50" stroke="#2E7D32" stroke-width="1.5"/></svg>Tiang Baru TR</div>
+    <div class="legend-item"><svg width="18" height="14" style="margin-right:6px;"><path d="M9,13 L9,7 L3,1 M9,7 L15,1" stroke="#1565C0" stroke-width="2" fill="none"/></svg>Stay Set (Skur)</div>
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1" fill="none" stroke="#1565C0" stroke-width="1.8"/><circle cx="8.5" cy="6" r="3" fill="#1565C0"/></svg>Pondasi Tiang</div>
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><line x1="1" y1="6" x2="5" y2="6" stroke="#1565C0" stroke-width="1.5"/><line x1="5" y1="1" x2="5" y2="11" stroke="#1565C0" stroke-width="1.8"/><line x1="8" y1="3" x2="8" y2="9" stroke="#1565C0" stroke-width="1.8"/><line x1="11" y1="5" x2="11" y2="7" stroke="#1565C0" stroke-width="1.8"/></svg>Grounding</div>
     <div class="legend-item">
       <svg width="18" height="14" style="margin-right:6px;">
         <rect x="2" y="1" width="13" height="12" rx="2" fill="#FF9800" stroke="#E65100" stroke-width="1.2"/>

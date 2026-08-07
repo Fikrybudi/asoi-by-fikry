@@ -448,6 +448,9 @@ function drawPdfLegendBlock(
         { label: 'Tiang Existing', color: rgb(0.46, 0.46, 0.46), isTiangCircle: true, fillColor: rgb(0.46, 0.46, 0.46), borderColor: rgb(0.26, 0.26, 0.26) } as any,
         { label: 'Tiang Baru TM', color: rgb(0.08, 0.40, 0.75), isTiangCircle: true, fillColor: rgb(0.08, 0.40, 0.75), borderColor: rgb(0.05, 0.28, 0.63) } as any,
         { label: 'Tiang Baru TR', color: rgb(0.30, 0.69, 0.31), isTiangCircle: true, fillColor: rgb(0.30, 0.69, 0.31), borderColor: rgb(0.18, 0.49, 0.20) } as any,
+        { label: 'Stay Set (Skur)', color: rgb(0.08, 0.40, 0.75), isStayset: true } as any,
+        { label: 'Pondasi Tiang', color: rgb(0.08, 0.40, 0.75), isPondasi: true } as any,
+        { label: 'Grounding', color: rgb(0.08, 0.40, 0.75), isGrounding: true } as any,
         { label: 'Gardu Baru', color: rgb(1, 0.6, 0), isGarduBaru: true } as any
     );
     if (hasGarduOverlay) {
@@ -512,6 +515,69 @@ function drawPdfLegendBlock(
                 color: (item as any).fillColor,
                 borderColor: (item as any).borderColor,
                 borderWidth: 0.8,
+            });
+        } else if ((item as any).isStayset) {
+            // Draw Inverted Y (⅄) Stay Set Symbol
+            page.drawLine({
+                start: { x: lineXStart + 9, y: lineY - 3 },
+                end: { x: lineXStart + 9, y: lineY + 1 },
+                thickness: 1.2,
+                color: (item as any).color,
+            });
+            page.drawLine({
+                start: { x: lineXStart + 9, y: lineY + 1 },
+                end: { x: lineXStart + 4, y: lineY + 5 },
+                thickness: 1.2,
+                color: (item as any).color,
+            });
+            page.drawLine({
+                start: { x: lineXStart + 9, y: lineY + 1 },
+                end: { x: lineXStart + 14, y: lineY + 5 },
+                thickness: 1.2,
+                color: (item as any).color,
+            });
+        } else if ((item as any).isPondasi) {
+            // Draw Transparent Square Box surrounding Tiang Circle
+            page.drawRectangle({
+                x: lineXStart + 4.5,
+                y: lineY - 4.5,
+                width: 9,
+                height: 9,
+                color: undefined,
+                borderColor: (item as any).color,
+                borderWidth: 0.9,
+            });
+            page.drawCircle({
+                x: lineXStart + 9,
+                y: lineY,
+                size: 2.0,
+                color: (item as any).color,
+            });
+        } else if ((item as any).isGrounding) {
+            // Draw Grounding Symbol (⏚)
+            page.drawLine({
+                start: { x: lineXStart + 3, y: lineY },
+                end: { x: lineXStart + 7, y: lineY },
+                thickness: 1.2,
+                color: (item as any).color,
+            });
+            page.drawLine({
+                start: { x: lineXStart + 7, y: lineY - 4 },
+                end: { x: lineXStart + 7, y: lineY + 4 },
+                thickness: 1.2,
+                color: (item as any).color,
+            });
+            page.drawLine({
+                start: { x: lineXStart + 10, y: lineY - 2.5 },
+                end: { x: lineXStart + 10, y: lineY + 2.5 },
+                thickness: 1.2,
+                color: (item as any).color,
+            });
+            page.drawLine({
+                start: { x: lineXStart + 13, y: lineY - 1 },
+                end: { x: lineXStart + 13, y: lineY + 1 },
+                thickness: 1.2,
+                color: (item as any).color,
             });
         } else if ((item as any).isGarduBaru) {
             // Draw Gardu Baru Bright Orange Square + Yellow Shield + Red Lightning

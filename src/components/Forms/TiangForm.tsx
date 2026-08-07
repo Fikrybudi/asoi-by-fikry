@@ -69,6 +69,12 @@ export default function TiangForm({
     );
     const [catatan, setCatatan] = useState(initialData?.catatan || '');
     const [fotos, setFotos] = useState<string[]>(initialData?.foto || []);
+    const [penguat, setPenguat] = useState<'Tanpa Penguat' | 'Stayset' | 'Pondasi'>(
+        initialData?.penguat || 'Tanpa Penguat'
+    );
+    const [grounding, setGrounding] = useState<boolean>(
+        initialData?.grounding ?? false
+    );
 
     // Update defaults when jenis jaringan changes
     useEffect(() => {
@@ -94,6 +100,8 @@ export default function TiangForm({
             setSelectedPerlengkapan(initialData.perlengkapan || []);
             setCatatan(initialData.catatan || '');
             setFotos(initialData.foto || []);
+            setPenguat(initialData.penguat || 'Tanpa Penguat');
+            setGrounding(initialData.grounding ?? false);
         }
     }, [initialData]);
 
@@ -123,6 +131,8 @@ export default function TiangForm({
             foto: fotos.length > 0 ? fotos : undefined,
             catatan: catatan || undefined,
             status: statusTiang,
+            penguat: penguat === 'Tanpa Penguat' ? undefined : penguat,
+            grounding: grounding,
         });
     };
 
@@ -350,6 +360,81 @@ export default function TiangForm({
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+
+                    {/* Penguat Tiang (Mutually Exclusive: Stay Set OR Pondasi) */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Penguat Tiang (Pilih Salah Satu)</Text>
+                        <View style={styles.optionRow}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.optionButton,
+                                    penguat === 'Tanpa Penguat' && styles.optionButtonActive,
+                                ]}
+                                onPress={() => setPenguat('Tanpa Penguat')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        penguat === 'Tanpa Penguat' && styles.optionTextActive,
+                                    ]}
+                                >
+                                    ❌ Tanpa Penguat
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.optionButton,
+                                    penguat === 'Stayset' && styles.optionButtonActive,
+                                ]}
+                                onPress={() => setPenguat('Stayset')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        penguat === 'Stayset' && styles.optionTextActive,
+                                    ]}
+                                >
+                                    ⚓ Stay Set {['SUTM', 'SKTM', 'SKUTM'].includes(jenisJaringan) ? 'TM' : 'TR'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.optionButton,
+                                    penguat === 'Pondasi' && styles.optionButtonActive,
+                                ]}
+                                onPress={() => setPenguat('Pondasi')}
+                            >
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        penguat === 'Pondasi' && styles.optionButtonActive,
+                                    ]}
+                                >
+                                    🧱 Pondasi Tiang
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Proteksi Pembumian / Grounding */}
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Proteksi Pembumian</Text>
+                        <TouchableOpacity
+                            style={[
+                                styles.checkboxItem,
+                                grounding && styles.checkboxItemActive,
+                                { paddingVertical: 10, paddingHorizontal: 14 }
+                            ]}
+                            onPress={() => setGrounding(!grounding)}
+                        >
+                            <Text style={styles.checkboxIcon}>{grounding ? '☑️' : '⬛'}</Text>
+                            <Text style={[styles.checkboxText, { fontSize: 13, fontWeight: '600' }]}>
+                                ⚡ Pemasangan Grounding / Pembumian
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Tinggi & Kekuatan Tiang - Compact Row */}

@@ -39,6 +39,10 @@ export interface Tiang {
     // If undefined, use automatic Smart Label Placement
     labelPosition?: number;
 
+    // Penguat tiang (mutually exclusive: Stayset OR Pondasi) & Grounding
+    penguat?: 'Stayset' | 'Pondasi';
+    grounding?: boolean;
+
     // Metadata
     createdAt: Date;
     updatedAt: Date;
