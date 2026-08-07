@@ -348,14 +348,14 @@ const generateMapHTML = (
     }).addTo(map);
     ` : ''}
 
-    // Grounding / Pembumian: Grounding symbol (⏚) attached to tiang point, 90 deg perpendicular to jalur
+    // Grounding / Pembumian: Grounding symbol (⏚) attached to tiang point, pointing DOWNWARDS with longer stem
     ${t.grounding ? `
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'grounding-icon',
-        html: '<div style="position:relative;width:32px;height:32px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" style="position:absolute;left:-16px;top:-16px;"><g transform="rotate(${groundingRotationDeg}, 16, 16)"><line x1="16" y1="16" x2="23" y2="16" stroke="${borderColor}" stroke-width="2.2"/><line x1="23" y1="8" x2="23" y2="24" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="26" y1="11" x2="26" y2="21" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="29" y1="14" x2="29" y2="18" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/></g></svg></div>',
-        iconSize: [32, 32],
+        html: '<div style="position:relative;width:32px;height:36px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="36" viewBox="0 0 32 36" style="position:absolute;left:-16px;top:-16px;"><line x1="16" y1="16" x2="16" y2="27" stroke="${borderColor}" stroke-width="2.2"/><line x1="7" y1="27" x2="25" y2="27" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round"/><line x1="10" y1="30" x2="22" y2="30" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round"/><line x1="13" y1="33" x2="19" y2="33" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round"/></svg></div>',
+        iconSize: [32, 36],
         iconAnchor: [0, 0]
       }),
       interactive: false
