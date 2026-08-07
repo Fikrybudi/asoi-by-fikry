@@ -301,6 +301,24 @@ const generateMapHTML = (
       }));
     });
     
+    // =========================================================================
+    // DYNAMIC ROTATION ANGLES FOR STAY SET (SKUR) & GROUNDING
+    // =========================================================================
+    let skurRotationDeg = -90; // Default Skur pointing North
+    let groundingRotationDeg = 0; // Default Grounding pointing East
+
+    if (occupiedAngles.length === 1) {
+      // TIANG UJUNG (END POLE):
+      // Skur is 180 degrees away from the jalur (opposite direction to withstand tension)
+      skurRotationDeg = occupiedAngles[0] + 180;
+      groundingRotationDeg = occupiedAngles[0] + 90; // 90 deg perpendicular to jalur
+    } else if (occupiedAngles.length >= 2) {
+      // TIANG TENGAH / SUDUT (INTERMEDIATE / ANGLE POLE):
+      // Skur is 60 degrees from the main jalur direction
+      skurRotationDeg = occupiedAngles[0] + 60;
+      groundingRotationDeg = occupiedAngles[0] + 90; // 90 deg perpendicular to jalur
+    }
+
     // Pondasi Tiang: Transparent square box surrounding the tiang circle marker
     ${t.penguat === 'Pondasi' ? `
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
@@ -315,28 +333,29 @@ const generateMapHTML = (
     }).addTo(map);
     ` : ''}
 
-    // Stay Set / Skur: Inverted Y (⅄) symbol with tail touching the tiang point
+    // Stay Set / Skur: Inverted Y (⅄) symbol with tail touching tiang point (16,16)
+    // Dynamic angle: 180 deg opposite for end poles, 60 deg for intermediate poles
     ${t.penguat === 'Stayset' ? `
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'stayset-icon',
-        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:-12px;top:-22px;"><path d="M12,22 L12,11 L4,2 M12,11 L20,2" stroke="${borderColor}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>',
-        iconSize: [24, 24],
+        html: '<div style="position:relative;width:32px;height:32px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" style="position:absolute;left:-16px;top:-16px;"><g transform="rotate(' + (skurRotationDeg + 90) + ', 16, 16)"><path d="M16,16 L16,5 L9,0 M16,5 L23,0" stroke="${borderColor}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g></svg></div>',
+        iconSize: [32, 32],
         iconAnchor: [0, 0]
       }),
       interactive: false
     }).addTo(map);
     ` : ''}
 
-    // Grounding / Pembumian: Grounding symbol (⏚) attached to the tiang point
+    // Grounding / Pembumian: Grounding symbol (⏚) attached to tiang point, 90 deg perpendicular to jalur
     ${t.grounding ? `
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'grounding-icon',
-        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:4px;top:-12px;"><line x1="0" y1="12" x2="7" y2="12" stroke="${borderColor}" stroke-width="2.2"/><line x1="7" y1="4" x2="7" y2="20" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="11" y1="7" x2="11" y2="17" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="15" y1="10" x2="15" y2="14" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/></svg></div>',
-        iconSize: [24, 24],
+        html: '<div style="position:relative;width:32px;height:32px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" style="position:absolute;left:-16px;top:-16px;"><g transform="rotate(' + groundingRotationDeg + ', 16, 16)"><line x1="16" y1="16" x2="23" y2="16" stroke="${borderColor}" stroke-width="2.2"/><line x1="23" y1="8" x2="23" y2="24" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="26" y1="11" x2="26" y2="21" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="29" y1="14" x2="29" y2="18" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/></g></svg></div>',
+        iconSize: [32, 32],
         iconAnchor: [0, 0]
       }),
       interactive: false
