@@ -325,38 +325,38 @@ const generateMapHTML = (
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'pondasi-icon',
-        html: '<div style="width:19px;height:19px;border:2.5px solid ${borderColor};background:transparent;box-sizing:border-box;border-radius:2px;box-shadow:0 0 2px rgba(0,0,0,0.2);"></div>',
-        iconSize: [19, 19],
-        iconAnchor: [9.5, 9.5]
+        html: '<div style="width:22px;height:22px;border:2.6px solid ${borderColor};background:transparent;box-sizing:border-box;border-radius:2px;box-shadow:0 0 2px rgba(0,0,0,0.2);"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
       }),
       interactive: false
     }).addTo(map);
     ` : ''}
 
-    // Stay Set / Skur: Inverted Y (⅄) symbol with tail touching tiang point (16,16)
+    // Stay Set / Skur: Inverted Y (⅄) symbol centered at tiang point (22,22) without clipping
     // Dynamic angle: 180 deg opposite for end poles, 60 deg for intermediate poles
     ${t.penguat === 'Stayset' ? `
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'stayset-icon',
-        html: '<div style="position:relative;width:32px;height:32px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" style="position:absolute;left:-16px;top:-16px;"><g transform="rotate(${skurRotationDeg + 90}, 16, 16)"><path d="M16,16 L16,5 L9,0 M16,5 L23,0" stroke="${borderColor}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g></svg></div>',
-        iconSize: [32, 32],
-        iconAnchor: [0, 0]
+        html: '<div style="width:44px;height:44px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><g transform="rotate(${skurRotationDeg + 90}, 22, 22)"><path d="M22,22 L22,8 L13,1 M22,8 L31,1" stroke="${borderColor}" stroke-width="3.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g></svg></div>',
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
       }),
       interactive: false
     }).addTo(map);
     ` : ''}
 
-    // Grounding / Pembumian: Grounding symbol (⏚) attached to tiang point, pointing DOWNWARDS with longer stem
+    // Grounding / Pembumian: Grounding symbol (⏚) anchored at tiang point (18,16), pointing DOWNWARDS without clipping
     ${t.grounding ? `
     L.marker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'grounding-icon',
-        html: '<div style="position:relative;width:32px;height:36px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="36" viewBox="0 0 32 36" style="position:absolute;left:-16px;top:-16px;"><line x1="16" y1="16" x2="16" y2="27" stroke="${borderColor}" stroke-width="2.2"/><line x1="7" y1="27" x2="25" y2="27" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round"/><line x1="10" y1="30" x2="22" y2="30" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round"/><line x1="13" y1="33" x2="19" y2="33" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round"/></svg></div>',
-        iconSize: [32, 36],
-        iconAnchor: [0, 0]
+        html: '<div style="width:36px;height:42px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="42" viewBox="0 0 36 42"><line x1="18" y1="16" x2="18" y2="28" stroke="${borderColor}" stroke-width="2.4"/><line x1="8" y1="28" x2="28" y2="28" stroke="${borderColor}" stroke-width="2.6" stroke-linecap="round"/><line x1="11.5" y1="32" x2="24.5" y2="32" stroke="${borderColor}" stroke-width="2.6" stroke-linecap="round"/><line x1="15" y1="36" x2="21" y2="36" stroke="${borderColor}" stroke-width="2.6" stroke-linecap="round"/></svg></div>',
+        iconSize: [36, 42],
+        iconAnchor: [18, 16]
       }),
       interactive: false
     }).addTo(map);
