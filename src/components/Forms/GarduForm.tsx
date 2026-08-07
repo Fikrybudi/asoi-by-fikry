@@ -114,7 +114,7 @@ export default function GarduForm({
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.7,
+            quality: 0.5,
             allowsEditing: true,
             aspect: [4, 3],
         });
@@ -127,7 +127,7 @@ export default function GarduForm({
     const pickImageFromGallery = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.7,
+            quality: 0.5,
             allowsMultipleSelection: true,
             selectionLimit: 5,
         });
