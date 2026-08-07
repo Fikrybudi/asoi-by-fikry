@@ -29,9 +29,12 @@ const generateMapHTML = (
   zoomLevel: number = 18,
   persilList: PersilPelanggan[] = [],
   overlayLayers: OverlayFile[] = [],
-  activeBaseMap: string = 'streets'
+  activeBaseMap: string = 'streets',
+  isLegendCollapsed: boolean = false
 ) => {
   const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
+  const legendDisplayState = isLegendCollapsed ? 'none' : 'block';
+  const legendIconState = isLegendCollapsed ? '▶' : '▼';
 
   // Safe string escaper for Javascript injection in WebView
   const escapeForJsString = (str: string): string => {
@@ -1156,9 +1159,9 @@ const generateMapHTML = (
   <div class="legend" id="legendBox">
     <div id="legendHeader" onclick="toggleLegend()" style="display:flex;align-items:center;justify-content:space-between;font-weight:bold;cursor:pointer;user-select:none;padding:2px 0;">
       <span style="color:#333;font-size:11px;">📌 Legenda Peta</span>
-      <span id="legendToggleIcon" style="margin-left:8px;font-size:11px;color:#1565C0;font-weight:bold;">▼</span>
+      <span id="legendToggleIcon" style="margin-left:8px;font-size:11px;color:#1565C0;font-weight:bold;">${legendIconState}</span>
     </div>
-    <div id="legendContent" style="display:block;margin-top:4px;border-top:1px solid #eee;padding-top:4px;">
+    <div id="legendContent" style="display:${legendDisplayState};margin-top:4px;border-top:1px solid #eee;padding-top:4px;">
       <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#E91E63" stroke-width="3" stroke-dasharray="8,2,2,2"/></svg>SUTM</div>
       <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#9C27B0" stroke-width="3" stroke-dasharray="2,3"/></svg>SKTM</div>
       <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
@@ -1183,37 +1186,25 @@ const generateMapHTML = (
     </div>
   </div>
   <script>
-    // Expand / Minimize Legend toggle function with persistent state memory
+    // Expand / Minimize Legend toggle function with React Native state sync
     window.toggleLegend = function(forceExpand) {
       var content = document.getElementById('legendContent');
       var icon = document.getElementById('legendToggleIcon');
       if (!content || !icon) return;
 
-      var isCollapsed = content.style.display === 'none';
-      if (forceExpand === true || isCollapsed) {
-        content.style.display = 'block';
-        icon.innerHTML = '▼';
-        if (forceExpand !== true) {
-          try { localStorage.setItem('legend_collapsed', 'false'); } catch(e){}
-        }
-      } else {
-        content.style.display = 'none';
-        icon.innerHTML = '▶';
-        try { localStorage.setItem('legend_collapsed', 'true'); } catch(e){}
+      var isCurrentlyCollapsed = content.style.display === 'none';
+      var willCollapse = forceExpand === true ? false : !isCurrentlyCollapsed;
+
+      content.style.display = willCollapse ? 'none' : 'block';
+      icon.innerHTML = willCollapse ? '▶' : '▼';
+
+      if (forceExpand !== true && window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'legendToggle',
+          collapsed: willCollapse
+        }));
       }
     };
-
-    // Auto-restore legend collapse state immediately upon map init
-    try {
-      if (localStorage.getItem('legend_collapsed') === 'true') {
-        var contentEl = document.getElementById('legendContent');
-        var iconEl = document.getElementById('legendToggleIcon');
-        if (contentEl && iconEl) {
-          contentEl.style.display = 'none';
-          iconEl.innerHTML = '▶';
-        }
-      }
-    } catch(e) {}
 
     // FIX: Override default Canvas tolerance globally before map init
     // This allows us to use 'preferCanvas: true' (stable for export) 

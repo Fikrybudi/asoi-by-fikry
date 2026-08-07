@@ -113,6 +113,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   const [currentZoom, setCurrentZoom] = useState(18); // Track current zoom level
   const [mapViewCenter, setMapViewCenter] = useState<Coordinate | null>(null); // Persist user's viewed position
   const [activeBaseMap, setActiveBaseMap] = useState<string>('streets'); // Lock active base map selection
+  const [isLegendCollapsed, setIsLegendCollapsed] = useState<boolean>(false); // Persistent legend collapse state
   const captureResolverRef = useRef<((value: string | null) => void) | null>(null); // For Android WebView capture
   const [jalurModalVisible, setJalurModalVisible] = useState(false); // Jalur list modal
 
@@ -482,6 +483,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         if (onZoomChange) onZoomChange(data.zoom);
       } else if (data.type === 'baseMapChange') {
         setActiveBaseMap(data.baseMap);
+      } else if (data.type === 'legendToggle') {
+        setIsLegendCollapsed(data.collapsed);
       } else if (data.type === 'mapCapture') {
         // Resolve pending capture promise
         if (captureResolverRef.current) {
@@ -591,7 +594,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       currentZoom,
       persilList,
       overlayLayers,
-      activeBaseMap
+      activeBaseMap,
+      isLegendCollapsed
     );
   }, [
     // Structural changes that REQUIRE HTML regeneration:
@@ -607,8 +611,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     selectedTiangIds,
     persilList,
     overlayLayers,
-    activeBaseMap
-    // Note: mapCenter and currentZoom are EXCLUDED
+    activeBaseMap,
+    isLegendCollapsed
   ]);
 
   // Effect to handle Map Center updates without reloading HTML
