@@ -1183,7 +1183,7 @@ const generateMapHTML = (
     </div>
   </div>
   <script>
-    // Expand / Minimize Legend toggle function
+    // Expand / Minimize Legend toggle function with persistent state memory
     window.toggleLegend = function(forceExpand) {
       var content = document.getElementById('legendContent');
       var icon = document.getElementById('legendToggleIcon');
@@ -1193,11 +1193,27 @@ const generateMapHTML = (
       if (forceExpand === true || isCollapsed) {
         content.style.display = 'block';
         icon.innerHTML = '▼';
+        if (forceExpand !== true) {
+          try { localStorage.setItem('legend_collapsed', 'false'); } catch(e){}
+        }
       } else {
         content.style.display = 'none';
         icon.innerHTML = '▶';
+        try { localStorage.setItem('legend_collapsed', 'true'); } catch(e){}
       }
     };
+
+    // Auto-restore legend collapse state immediately upon map init
+    try {
+      if (localStorage.getItem('legend_collapsed') === 'true') {
+        var contentEl = document.getElementById('legendContent');
+        var iconEl = document.getElementById('legendToggleIcon');
+        if (contentEl && iconEl) {
+          contentEl.style.display = 'none';
+          iconEl.innerHTML = '▶';
+        }
+      }
+    } catch(e) {}
 
     // FIX: Override default Canvas tolerance globally before map init
     // This allows us to use 'preferCanvas: true' (stable for export) 
