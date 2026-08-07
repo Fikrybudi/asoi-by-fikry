@@ -1153,31 +1153,52 @@ const generateMapHTML = (
       </linearGradient>
     </defs>
   </svg>
-  <div class="legend">
-    <div style="font-weight:bold;margin-bottom:4px;">Legenda Peta:</div>
-    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#E91E63" stroke-width="3" stroke-dasharray="8,2,2,2"/></svg>SUTM</div>
-    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#9C27B0" stroke-width="3" stroke-dasharray="2,3"/></svg>SKTM</div>
-    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
-    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00E676" stroke-width="3"/></svg>SUTR</div>
-    ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="url(#rainbowGrad)" stroke-width="3.5"/></svg>JTM Eksisting</div>' : ''}
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#757575" stroke="#424242" stroke-width="1.5"/></svg>Tiang Existing</div>
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/></svg>Tiang Baru TM</div>
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#00E676" stroke="#00A844" stroke-width="1.5"/></svg>Tiang Baru TR</div>
-    <div class="legend-item"><svg width="18" height="14" style="margin-right:6px;"><path d="M9,13 L9,7 L3,1 M9,7 L15,1" stroke="#1565C0" stroke-width="2" fill="none"/></svg>Stay Set (Skur)</div>
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1" fill="none" stroke="#1565C0" stroke-width="1.8"/><circle cx="8.5" cy="6" r="3" fill="#1565C0"/></svg>Pondasi Tiang</div>
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><line x1="1" y1="6" x2="5" y2="6" stroke="#1565C0" stroke-width="1.5"/><line x1="5" y1="1" x2="5" y2="11" stroke="#1565C0" stroke-width="1.8"/><line x1="8" y1="3" x2="8" y2="9" stroke="#1565C0" stroke-width="1.8"/><line x1="11" y1="5" x2="11" y2="7" stroke="#1565C0" stroke-width="1.8"/></svg>Grounding</div>
-    <div class="legend-item">
-      <svg width="18" height="14" style="margin-right:6px;">
-        <rect x="2" y="1" width="13" height="12" rx="2" fill="#FF9800" stroke="#E65100" stroke-width="1.2"/>
-        <rect x="4.5" y="2.5" width="8" height="9" fill="#FFEB3B" rx="1"/>
-        <polygon points="9.5,3.5 6,7.5 8.5,7.5 5.5,10.5 11,6 8.5,6" fill="#D32F2F"/>
-      </svg>
-      Gardu Baru
+  <div class="legend" id="legendBox">
+    <div id="legendHeader" onclick="toggleLegend()" style="display:flex;align-items:center;justify-content:space-between;font-weight:bold;cursor:pointer;user-select:none;padding:2px 0;">
+      <span style="color:#333;font-size:11px;">📌 Legenda Peta</span>
+      <span id="legendToggleIcon" style="margin-left:8px;font-size:11px;color:#1565C0;font-weight:bold;">▼</span>
     </div>
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.2"/></svg>Gardu Eksisting</div>
-    ${overlayLayers.some(o => o.visible && o.type === 'proteksi') ? '<div class="legend-item"><div class="legend-line" style="background:#F44336;height:6px;width:6px;border-radius:50%;"></div>Proteksi</div>' : ''}
+    <div id="legendContent" style="display:block;margin-top:4px;border-top:1px solid #eee;padding-top:4px;">
+      <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#E91E63" stroke-width="3" stroke-dasharray="8,2,2,2"/></svg>SUTM</div>
+      <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#9C27B0" stroke-width="3" stroke-dasharray="2,3"/></svg>SKTM</div>
+      <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
+      <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00E676" stroke-width="3"/></svg>SUTR</div>
+      ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="url(#rainbowGrad)" stroke-width="3.5"/></svg>JTM Eksisting</div>' : ''}
+      <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#757575" stroke="#424242" stroke-width="1.5"/></svg>Tiang Existing</div>
+      <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/></svg>Tiang Baru TM</div>
+      <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#00E676" stroke="#00A844" stroke-width="1.5"/></svg>Tiang Baru TR</div>
+      <div class="legend-item"><svg width="18" height="14" style="margin-right:6px;"><path d="M9,13 L9,7 L3,1 M9,7 L15,1" stroke="#1565C0" stroke-width="2" fill="none"/></svg>Stay Set (Skur)</div>
+      <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1" fill="none" stroke="#1565C0" stroke-width="1.8"/><circle cx="8.5" cy="6" r="3" fill="#1565C0"/></svg>Pondasi Tiang</div>
+      <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><line x1="1" y1="6" x2="5" y2="6" stroke="#1565C0" stroke-width="1.5"/><line x1="5" y1="1" x2="5" y2="11" stroke="#1565C0" stroke-width="1.8"/><line x1="8" y1="3" x2="8" y2="9" stroke="#1565C0" stroke-width="1.8"/><line x1="11" y1="5" x2="11" y2="7" stroke="#1565C0" stroke-width="1.8"/></svg>Grounding</div>
+      <div class="legend-item">
+        <svg width="18" height="14" style="margin-right:6px;">
+          <rect x="2" y="1" width="13" height="12" rx="2" fill="#FF9800" stroke="#E65100" stroke-width="1.2"/>
+          <rect x="4.5" y="2.5" width="8" height="9" fill="#FFEB3B" rx="1"/>
+          <polygon points="9.5,3.5 6,7.5 8.5,7.5 5.5,10.5 11,6 8.5,6" fill="#D32F2F"/>
+        </svg>
+        Gardu Baru
+      </div>
+      <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.2"/></svg>Gardu Eksisting</div>
+      ${overlayLayers.some(o => o.visible && o.type === 'proteksi') ? '<div class="legend-item"><div class="legend-line" style="background:#F44336;height:6px;width:6px;border-radius:50%;"></div>Proteksi</div>' : ''}
+    </div>
   </div>
   <script>
+    // Expand / Minimize Legend toggle function
+    window.toggleLegend = function(forceExpand) {
+      var content = document.getElementById('legendContent');
+      var icon = document.getElementById('legendToggleIcon');
+      if (!content || !icon) return;
+
+      var isCollapsed = content.style.display === 'none';
+      if (forceExpand === true || isCollapsed) {
+        content.style.display = 'block';
+        icon.innerHTML = '▼';
+      } else {
+        content.style.display = 'none';
+        icon.innerHTML = '▶';
+      }
+    };
+
     // FIX: Override default Canvas tolerance globally before map init
     // This allows us to use 'preferCanvas: true' (stable for export) 
     // while getting the improved click hit-test area.
