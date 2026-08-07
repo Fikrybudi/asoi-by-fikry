@@ -54,8 +54,8 @@ const generateMapHTML = (
       bgColor = '#757575'; // Dark gray for existing
       borderColor = '#424242';
     } else if (t.jenisJaringan === 'SUTR') {
-      bgColor = '#4CAF50';
-      borderColor = '#2E7D32';
+      bgColor = '#00E676'; // High-contrast vivid neon green for hybrid map legibility
+      borderColor = '#00A844';
     } else if (t.jenisJaringan === 'SKUTM') {
       bgColor = '#00BCD4';
       borderColor = '#00838F';
@@ -443,7 +443,7 @@ const generateMapHTML = (
     let color = '#E91E63';
     if (j.jenisJaringan === 'SKTM') color = '#9C27B0';
     if (j.jenisJaringan === 'SKUTM') color = '#00BCD4';
-    if (j.jenisJaringan === 'SUTR') color = '#4CAF50';
+    if (j.jenisJaringan === 'SUTR') color = '#00E676';
 
     // Dash pattern based on cable type
     let dashArray = '';
@@ -1146,11 +1146,11 @@ const generateMapHTML = (
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#E91E63" stroke-width="3" stroke-dasharray="8,2,2,2"/></svg>SUTM</div>
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#9C27B0" stroke-width="3" stroke-dasharray="2,3"/></svg>SKTM</div>
     <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
-    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#4CAF50" stroke-width="3"/></svg>SUTR</div>
+    <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00E676" stroke-width="3"/></svg>SUTR</div>
     ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="url(#rainbowGrad)" stroke-width="3.5"/></svg>JTM Eksisting</div>' : ''}
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#757575" stroke="#424242" stroke-width="1.5"/></svg>Tiang Existing</div>
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/></svg>Tiang Baru TM</div>
-    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#4CAF50" stroke="#2E7D32" stroke-width="1.5"/></svg>Tiang Baru TR</div>
+    <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#00E676" stroke="#00A844" stroke-width="1.5"/></svg>Tiang Baru TR</div>
     <div class="legend-item"><svg width="18" height="14" style="margin-right:6px;"><path d="M9,13 L9,7 L3,1 M9,7 L15,1" stroke="#1565C0" stroke-width="2" fill="none"/></svg>Stay Set (Skur)</div>
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><rect x="3" y="1" width="11" height="10" rx="1" fill="none" stroke="#1565C0" stroke-width="1.8"/><circle cx="8.5" cy="6" r="3" fill="#1565C0"/></svg>Pondasi Tiang</div>
     <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><line x1="1" y1="6" x2="5" y2="6" stroke="#1565C0" stroke-width="1.5"/><line x1="5" y1="1" x2="5" y2="11" stroke="#1565C0" stroke-width="1.8"/><line x1="8" y1="3" x2="8" y2="9" stroke="#1565C0" stroke-width="1.8"/><line x1="11" y1="5" x2="11" y2="7" stroke="#1565C0" stroke-width="1.8"/></svg>Grounding</div>

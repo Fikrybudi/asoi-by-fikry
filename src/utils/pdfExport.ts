@@ -438,7 +438,7 @@ function drawPdfLegendBlock(
         { label: 'SUTM', color: rgb(0.91, 0.12, 0.39), dash: [6, 2, 1.5, 2] },
         { label: 'SKTM', color: rgb(0.61, 0.15, 0.69), dash: [1.5, 2.5] },
         { label: 'SKUTM', color: rgb(0.0, 0.74, 0.83), dash: [5, 3] },
-        { label: 'SUTR', color: rgb(0.30, 0.69, 0.31), dash: undefined },
+        { label: 'SUTR', color: rgb(0.0, 0.90, 0.46), dash: undefined },
     ];
 
     if (hasJtmOverlay) {
@@ -447,7 +447,7 @@ function drawPdfLegendBlock(
     items.push(
         { label: 'Tiang Existing', color: rgb(0.46, 0.46, 0.46), isTiangCircle: true, fillColor: rgb(0.46, 0.46, 0.46), borderColor: rgb(0.26, 0.26, 0.26) } as any,
         { label: 'Tiang Baru TM', color: rgb(0.08, 0.40, 0.75), isTiangCircle: true, fillColor: rgb(0.08, 0.40, 0.75), borderColor: rgb(0.05, 0.28, 0.63) } as any,
-        { label: 'Tiang Baru TR', color: rgb(0.30, 0.69, 0.31), isTiangCircle: true, fillColor: rgb(0.30, 0.69, 0.31), borderColor: rgb(0.18, 0.49, 0.20) } as any,
+        { label: 'Tiang Baru TR', color: rgb(0.0, 0.90, 0.46), isTiangCircle: true, fillColor: rgb(0.0, 0.90, 0.46), borderColor: rgb(0.0, 0.66, 0.27) } as any,
         { label: 'Stay Set (Skur)', color: rgb(0.08, 0.40, 0.75), isStayset: true } as any,
         { label: 'Pondasi Tiang', color: rgb(0.08, 0.40, 0.75), isPondasi: true } as any,
         { label: 'Grounding', color: rgb(0.08, 0.40, 0.75), isGrounding: true } as any,
