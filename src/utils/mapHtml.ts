@@ -49,20 +49,24 @@ const generateMapHTML = (
     let bgColor = '#1565C0';
     let borderColor = '#1565C0';
     let labelTextColor = '#1565C0';
+    let labelBorderColor = '#1565C0';
 
     // Check if existing (gray out)
     if (t.status === 'existing') {
       bgColor = '#757575'; // Dark gray for existing
       borderColor = '#424242';
       labelTextColor = '#757575';
+      labelBorderColor = '#424242';
     } else if (t.jenisJaringan === 'SUTR') {
       bgColor = '#00E676'; // High-contrast vivid neon green for hybrid map line/symbols
       borderColor = '#00E676';
       labelTextColor = '#2E7D32'; // Reverted to original green color for label text (konstruksi & nomor)
+      labelBorderColor = '#4CAF50'; // Reverted to original green color for label badge border & dividers
     } else if (t.jenisJaringan === 'SKUTM') {
       bgColor = '#00BCD4';
       borderColor = '#00838F';
       labelTextColor = '#00BCD4';
+      labelBorderColor = '#00BCD4';
     }
 
     // Check if selected (override all)
@@ -70,6 +74,8 @@ const generateMapHTML = (
     if (isSelected) {
       bgColor = '#FFEB3B'; // Yellow warning color
       borderColor = '#FF9800'; // Orange border
+      labelTextColor = '#FF9800';
+      labelBorderColor = '#FF9800';
     }
 
     // Extract height and strength numbers for display
@@ -240,9 +246,9 @@ const generateMapHTML = (
     const labelLng = t.koordinat.longitude + (bestQuadrant.offsetX * labelOffsetDeg);
 
     // Create circular label HTML with 3 sections
-    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + borderColor + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
-      '<div style="display:flex;flex:1;border-bottom:1px solid ' + borderColor + ';">' +
-      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + labelTextColor + ';border-right:1px solid ' + borderColor + ';">' + nomorLabel + '</div>' +
+    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + labelBorderColor + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
+      '<div style="display:flex;flex:1;border-bottom:1px solid ' + labelBorderColor + ';">' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + labelTextColor + ';border-right:1px solid ' + labelBorderColor + ';">' + nomorLabel + '</div>' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + ukuranFontSize + 'px;font-weight:bold;color:#333;">' + ukuranLabel + '</div>' +
       '</div>' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + fontSize + 'px;font-weight:bold;color:' + labelTextColor + ';">' + konstruksiLabel + '</div>' +
