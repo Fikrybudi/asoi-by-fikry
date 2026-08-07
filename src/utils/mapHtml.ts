@@ -307,7 +307,7 @@ const generateMapHTML = (
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'pondasi-icon',
-        html: '<div style="width:19px;height:19px;border:2.2px solid ${borderColor};background:transparent;border-radius:2px;box-shadow:0 0 2px rgba(0,0,0,0.2);"></div>',
+        html: '<div style="width:19px;height:19px;border:2.5px solid ${borderColor};background:transparent;box-sizing:border-box;border-radius:2px;box-shadow:0 0 2px rgba(0,0,0,0.2);"></div>',
         iconSize: [19, 19],
         iconAnchor: [9.5, 9.5]
       }),
@@ -321,7 +321,7 @@ const generateMapHTML = (
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'stayset-icon',
-        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:-12px;top:-22px;"><path d="M12,22 L12,11 L4,2 M12,11 L20,2" stroke="${borderColor}" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>',
+        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:-12px;top:-22px;"><path d="M12,22 L12,11 L4,2 M12,11 L20,2" stroke="${borderColor}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>',
         iconSize: [24, 24],
         iconAnchor: [0, 0]
       }),
@@ -335,7 +335,7 @@ const generateMapHTML = (
       pane: 'tiangPane',
       icon: L.divIcon({
         className: 'grounding-icon',
-        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:4px;top:-12px;"><line x1="0" y1="12" x2="7" y2="12" stroke="${borderColor}" stroke-width="2"/><line x1="7" y1="4" x2="7" y2="20" stroke="${borderColor}" stroke-width="2.2" stroke-linecap="round"/><line x1="11" y1="7" x2="11" y2="17" stroke="${borderColor}" stroke-width="2.2" stroke-linecap="round"/><line x1="15" y1="10" x2="15" y2="14" stroke="${borderColor}" stroke-width="2.2" stroke-linecap="round"/></svg></div>',
+        html: '<div style="position:relative;width:24px;height:24px;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="position:absolute;left:4px;top:-12px;"><line x1="0" y1="12" x2="7" y2="12" stroke="${borderColor}" stroke-width="2.2"/><line x1="7" y1="4" x2="7" y2="20" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="11" y1="7" x2="11" y2="17" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/><line x1="15" y1="10" x2="15" y2="14" stroke="${borderColor}" stroke-width="2.4" stroke-linecap="round"/></svg></div>',
         iconSize: [24, 24],
         iconAnchor: [0, 0]
       }),
@@ -1023,6 +1023,11 @@ const generateMapHTML = (
     }
     .legend-item { display: flex; align-items: center; margin: 3px 0; }
     .legend-line { width: 20px; height: 3px; margin-right: 8px; border-radius: 2px; }
+    
+    .leaflet-div-icon, .pondasi-icon, .stayset-icon, .grounding-icon {
+      background: transparent !important;
+      border: none !important;
+    }
     
     /* Rainbow Line Style for JTM Eksisting Overlay */
     path.overlay-jtm {
