@@ -415,7 +415,7 @@ export const supabaseSurveyService = {
             perlengkapan: t.perlengkapan || [],
             foto: t.foto,
             catatan: t.catatan,
-            labelPosition: t.label_position,
+            labelPosition: (t.label_position !== null && t.label_position !== undefined) ? t.label_position : undefined,
             penguat: t.penguat as any,
             grounding: t.grounding,
             createdAt: new Date(t.created_at),

@@ -133,6 +133,7 @@ export default function TiangForm({
             status: statusTiang,
             penguat: penguat === 'Tanpa Penguat' ? undefined : penguat,
             grounding: grounding,
+            labelPosition: initialData?.labelPosition,
         });
     };
 

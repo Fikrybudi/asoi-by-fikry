@@ -1054,16 +1054,25 @@ export default function App() {
       const tiang = currentSurvey.tiangList.find(t => t.id === tiangId);
       if (!tiang) return;
 
-      // Update tiang with new label position
+      // 1. Immediately update React state tiangList
+      const updatedTiangList = currentSurvey.tiangList.map(t =>
+        t.id === tiangId ? { ...t, labelPosition: newPosition } : t
+      );
+
+      setCurrentSurvey(prev => prev ? {
+        ...prev,
+        tiangList: updatedTiangList,
+      } : null);
+
+      // 2. Persist to tiangService and surveyService in AsyncStorage
       const updated = await tiangService.update(currentSurvey.id, tiangId, {
         labelPosition: newPosition,
       });
 
       if (updated) {
-        setCurrentSurvey(prev => prev ? {
-          ...prev,
-          tiangList: prev.tiangList.map(t => t.id === tiangId ? updated : t),
-        } : null);
+        await surveyService.update(currentSurvey.id, {
+          tiangList: updatedTiangList,
+        });
 
         // Show brief feedback
         const directions = ['↑ Atas', '↗ Kanan Atas', '→ Kanan', '↘ Kanan Bawah', '↓ Bawah', '↙ Kiri Bawah', '← Kiri', '↖ Kiri Atas'];
