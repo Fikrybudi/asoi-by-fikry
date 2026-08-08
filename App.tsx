@@ -131,6 +131,12 @@ export default function App() {
 
   // Export progress state (null = not exporting)
   const [exportProgress, setExportProgress] = useState<string | null>(null);
+  const [exportProgressPercent, setExportProgressPercent] = useState<number>(0);
+
+  const updateProgress = (text: string | null, percent: number = 0) => {
+    setExportProgress(text);
+    setExportProgressPercent(percent);
+  };
 
   // Underbuild SUTR state
   const [underbuildTiangIds, setUnderbuildTiangIds] = useState<string[]>([]);
@@ -536,23 +542,25 @@ export default function App() {
   // Export single-page PDF
   const doExportSinglePage = async (surveyInfo: SurveyInfo) => {
     if (!mapRef.current || !currentSurvey) return;
-    setExportProgress('Mengambil gambar peta...');
+    updateProgress('Mempersiapkan peta & lapisan data...', 15);
     try {
+      updateProgress('Mengambil gambar peta skala tinggi...', 45);
       const mapBase64 = await mapRef.current.captureOptimalMap();
       if (!mapBase64) {
         Alert.alert('Error', 'Gagal capture peta');
         return;
       }
-      setExportProgress('Membuat PDF Kop Resmi PLN...');
+      updateProgress('Membuat PDF Kop Resmi PLN...', 80);
       const pdfPath = await generatePdfWithMap(mapBase64, surveyInfo);
       if (!pdfPath) {
         Alert.alert('Error', 'Gagal generate PDF');
         return;
       }
+      updateProgress('Menyelesaikan dokumen PDF...', 100);
       Alert.alert('✅ Berhasil', 'PDF Gambar Resmi PLN berhasil dibuat!');
       await sharePdf(pdfPath);
     } finally {
-      setExportProgress(null);
+      updateProgress(null, 0);
     }
   };
 
@@ -567,6 +575,7 @@ export default function App() {
     }
 
     try {
+      updateProgress('Menganalisis segmen halaman PDF...', 10);
       const currentLat = centerCoordinate?.latitude ?? tiangList[0]?.koordinat.latitude ?? -6.8;
       // Segmentasi tiang berdasarkan mode (termasuk mode 'scale' menggunakan live currentZoom)
       const segments = groupTiangBySegment(tiangList, mode, currentZoom, currentLat);
@@ -577,7 +586,8 @@ export default function App() {
 
       for (let i = 0; i < segments.length; i++) {
         const seg = segments[i];
-        setExportProgress(`Mengambil gambar halaman ${i + 1} dari ${totalPages}...`);
+        const pagePercent = Math.min(85, Math.round(15 + ((i + 0.5) / totalPages) * 70));
+        updateProgress(`Mengambil gambar halaman ${i + 1} dari ${totalPages}...`, pagePercent);
 
         // Titik batas kiri halaman ini = tiang pertama segmen ini (yang merupakan tiang pembatas dari halaman sebelumnya)
         const prevAnchor = i > 0 ? seg.tiangList[0].koordinat : undefined;
@@ -629,7 +639,7 @@ export default function App() {
 
         if (!base64) {
           Alert.alert('Error', `Gagal capture halaman ${i + 1}`);
-          setExportProgress(null);
+          updateProgress(null, 0);
           return;
         }
 
@@ -648,7 +658,7 @@ export default function App() {
         }
       }
 
-      setExportProgress(`Membuat PDF ${totalPages} halaman...`);
+      updateProgress(`Menyusun PDF ${totalPages} halaman...`, 90);
       const pdfPath = await generateMultiPagePdf(mapBase64s, surveyInfo, pageMetas);
 
       if (!pdfPath) {
@@ -656,13 +666,14 @@ export default function App() {
         return;
       }
 
+      updateProgress('Menyelesaikan file PDF...', 100);
       Alert.alert('✅ Berhasil', `PDF Gambar Resmi PLN (${totalPages} hal) berhasil dibuat!`);
       await sharePdf(pdfPath);
     } catch (error) {
       console.error('doExportMultiPage error:', error);
       Alert.alert('Error', 'Terjadi kesalahan: ' + String(error));
     } finally {
-      setExportProgress(null);
+      updateProgress(null, 0);
     }
   };
 
@@ -1961,18 +1972,32 @@ export default function App() {
               <Ionicons name="document-text" size={32} color="#1565C0" />
             </View>
 
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1565C0', textAlign: 'center', marginBottom: 4 }}>
-              Export PDF Gambar
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1565C0', textAlign: 'center', marginBottom: 2 }}>
+              Ekspor PDF Gambar PLN
             </Text>
 
-            <ActivityIndicator size="large" color="#1565C0" style={{ marginVertical: 14 }} />
+            {/* Progress Header & Percentage Badge */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 16, marginBottom: 6 }}>
+              <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#666', letterSpacing: 0.5 }}>MEMPROSES EKSPOR</Text>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#00C853' }}>{Math.min(100, Math.max(5, exportProgressPercent))}%</Text>
+            </View>
 
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', textAlign: 'center', lineHeight: 20 }}>
-              {exportProgress || 'Mengekspor...'}
+            {/* Animated Progress Bar Track */}
+            <View style={{ width: '100%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 5, overflow: 'hidden', marginBottom: 14 }}>
+              <View style={{
+                width: `${Math.min(100, Math.max(5, exportProgressPercent))}%`,
+                height: '100%',
+                backgroundColor: '#00C853',
+                borderRadius: 5,
+              }} />
+            </View>
+
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#222', textAlign: 'center', lineHeight: 19 }}>
+              {exportProgress || 'Memproses...'}
             </Text>
 
             <Text style={{ marginTop: 8, fontSize: 11, color: '#757575', textAlign: 'center' }}>
-              Memproses capture peta & penyusunan tata letak PDF
+              Harap tunggu, capture peta & penyusunan PDF sedang berlangsung
             </Text>
           </View>
         </View>
