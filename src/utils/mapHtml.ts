@@ -200,13 +200,14 @@ const generateMapHTML = (
       { angle: 135, offsetX: -1, offsetY: 1 },    // 7: NW - Label NorthWest (+lat, -lng)
     ];
 
-    // Check if user has manually set label position
+    // Check if user has manually set label position (supports both number 2 and string "2")
     let bestQuadrant;
     const currentLabelPos = t.labelPosition;
+    const posNum = (currentLabelPos !== undefined && currentLabelPos !== null) ? Number(currentLabelPos) : NaN;
 
-    if (typeof currentLabelPos === 'number' && currentLabelPos >= 0 && currentLabelPos <= 7) {
+    if (!isNaN(posNum) && posNum >= 0 && posNum <= 7) {
       // Use user-defined position
-      bestQuadrant = quadrants[currentLabelPos];
+      bestQuadrant = quadrants[posNum];
     } else {
       // Auto-detect: Find best quadrant (furthest from any occupied angle)
       bestQuadrant = quadrants[0]; // Default: North (above)
@@ -310,7 +311,7 @@ const generateMapHTML = (
       line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs(lineCoords);
     });
 
-    // Snap to nearest 8-direction quadrant on drag end
+    // Snap to nearest 8-direction quadrant on drag end and set exact snapped latlng
     marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('dragend', function(e) {
       var dy = e.latlng.lat - ${t.koordinat.latitude};
       var dx = e.latlng.lng - ${t.koordinat.longitude};
@@ -324,6 +325,24 @@ const generateMapHTML = (
         if (diff > 180) diff = 360 - diff;
         if (diff < minDiff) { minDiff = diff; bestIdx = idx; }
       });
+
+      var labelOffsetDeg = 0.00028;
+      var qOffsets = [
+        { offsetX: 0, offsetY: 1 },
+        { offsetX: 1, offsetY: 1 },
+        { offsetX: 1, offsetY: 0 },
+        { offsetX: 1, offsetY: -1 },
+        { offsetX: 0, offsetY: -1 },
+        { offsetX: -1, offsetY: -1 },
+        { offsetX: -1, offsetY: 0 },
+        { offsetX: -1, offsetY: 1 }
+      ];
+      var snappedQ = qOffsets[bestIdx];
+      var snappedLat = ${t.koordinat.latitude} + (snappedQ.offsetY * labelOffsetDeg);
+      var snappedLng = ${t.koordinat.longitude} + (snappedQ.offsetX * labelOffsetDeg);
+
+      e.target.setLatLng([snappedLat, snappedLng]);
+      line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
 
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'tiangLabelShift',
