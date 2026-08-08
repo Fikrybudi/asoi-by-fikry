@@ -206,11 +206,19 @@ export function getNumericScaleString(zoomLevel = 18, centerLat = -6.8): string 
     return '1 : ' + roundedRatio.toLocaleString('id-ID');
 }
 
-export function calculateScaleSpanMeters(zoomLevel = 18, centerLat = -6.8): number {
+export function calculateScaleSpanMeters(
+    zoomLevel = 18,
+    centerLat = -6.8,
+    isVertical = false
+): number {
     const latRad = centerLat * Math.PI / 180;
     const metersPerPx = (156543.03392 * Math.cos(latRad)) / Math.pow(2, zoomLevel);
-    // 1200px A4 landscape canvas x 0.80 = 960px usable span (10% padding margin on left/right for 100% efficient page coverage)
-    const spanMeters = metersPerPx * 960;
+    // A4 landscape canvas: 1200px width vs 848px height.
+    // Usable span (80% of canvas axis):
+    // Horizontal (East-West): 1200px * 0.80 = 960px
+    // Vertical (North-South): 848px * 0.78 = 660px (ensures top/bottom boundary markers stay safely inside canvas frame!)
+    const targetPx = isVertical ? 660 : 960;
+    const spanMeters = metersPerPx * targetPx;
     return Math.max(Math.round(spanMeters), 100);
 }
 
@@ -242,11 +250,6 @@ export function groupTiangBySegment(
     }
 
     const maxPoles = mode === 'tm8' ? 9 : mode === 'tr10' ? 11 : Infinity;
-    let maxMeters = mode === 'dist400' ? 400 : Infinity;
-
-    if (mode === 'scale') {
-        maxMeters = calculateScaleSpanMeters(zoomLevel, centerLat);
-    }
 
     const segments: Omit<TiangSegment, 'totalPages'>[] = [];
     let startIdx = 0;
@@ -254,6 +257,19 @@ export function groupTiangBySegment(
     while (startIdx < tiangList.length) {
         let currPanjang = 0;
         let endIdx = startIdx;
+
+        // Check local orientation for the current segment
+        const segTiangs = tiangList.slice(startIdx);
+        const segLats = segTiangs.map(t => t.koordinat.latitude);
+        const segLngs = segTiangs.map(t => t.koordinat.longitude);
+        const dLat = (Math.max(...segLats) - Math.min(...segLats)) * 111000;
+        const dLng = (Math.max(...segLngs) - Math.min(...segLngs)) * 111000 * Math.cos(centerLat * Math.PI / 180);
+        const isSegVertical = dLat > dLng * 1.1;
+
+        let maxMeters = mode === 'dist400' ? 400 : Infinity;
+        if (mode === 'scale') {
+            maxMeters = calculateScaleSpanMeters(zoomLevel, centerLat, isSegVertical);
+        }
 
         // Accumulate tiang from startIdx up to maxMeters or maxPoles
         while (endIdx < tiangList.length - 1) {
