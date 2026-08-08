@@ -337,12 +337,13 @@ const generateMapHTML = (
         { offsetX: -1, offsetY: 0 },
         { offsetX: -1, offsetY: 1 }
       ];
-      var snappedQ = qOffsets[bestIdx];
-      var snappedLat = ${t.koordinat.latitude} + (snappedQ.offsetY * labelOffsetDeg);
-      var snappedLng = ${t.koordinat.longitude} + (snappedQ.offsetX * labelOffsetDeg);
-
-      e.target.setLatLng([snappedLat, snappedLng]);
-      line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
+      var targetMarker = e.target;
+      setTimeout(function() {
+        targetMarker.setLatLng([snappedLat, snappedLng]);
+        if (typeof line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} !== 'undefined') {
+          line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
+        }
+      }, 30);
 
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'tiangLabelShift',
