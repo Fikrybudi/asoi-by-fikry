@@ -375,13 +375,13 @@ const generateMapHTML = (
     }).addTo(map);
     ` : ''}
 
-    // Small dot at exact location
+    // Small dot at exact location (radius 4.5 for crisp export scaling)
     L.circleMarker([${t.koordinat.latitude}, ${t.koordinat.longitude}], {
       pane: 'tiangPane',
-      radius: ${isSelected ? 9 : 6.5},
+      radius: ${isSelected ? 7 : 4.5},
       fillColor: '${bgColor}',
       color: '${borderColor}',
-      weight: 2.5,
+      weight: 1.8,
       fillOpacity: 1,
       className: 'titik-tiang'
     }).addTo(map)
