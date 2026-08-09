@@ -665,9 +665,14 @@ export async function generatePdfWithMap(
         const mapWidth = pageWidth - 36;
         const mapHeight = pageHeight - 126;
 
-        // Embed the map image
+        // Embed the map image (supports JPEG and PNG)
         const mapImageBytes = base64Decode(mapBase64);
-        const mapImage = await pdfDoc.embedPng(mapImageBytes);
+        let mapImage;
+        try {
+            mapImage = await pdfDoc.embedJpg(mapImageBytes);
+        } catch (e) {
+            mapImage = await pdfDoc.embedPng(mapImageBytes);
+        }
 
         page.drawImage(mapImage, {
             x: mapX,
@@ -746,9 +751,14 @@ export async function generateMultiPagePdf(
 
             const page = outputDoc.addPage([pageWidth, pageHeight]);
 
-            // Embed map image
+            // Embed map image (supports JPEG and PNG)
             const mapImageBytes = base64Decode(mapBase64);
-            const mapImage = await outputDoc.embedPng(mapImageBytes);
+            let mapImage;
+            try {
+                mapImage = await outputDoc.embedJpg(mapImageBytes);
+            } catch (e) {
+                mapImage = await outputDoc.embedPng(mapImageBytes);
+            }
 
             page.drawImage(mapImage, {
                 x: mapX,
