@@ -5,8 +5,15 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Survey } from '../types';
+import { Survey, BebanTrafoItem } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
+
+export interface ExportPDFOptions {
+    isUpratingTrafo?: boolean;
+    upratingKva?: string;
+    targetGarduName?: string;
+    bebanTrafoList?: BebanTrafoItem[];
+}
 
 // =============================================================================
 // HELPER
@@ -48,7 +55,7 @@ const shareFile = async (fileUri: string, mimeType: string, dialogTitle: string)
 /**
  * Generate HTML for PDF export
  */
-const generatePDFHtml = (survey: Survey): string => {
+const generatePDFHtml = (survey: Survey, options?: ExportPDFOptions): string => {
     const formatDate = (date: Date) => {
         return new Date(date).toLocaleDateString('id-ID', {
             day: 'numeric',
@@ -103,6 +110,46 @@ const generatePDFHtml = (survey: Survey): string => {
         </tr>
     `).join('');
 
+    // Uprating Trafo Banner HTML
+    const upratingBannerHtml = options?.isUpratingTrafo ? `
+    <div style="background: #FFF3E0; border: 1px solid #FFE0B2; border-left: 5px solid #EF6C00; padding: 12px 16px; margin-top: 15px; margin-bottom: 15px; border-radius: 6px;">
+        <strong style="color: #E65100; font-size: 13px;">⚡ PEKERJAAN UPRATING TRAFO:</strong><br/>
+        <span style="font-size: 12px; color: #333; margin-top: 4px; display: block;">
+            Pekerjaan Uprating Trafo Gardu <strong>${options.targetGarduName || (survey.garduList[0]?.namaGardu || survey.garduList[0]?.nomorGardu || 'GARDU')}</strong> ke Kapasitas Target <strong>${options.upratingKva || '250 kVA'}</strong>
+        </span>
+    </div>
+    ` : '';
+
+    // Beban Trafo Table HTML
+    const bebanTrafoRowsHtml = (options?.bebanTrafoList && options.bebanTrafoList.length > 0) ? `
+    <h2>⚡ Data Pengukuran Beban Trafo Terupdate (Live Web)</h2>
+    <table>
+        <tr>
+            <th>No</th>
+            <th>Gardu</th>
+            <th>Kapasitas</th>
+            <th>Beban R / S / T (A)</th>
+            <th>% Daya Trafo</th>
+            <th>Status Beban</th>
+            <th>Tgl Pengukuran</th>
+        </tr>
+        ${options.bebanTrafoList.map((b, idx) => {
+            const statusColor = b.statusBeban === 'Overload' ? '#D32F2F' : b.statusBeban === 'Underload' ? '#757575' : '#388E3C';
+            return `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${b.gardu}</strong></td>
+                <td>${b.kapasitasKVA} kVA</td>
+                <td>R:${b.bebanR}A | S:${b.bebanS}A | T:${b.bebanT}A</td>
+                <td><strong>${b.persenDayaTrafo}%</strong></td>
+                <td style="color: ${statusColor}; font-weight: bold;">${b.statusBeban.toUpperCase()}</td>
+                <td>${b.tanggalUkur || '-'}</td>
+            </tr>
+            `;
+        }).join('')}
+    </table>
+    ` : '';
+
     return `
     <!DOCTYPE html>
     <html>
@@ -140,6 +187,8 @@ const generatePDFHtml = (survey: Survey): string => {
             </div>
         </div>
 
+        ${upratingBannerHtml}
+
         <div class="summary">
             <div class="summary-grid">
                 <div class="summary-item">
@@ -161,6 +210,8 @@ const generatePDFHtml = (survey: Survey): string => {
                 </div>
             </div>
         </div>
+
+        ${bebanTrafoRowsHtml}
 
         ${survey.tiangList.length > 0 ? `
         <h2>Data Tiang (${tiangBaru} Baru${tiangEksisting > 0 ? ` + ${tiangEksisting} Eksisting` : ''})</h2>
@@ -238,9 +289,9 @@ const generatePDFHtml = (survey: Survey): string => {
 /**
  * Export survey to PDF and share
  */
-export const exportToPDF = async (survey: Survey): Promise<boolean> => {
+export const exportToPDF = async (survey: Survey, options?: ExportPDFOptions): Promise<boolean> => {
     try {
-        const html = generatePDFHtml(survey);
+        const html = generatePDFHtml(survey, options);
 
         // Generate PDF
         const { uri } = await Print.printToFileAsync({ html });

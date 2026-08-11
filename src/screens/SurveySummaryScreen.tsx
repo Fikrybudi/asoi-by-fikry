@@ -14,11 +14,12 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Survey, JalurKabel, Tiang, Gardu } from '../types';
+import { Survey, JalurKabel, Tiang, Gardu, BebanTrafoItem } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
 import { exportToPDF, exportToKML } from '../utils/exportUtils';
 import { generateBASurveyPdf } from '../utils/baSurveyPdf';
 import { BASurveyData } from '../components/Forms/BASurveyForm';
+import { trafoLoadService } from '../services/trafoLoadService';
 
 // =============================================================================
 // TYPES
@@ -162,7 +163,21 @@ export default function SurveySummaryScreen({
     const handleExportPDF = async () => {
         setIsExporting(true);
         try {
-            const success = await exportToPDF(survey);
+            // Fetch live Beban Trafo web data for any gardus in survey
+            let bebanTrafoList: BebanTrafoItem[] = [];
+            try {
+                const allBeban = await trafoLoadService.fetchBebanTrafoData();
+                if (survey.garduList && survey.garduList.length > 0) {
+                    for (const g of survey.garduList) {
+                        const match = trafoLoadService.findBebanTrafoForGardu(g, allBeban);
+                        if (match && !bebanTrafoList.some(x => x.gardu === match.gardu)) {
+                            bebanTrafoList.push(match);
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            const success = await exportToPDF(survey, { bebanTrafoList });
             if (!success) {
                 Alert.alert('Error', 'Gagal mengexport PDF');
             }
