@@ -38,6 +38,7 @@ export interface Tiang {
     // Label position override (0-7 for 8 directions: N, NE, E, SE, S, SW, W, NW)
     // If undefined, use automatic Smart Label Placement
     labelPosition?: number;
+    labelDistance?: number; // Custom drag distance offset in degrees
 
     // Penguat tiang (mutually exclusive: Stayset OR Pondasi) & Grounding
     penguat?: 'Stayset' | 'Pondasi';

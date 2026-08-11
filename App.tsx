@@ -1088,41 +1088,62 @@ export default function App() {
     );
   };
 
-  // Handle tiang label shift (tap to cycle through 8 positions)
-  const handleTiangLabelShift = async (tiangId: string, newPosition: number) => {
+  // Handle tiang label shift (drag to position 0..7)
+  // CRITICAL: Do NOT update currentSurvey state here!
+  // Updating tiangList triggers useMemo in SurveyMap → HTML regeneration → WebView reload → all markers reset.
+  // Instead, persist to AsyncStorage only. The label position is already visually correct in WebView (Leaflet).
+  // We store pending updates in a ref so the next real state change picks them up.
+  const pendingLabelPositions = useRef<Record<string, number>>({});
+
+  const handleTiangLabelShift = async (tiangId: string, newPosition: number, newDistance?: number) => {
     if (!currentSurvey) return;
 
     try {
-      const tiang = currentSurvey.tiangList.find(t => t.id === tiangId);
-      if (!tiang) return;
-
-      // 1. Immediately update React state tiangList
-      const updatedTiangList = currentSurvey.tiangList.map(t =>
-        t.id === tiangId ? { ...t, labelPosition: newPosition } : t
-      );
-
-      setCurrentSurvey(prev => prev ? {
-        ...prev,
-        tiangList: updatedTiangList,
-      } : null);
-
-      // 2. Persist to tiangService and surveyService in AsyncStorage
-      const updated = await tiangService.update(currentSurvey.id, tiangId, {
-        labelPosition: newPosition,
+      // Update state immediately so labelPosition & labelDistance are preserved across renders/zooms
+      setCurrentSurvey(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          tiangList: prev.tiangList.map(t =>
+            t.id === tiangId ? { ...t, labelPosition: newPosition, labelDistance: newDistance } : t
+          ),
+        };
       });
 
-      if (updated) {
-        await surveyService.update(currentSurvey.id, {
-          tiangList: updatedTiangList,
-        });
+      // Track in ref
+      pendingLabelPositions.current[tiangId] = newPosition;
 
-        // Show brief feedback
-        const directions = ['↑ Atas', '↗ Kanan Atas', '→ Kanan', '↘ Kanan Bawah', '↓ Bawah', '↙ Kiri Bawah', '← Kiri', '↖ Kiri Atas'];
-        console.log(`Label Tiang ${tiang.nomorUrut} → ${directions[newPosition]}`);
-      }
+      // Persist to AsyncStorage in background
+      await tiangService.update(currentSurvey.id, tiangId, {
+        labelPosition: newPosition,
+        ...(newDistance !== undefined ? { labelDistance: newDistance } : {}),
+      });
+
+      // Show brief feedback
+      const tiang = currentSurvey.tiangList.find(t => t.id === tiangId);
+      const directions = ['↑ Atas', '↗ Kanan Atas', '→ Kanan', '↘ Kanan Bawah', '↓ Bawah', '↙ Kiri Bawah', '← Kiri', '↖ Kiri Atas'];
+      console.log(`Label Tiang ${tiang?.nomorUrut || '?'} → ${directions[newPosition]}`);
     } catch (error) {
       console.error('Error shifting tiang label:', error);
     }
+  };
+
+  // Flush pending label positions into currentSurvey state.
+  // Call this before any operation that reads tiangList (save, export, etc.)
+  const flushPendingLabelPositions = () => {
+    const pending = pendingLabelPositions.current;
+    if (Object.keys(pending).length === 0) return;
+
+    setCurrentSurvey(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        tiangList: prev.tiangList.map(t =>
+          pending[t.id] !== undefined ? { ...t, labelPosition: pending[t.id] } : t
+        ),
+      };
+    });
+    pendingLabelPositions.current = {};
   };
 
   const handleGarduPress = async (gardu: Gardu) => {
@@ -1420,14 +1441,27 @@ export default function App() {
     if (!currentSurvey) return;
 
     try {
+      // Merge any pending label position changes from drag gestures
+      const pending = pendingLabelPositions.current;
+      const mergedTiangList = Object.keys(pending).length > 0
+        ? currentSurvey.tiangList.map(t =>
+            pending[t.id] !== undefined ? { ...t, labelPosition: pending[t.id] } : t
+          )
+        : currentSurvey.tiangList;
+      pendingLabelPositions.current = {};
+
       // Explicitly persist latest tiangList (with labelPosition) and all survey data to AsyncStorage & Database!
       await surveyService.update(currentSurvey.id, {
-        tiangList: currentSurvey.tiangList,
+        tiangList: mergedTiangList,
         garduList: currentSurvey.garduList,
         jalurList: currentSurvey.jalurList,
         jembatanKabelList: currentSurvey.jembatanKabelList,
         persilList: currentSurvey.persilList,
       });
+
+      // Update React state with merged data
+      setCurrentSurvey(prev => prev ? { ...prev, tiangList: mergedTiangList } : null);
+
       setShowSummary(false);
       console.log('Survey saved cleanly with label positions preserved:', currentSurvey.id);
     } catch (error) {

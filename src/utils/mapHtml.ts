@@ -244,8 +244,10 @@ const generateMapHTML = (
       }
     }
 
-    // Calculate label offset position in geographic coordinates (~28 meters offset)
-    const labelOffsetDeg = 0.00028;
+    // Calculate label offset position in geographic coordinates (custom distance or ~28 meters default)
+    const labelOffsetDeg = (t.labelDistance !== undefined && !isNaN(Number(t.labelDistance)) && Number(t.labelDistance) > 0)
+      ? Number(t.labelDistance)
+      : 0.00028;
     const labelLat = t.koordinat.latitude + (bestQuadrant.offsetY * labelOffsetDeg);
     const labelLng = t.koordinat.longitude + (bestQuadrant.offsetX * labelOffsetDeg);
 
@@ -307,19 +309,16 @@ const generateMapHTML = (
 
     // Live update leader line position while dragging
     marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('drag', function(e) {
-      var lineCoords = [[${t.koordinat.latitude}, ${t.koordinat.longitude}], e.latlng];
+      var pos = e.target.getLatLng();
+      var lineCoords = [[${t.koordinat.latitude}, ${t.koordinat.longitude}], [pos.lat, pos.lng]];
       line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs(lineCoords);
-    });
-
-    // Tap on label badge opens tiang info (same as clicking tiang dot)
-    marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('click', function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiang', id: '${t.id}'}));
     });
 
     // Snap to nearest 8-direction quadrant on drag end and set exact snapped latlng
     marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('dragend', function(e) {
-      var dy = e.latlng.lat - ${t.koordinat.latitude};
-      var dx = e.latlng.lng - ${t.koordinat.longitude};
+      var pos = e.target.getLatLng();
+      var dy = pos.lat - ${t.koordinat.latitude};
+      var dx = pos.lng - ${t.koordinat.longitude};
       var angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
 
       var quadrantAngles = [90, 45, 0, -45, -90, -135, 180, 135];
@@ -331,7 +330,9 @@ const generateMapHTML = (
         if (diff < minDiff) { minDiff = diff; bestIdx = idx; }
       });
 
-      var labelOffsetDeg = 0.00028;
+      var distDeg = Math.sqrt(dx * dx + dy * dy);
+      var actualOffset = Math.max(0.00015, distDeg);
+
       var qOffsets = [
         { offsetX: 0, offsetY: 1 },
         { offsetX: 1, offsetY: 1 },
@@ -342,26 +343,23 @@ const generateMapHTML = (
         { offsetX: -1, offsetY: 0 },
         { offsetX: -1, offsetY: 1 }
       ];
-      var snappedLat = ${t.koordinat.latitude} + (qOffsets[bestIdx].offsetY * labelOffsetDeg);
-      var snappedLng = ${t.koordinat.longitude} + (qOffsets[bestIdx].offsetX * labelOffsetDeg);
+      var snappedLat = ${t.koordinat.latitude} + (qOffsets[bestIdx].offsetY * actualOffset);
+      var snappedLng = ${t.koordinat.longitude} + (qOffsets[bestIdx].offsetX * actualOffset);
 
       var targetMarker = e.target;
-      targetMarker.setLatLng([snappedLat, snappedLng]);
-      if (typeof line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} !== 'undefined') {
-        line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
-      }
+      var lineRef = (typeof line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} !== 'undefined') ? line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} : null;
 
-      setTimeout(function() {
-        targetMarker.setLatLng([snappedLat, snappedLng]);
-        if (typeof line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} !== 'undefined') {
-          line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
-        }
-      }, 30);
+      // Update position cleanly and immediately without locking or disabling dragging
+      targetMarker.setLatLng([snappedLat, snappedLng]);
+      if (lineRef) {
+        lineRef.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
+      }
 
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'tiangLabelShift',
         id: '${t.id}',
-        newPosition: bestIdx
+        newPosition: bestIdx,
+        newDistance: actualOffset
       }));
     });
 

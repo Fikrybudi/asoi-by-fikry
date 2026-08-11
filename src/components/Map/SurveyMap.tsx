@@ -41,7 +41,7 @@ interface SurveyMapProps {
   };
   onCenterChange?: (coordinate: Coordinate) => void;
   selectedTiangIds?: string[];
-  onTiangLabelShift?: (tiangId: string, newPosition: number) => void;
+  onTiangLabelShift?: (tiangId: string, newPosition: number, newDistance?: number) => void;
   persilList?: PersilPelanggan[];
   onPersilPress?: (persil: PersilPelanggan) => void;
   overlayLayers?: OverlayFile[];
@@ -462,9 +462,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         setCenterCoordinate(newCenter);
         if (onCenterChange) onCenterChange(newCenter);
       } else if (data.type === 'tiangLabelShift') {
-        // Handle label shift: cycle through 8 positions
+        // Handle label shift: 8 positions + custom drag distance
         if (onTiangLabelShift) {
-          onTiangLabelShift(data.id, data.newPosition);
+          onTiangLabelShift(data.id, data.newPosition, data.newDistance);
         }
       } else if (data.type === 'tiang') {
         const tiang = tiangList.find(t => t.id === data.id);
@@ -645,12 +645,15 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     }
   }, [mapCenter, currentZoom]);
 
+  // Memoize WebView source object reference to prevent reloading webview when non-HTML state updates (e.g. currentZoom)
+  const mapSource = React.useMemo(() => ({ html }), [html]);
+
   return (
     <View style={styles.container} ref={containerRef} collapsable={false}>
       <WebView
         ref={webviewRef}
         originWhitelist={['*']}
-        source={{ html }}
+        source={mapSource}
         style={styles.map}
         onMessage={handleMessage}
         scrollEnabled={true}
