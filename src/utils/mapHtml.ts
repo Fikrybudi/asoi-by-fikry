@@ -311,36 +311,9 @@ const generateMapHTML = (
       line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs(lineCoords);
     });
 
-    // Single tap on label badge cycles through 8 positions
-    marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('click', function(e) {
-      var currentPos = ${!isNaN(posNum) && posNum >= 0 && posNum <= 7 ? posNum : (bestQuadrant ? quadrants.indexOf(bestQuadrant) : 0)};
-      var nextPos = (currentPos + 1) % 8;
-
-      var labelOffsetDeg = 0.00028;
-      var qOffsets = [
-        { offsetX: 0, offsetY: 1 },
-        { offsetX: 1, offsetY: 1 },
-        { offsetX: 1, offsetY: 0 },
-        { offsetX: 1, offsetY: -1 },
-        { offsetX: 0, offsetY: -1 },
-        { offsetX: -1, offsetY: -1 },
-        { offsetX: -1, offsetY: 0 },
-        { offsetX: -1, offsetY: 1 }
-      ];
-      var snappedLat = ${t.koordinat.latitude} + (qOffsets[nextPos].offsetY * labelOffsetDeg);
-      var snappedLng = ${t.koordinat.longitude} + (qOffsets[nextPos].offsetX * labelOffsetDeg);
-
-      var targetMarker = e.target;
-      targetMarker.setLatLng([snappedLat, snappedLng]);
-      if (typeof line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')} !== 'undefined') {
-        line_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.setLatLngs([[${t.koordinat.latitude}, ${t.koordinat.longitude}], [snappedLat, snappedLng]]);
-      }
-
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'tiangLabelShift',
-        id: '${t.id}',
-        newPosition: nextPos
-      }));
+    // Tap on label badge opens tiang info (same as clicking tiang dot)
+    marker_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}.on('click', function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({type: 'tiang', id: '${t.id}'}));
     });
 
     // Snap to nearest 8-direction quadrant on drag end and set exact snapped latlng
