@@ -196,6 +196,51 @@ export class TrafoLoadService {
 
         return null;
     }
+
+    /**
+     * Find Beban Trafo items matching manual search text (e.g., "STG", "STG240", "STG / STG240", "LBAN008, MDCA240")
+     */
+    findBebanTrafoBySearchText(searchText: string, allTrafoData: BebanTrafoItem[]): BebanTrafoItem[] {
+        if (!searchText || !allTrafoData || allTrafoData.length === 0) return [];
+
+        // Split by slash, comma, or whitespace
+        const tokens = searchText
+            .split(/[\/,;\s]+/)
+            .map(t => normalizeGarduCode(t))
+            .filter(t => t.length > 0);
+
+        if (tokens.length === 0) return [];
+
+        const results: BebanTrafoItem[] = [];
+        const addedGarduSet = new Set<string>();
+
+        for (const token of tokens) {
+            // 1. Exact normalized match
+            const exactMatches = allTrafoData.filter(t => normalizeGarduCode(t.gardu) === token);
+            for (const item of exactMatches) {
+                if (!addedGarduSet.has(item.gardu)) {
+                    addedGarduSet.add(item.gardu);
+                    results.push(item);
+                }
+            }
+
+            // 2. Prefix or includes match if no exact match found for this token
+            if (exactMatches.length === 0) {
+                const fuzzyMatches = allTrafoData.filter(t => {
+                    const normDb = normalizeGarduCode(t.gardu);
+                    return normDb.startsWith(token) || normDb.includes(token) || token.includes(normDb);
+                });
+                for (const item of fuzzyMatches) {
+                    if (!addedGarduSet.has(item.gardu)) {
+                        addedGarduSet.add(item.gardu);
+                        results.push(item);
+                    }
+                }
+            }
+        }
+
+        return results;
+    }
 }
 
 export const trafoLoadService = new TrafoLoadService();

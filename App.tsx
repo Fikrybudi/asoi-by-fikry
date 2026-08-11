@@ -90,6 +90,9 @@ export default function App() {
   const [pdfManagerName, setPdfManagerName] = useState('');
   const [selectedSegmentMode, setSelectedSegmentMode] = useState<SegmentMode | 'single'>('scale');
   const [includeBebanTrafo, setIncludeBebanTrafo] = useState(true);
+  const [pdfCustomGarduSearch, setPdfCustomGarduSearch] = useState('');
+  const [isUpratingTrafo, setIsUpratingTrafo] = useState(false);
+  const [upratingKva, setUpratingKva] = useState('250 kVA');
 
   const CONFIG_PATH = `${FileSystem.documentDirectory}pln_pdf_config.json`;
 
@@ -510,14 +513,28 @@ export default function App() {
     if (!currentSurvey) return;
 
     let bebanTrafoMap: Record<string, BebanTrafoItem> = {};
-    if (includeBebanTrafo && currentSurvey.garduList && currentSurvey.garduList.length > 0) {
+    let bebanTrafoList: BebanTrafoItem[] = [];
+
+    if (includeBebanTrafo) {
       updateProgress('Menarik database Beban Trafo Web...', 8);
       try {
         const allBeban = await trafoLoadService.fetchBebanTrafoData();
-        for (const g of currentSurvey.garduList) {
-          const match = trafoLoadService.findBebanTrafoForGardu(g, allBeban);
-          if (match) {
-            bebanTrafoMap[g.id] = match;
+
+        // 1. Match from survey garduList
+        if (currentSurvey.garduList && currentSurvey.garduList.length > 0) {
+          for (const g of currentSurvey.garduList) {
+            const match = trafoLoadService.findBebanTrafoForGardu(g, allBeban);
+            if (match) {
+              bebanTrafoMap[g.id] = match;
+            }
+          }
+        }
+
+        // 2. Match from custom typed search (e.g. STG, STG240)
+        if (pdfCustomGarduSearch.trim()) {
+          const customMatches = trafoLoadService.findBebanTrafoBySearchText(pdfCustomGarduSearch.trim(), allBeban);
+          if (customMatches.length > 0) {
+            bebanTrafoList = customMatches;
           }
         }
       } catch (e) {
@@ -535,7 +552,13 @@ export default function App() {
       pemeriksaTitle: pdfPemeriksaTitle.trim() || 'TL HAR',
       pemeriksaName: pdfPemeriksaName.trim(),
       managerName: pdfManagerName.trim(),
-      rincianLines: buildRincianPekerjaan(currentSurvey, includeBebanTrafo ? bebanTrafoMap : undefined),
+      rincianLines: buildRincianPekerjaan(currentSurvey, {
+        bebanTrafoMap: includeBebanTrafo ? bebanTrafoMap : undefined,
+        bebanTrafoList: includeBebanTrafo ? bebanTrafoList : undefined,
+        isUpratingTrafo,
+        upratingKva: upratingKva.trim(),
+        targetGarduName: pdfCustomGarduSearch.trim() || (currentSurvey.garduList?.[0]?.namaGardu || currentSurvey.garduList?.[0]?.nomorGardu),
+      }),
     };
 
     // Auto-save remembered inputs
@@ -2169,11 +2192,8 @@ export default function App() {
                 />
               </View>
 
-              {/* Option to include Beban Trafo from Web Database */}
+              {/* Option 1: Beban Trafo Web Database + Ketik/Pilih Gardu */}
               <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
                 backgroundColor: '#E3F2FD',
                 padding: 12,
                 borderRadius: 10,
@@ -2182,16 +2202,125 @@ export default function App() {
                 borderWidth: 1,
                 borderColor: '#BBDEFB',
               }}>
-                <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>⚡ Sisipkan Data Beban Trafo Terupdate</Text>
-                  <Text style={{ fontSize: 11, color: '#555', marginTop: 2 }}>Tarik data beban live dari dashboard web (fikrybudi.github.io)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>⚡ Sisipkan Data Beban Trafo Terupdate</Text>
+                    <Text style={{ fontSize: 11, color: '#555', marginTop: 2 }}>Tarik data beban live dari web (fikrybudi.github.io)</Text>
+                  </View>
+                  <Switch
+                    value={includeBebanTrafo}
+                    onValueChange={setIncludeBebanTrafo}
+                    trackColor={{ false: '#767577', true: '#81C784' }}
+                    thumbColor={includeBebanTrafo ? '#2E7D32' : '#f4f3f4'}
+                  />
                 </View>
-                <Switch
-                  value={includeBebanTrafo}
-                  onValueChange={setIncludeBebanTrafo}
-                  trackColor={{ false: '#767577', true: '#81C784' }}
-                  thumbColor={includeBebanTrafo ? '#2E7D32' : '#f4f3f4'}
-                />
+
+                {includeBebanTrafo && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0D47A1', marginBottom: 4 }}>
+                      Pilih / Ketik Nama Gardu (Contoh: STG / STG240 / LBAN008):
+                    </Text>
+                    <TextInput
+                      style={[styles.exportFormInput, { backgroundColor: '#fff', fontSize: 12, paddingVertical: 6 }]}
+                      value={pdfCustomGarduSearch}
+                      onChangeText={setPdfCustomGarduSearch}
+                      placeholder="Ketik nama/kode gardu (misal: STG240)"
+                      placeholderTextColor="#999"
+                      autoCapitalize="characters"
+                    />
+
+                    {/* Quick selection pills from survey gardus */}
+                    {currentSurvey?.garduList && currentSurvey.garduList.length > 0 && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                        <Text style={{ fontSize: 10, color: '#666', width: '100%' }}>Pilih dari Gardu Survey:</Text>
+                        {currentSurvey.garduList.map((g) => {
+                          const label = g.namaGardu || g.nomorGardu;
+                          const isSelected = pdfCustomGarduSearch.includes(label);
+                          return (
+                            <TouchableOpacity
+                              key={g.id}
+                              style={{
+                                backgroundColor: isSelected ? '#1565C0' : '#E0E0E0',
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 12,
+                              }}
+                              onPress={() => {
+                                setPdfCustomGarduSearch(prev => {
+                                  if (!prev) return label;
+                                  if (prev.includes(label)) return prev;
+                                  return `${prev}, ${label}`;
+                                });
+                              }}
+                            >
+                              <Text style={{ fontSize: 10, fontWeight: 'bold', color: isSelected ? '#fff' : '#333' }}>
+                                🏷️ {label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Option 2: Pekerjaan Uprating Trafo */}
+              <View style={{
+                backgroundColor: '#FFF3E0',
+                padding: 12,
+                borderRadius: 10,
+                marginBottom: 10,
+                borderWidth: 1,
+                borderColor: '#FFE0B2',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#E65100' }}>⚡ Pekerjaan Uprating Trafo</Text>
+                    <Text style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Cantumkan item Uprating Trafo pada Rincian Pekerjaan</Text>
+                  </View>
+                  <Switch
+                    value={isUpratingTrafo}
+                    onValueChange={setIsUpratingTrafo}
+                    trackColor={{ false: '#767577', true: '#FFB74D' }}
+                    thumbColor={isUpratingTrafo ? '#EF6C00' : '#f4f3f4'}
+                  />
+                </View>
+
+                {isUpratingTrafo && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#E65100', marginBottom: 4 }}>
+                      Target Kapasitas Uprating (kVA):
+                    </Text>
+                    <TextInput
+                      style={[styles.exportFormInput, { backgroundColor: '#fff', fontSize: 12, paddingVertical: 6 }]}
+                      value={upratingKva}
+                      onChangeText={setUpratingKva}
+                      placeholder="Contoh: 250 kVA"
+                      placeholderTextColor="#999"
+                    />
+
+                    {/* Quick selection pills for kVA capacity */}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                      {['100 kVA', '160 kVA', '250 kVA', '400 kVA'].map((kva) => (
+                        <TouchableOpacity
+                          key={kva}
+                          style={{
+                            backgroundColor: upratingKva === kva ? '#EF6C00' : '#FFE0B2',
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            borderRadius: 12,
+                          }}
+                          onPress={() => setUpratingKva(kva)}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: 'bold', color: upratingKva === kva ? '#fff' : '#E65100' }}>
+                            {kva}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
 
               <Text style={[styles.exportFormLabel, { marginTop: 14, fontSize: 13, color: '#0D47A1' }]}>📐 Mode Segmentasi Halaman PDF:</Text>

@@ -24,6 +24,14 @@ function formatKekuatan(kekuatan?: string): string {
     return clean ? `${clean} daN` : kekuatan;
 }
 
+export interface RincianPekerjaanOptions {
+    bebanTrafoMap?: Record<string, BebanTrafoItem>;
+    bebanTrafoList?: BebanTrafoItem[];
+    isUpratingTrafo?: boolean;
+    upratingKva?: string;
+    targetGarduName?: string;
+}
+
 /**
  * Build "Rincian Pekerjaan" lines from survey data.
  * 
@@ -32,16 +40,20 @@ function formatKekuatan(kekuatan?: string): string {
  * - PEKERJAAN SUTR: tiang TR + jalur TR + konstruksi TR
  * - PEKERJAAN SKUTM: (jika ada)
  * - PEKERJAAN SKTM: (jika ada)
- * - GARDU: terpisah sendiri
+ * - GARDU & UPRATING: terpisah sendiri
  * - BEBAN TRAFO TERUPDATE: (jika disisipkan)
  */
-export function buildRincianPekerjaan(survey: Survey, bebanTrafoMap?: Record<string, BebanTrafoItem>): string[] {
+export function buildRincianPekerjaan(survey: Survey, options?: RincianPekerjaanOptions | Record<string, BebanTrafoItem>): string[] {
+    const opts: RincianPekerjaanOptions = (options && ('bebanTrafoMap' in options || 'isUpratingTrafo' in options || 'bebanTrafoList' in options))
+        ? (options as RincianPekerjaanOptions)
+        : { bebanTrafoMap: options as Record<string, BebanTrafoItem> };
+
     const lines: string[] = [];
     const tiangList = survey.tiangList || [];
     const jalurList = survey.jalurList || [];
     const garduList = survey.garduList || [];
 
-    if (tiangList.length === 0 && jalurList.length === 0 && garduList.length === 0) {
+    if (tiangList.length === 0 && jalurList.length === 0 && garduList.length === 0 && !opts.isUpratingTrafo && !opts.bebanTrafoList?.length && !opts.bebanTrafoMap) {
         return [];
     }
 
@@ -335,13 +347,24 @@ export function buildRincianPekerjaan(survey: Survey, bebanTrafoMap?: Record<str
     }
 
     // ─────────────────────────────────────────────
-    // 5. GARDU (section terpisah)
+    // 5. GARDU (section terpisah) & UPRATING TRAFO
     // ─────────────────────────────────────────────
-    if (garduList.length > 0) {
+    if (garduList.length > 0 || opts.isUpratingTrafo) {
         lines.push('GARDU :');
         let nomor = 1;
         for (const g of garduList) {
             lines.push(`${nomor}. Pembangunan Gardu ${g.jenisGardu} ${g.kapasitasKVA} kVA`);
+            nomor++;
+        }
+        if (opts.isUpratingTrafo) {
+            const garduTarget = opts.targetGarduName
+                ? opts.targetGarduName
+                : (garduList.length > 0 ? (garduList[0].namaGardu || garduList[0].nomorGardu) : '');
+            const targetKvaStr = opts.upratingKva ? (opts.upratingKva.toLowerCase().includes('kva') ? opts.upratingKva : `${opts.upratingKva} kVA`) : '250 kVA';
+            const text = garduTarget
+                ? `${nomor}. Pekerjaan Uprating Trafo Gardu ${garduTarget} ke ${targetKvaStr}`
+                : `${nomor}. Pekerjaan Uprating Trafo ke ${targetKvaStr}`;
+            lines.push(text);
             nomor++;
         }
         lines.push('');
@@ -350,17 +373,30 @@ export function buildRincianPekerjaan(survey: Survey, bebanTrafoMap?: Record<str
     // ─────────────────────────────────────────────
     // 6. BEBAN TRAFO TERUPDATE (Live Sync Web Database)
     // ─────────────────────────────────────────────
-    if (bebanTrafoMap && Object.keys(bebanTrafoMap).length > 0) {
+    const allBebanItems: BebanTrafoItem[] = [];
+    if (opts.bebanTrafoMap) {
+        Object.values(opts.bebanTrafoMap).forEach(b => {
+            if (b && !allBebanItems.some(x => x.gardu === b.gardu)) {
+                allBebanItems.push(b);
+            }
+        });
+    }
+    if (opts.bebanTrafoList) {
+        opts.bebanTrafoList.forEach(b => {
+            if (b && !allBebanItems.some(x => x.gardu === b.gardu)) {
+                allBebanItems.push(b);
+            }
+        });
+    }
+
+    if (allBebanItems.length > 0) {
         lines.push('BEBAN TRAFO TERUPDATE (Live Web):');
         let nomor = 1;
-        for (const g of garduList) {
-            const bt = bebanTrafoMap[g.id];
-            if (bt) {
-                const statusTag = bt.statusBeban === 'Overload' ? 'OVERLOAD (!)' : bt.statusBeban;
-                lines.push(`${nomor}. Gardu ${bt.gardu} (${bt.kapasitasKVA}kVA) : Beban ${bt.persenDayaTrafo}% (${statusTag})`);
-                lines.push(`   Arus: R=${bt.bebanR}A S=${bt.bebanS}A T=${bt.bebanT}A (${bt.tanggalUkur || 'Terbaru'})`);
-                nomor++;
-            }
+        for (const bt of allBebanItems) {
+            const statusTag = bt.statusBeban === 'Overload' ? 'OVERLOAD (!)' : bt.statusBeban;
+            lines.push(`${nomor}. Gardu ${bt.gardu} (${bt.kapasitasKVA}kVA) : Beban ${bt.persenDayaTrafo}% (${statusTag})`);
+            lines.push(`   Arus: R=${bt.bebanR}A S=${bt.bebanS}A T=${bt.bebanT}A (${bt.tanggalUkur || 'Terbaru'})`);
+            nomor++;
         }
         lines.push('');
     }
