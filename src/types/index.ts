@@ -81,6 +81,27 @@ export interface Gardu {
 }
 
 // =============================================================================
+// BEBAN TRAFO (TRANSFORMER LOAD DATA FROM WEB DATABASE)
+// =============================================================================
+
+export interface BebanTrafoItem {
+    unitLayanan: string;
+    penyulang: string;
+    gardu: string;
+    kapasitasKVA: number;
+    tanggalUkur: string;
+    waktuUkur: string;
+    bebanR: number;
+    bebanS: number;
+    bebanT: number;
+    arusRata2: number;
+    unbalancePercent: number;
+    persenDayaTrafo: number;
+    statusBeban: 'Overload' | 'Normal' | 'Underload' | string;
+    kondisiFasaMax: string;
+}
+
+// =============================================================================
 // JALUR KABEL (CABLE ROUTE)
 // =============================================================================
 

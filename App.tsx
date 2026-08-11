@@ -32,6 +32,8 @@ import PersilForm, { PersilFormData } from './src/components/Forms/PersilForm';
 import OverlayManager from './src/components/Forms/OverlayManager';
 import { OverlayFile } from './src/types/overlayTypes';
 import { overlayStorage } from './src/services/overlayStorage';
+import { trafoLoadService } from './src/services/trafoLoadService';
+import { BebanTrafoItem } from './src/types';
 
 // ... other imports
 
@@ -87,6 +89,7 @@ export default function App() {
   const [pdfPemeriksaName, setPdfPemeriksaName] = useState('');
   const [pdfManagerName, setPdfManagerName] = useState('');
   const [selectedSegmentMode, setSelectedSegmentMode] = useState<SegmentMode | 'single'>('scale');
+  const [includeBebanTrafo, setIncludeBebanTrafo] = useState(true);
 
   const CONFIG_PATH = `${FileSystem.documentDirectory}pln_pdf_config.json`;
 
@@ -506,6 +509,22 @@ export default function App() {
   const doProcessExportPdf = async () => {
     if (!currentSurvey) return;
 
+    let bebanTrafoMap: Record<string, BebanTrafoItem> = {};
+    if (includeBebanTrafo && currentSurvey.garduList && currentSurvey.garduList.length > 0) {
+      updateProgress('Menarik database Beban Trafo Web...', 8);
+      try {
+        const allBeban = await trafoLoadService.fetchBebanTrafoData();
+        for (const g of currentSurvey.garduList) {
+          const match = trafoLoadService.findBebanTrafoForGardu(g, allBeban);
+          if (match) {
+            bebanTrafoMap[g.id] = match;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch Beban Trafo data for PDF:', e);
+      }
+    }
+
     const fullSurveyInfo: SurveyInfo = {
       name: currentSurvey.namaSurvey,
       location: currentSurvey.lokasi || '',
@@ -516,7 +535,7 @@ export default function App() {
       pemeriksaTitle: pdfPemeriksaTitle.trim() || 'TL HAR',
       pemeriksaName: pdfPemeriksaName.trim(),
       managerName: pdfManagerName.trim(),
-      rincianLines: buildRincianPekerjaan(currentSurvey),
+      rincianLines: buildRincianPekerjaan(currentSurvey, includeBebanTrafo ? bebanTrafoMap : undefined),
     };
 
     // Auto-save remembered inputs
@@ -1083,10 +1102,20 @@ export default function App() {
     }
   };
 
-  const handleGarduPress = (gardu: Gardu) => {
+  const handleGarduPress = async (gardu: Gardu) => {
+    let trafoInfoText = '';
+    try {
+      const trafoList = await trafoLoadService.fetchBebanTrafoData();
+      const match = trafoLoadService.findBebanTrafoForGardu(gardu, trafoList);
+      if (match) {
+        const statusEmoji = match.statusBeban === 'Overload' ? '⚠️ OVERLOAD' : match.statusBeban === 'Underload' ? '📉 Underload' : '✅ Normal';
+        trafoInfoText = `\n\n⚡ Live Beban Trafo (Web):\n• Daya Trafo: ${match.persenDayaTrafo}% (${statusEmoji})\n• Arus: R:${match.bebanR}A S:${match.bebanS}A T:${match.bebanT}A\n• Ukur: ${match.tanggalUkur} (${match.waktuUkur})`;
+      }
+    } catch (e) {}
+
     Alert.alert(
-      gardu.nomorGardu,
-      `${gardu.jenisGardu}\nKapasitas: ${gardu.kapasitasKVA} kVA`,
+      `${gardu.nomorGardu}${gardu.namaGardu ? ' - ' + gardu.namaGardu : ''}`,
+      `${gardu.jenisGardu} (${gardu.kapasitasKVA} kVA)${trafoInfoText}`,
       [
         { text: 'OK' },
         {
@@ -2137,6 +2166,31 @@ export default function App() {
                   onChangeText={setPdfManagerName}
                   placeholder="Nama Lengkap Manager PLN"
                   placeholderTextColor="#999"
+                />
+              </View>
+
+              {/* Option to include Beban Trafo from Web Database */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#E3F2FD',
+                padding: 12,
+                borderRadius: 10,
+                marginTop: 10,
+                marginBottom: 10,
+                borderWidth: 1,
+                borderColor: '#BBDEFB',
+              }}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>⚡ Sisipkan Data Beban Trafo Terupdate</Text>
+                  <Text style={{ fontSize: 11, color: '#555', marginTop: 2 }}>Tarik data beban live dari dashboard web (fikrybudi.github.io)</Text>
+                </View>
+                <Switch
+                  value={includeBebanTrafo}
+                  onValueChange={setIncludeBebanTrafo}
+                  trackColor={{ false: '#767577', true: '#81C784' }}
+                  thumbColor={includeBebanTrafo ? '#2E7D32' : '#f4f3f4'}
                 />
               </View>
 

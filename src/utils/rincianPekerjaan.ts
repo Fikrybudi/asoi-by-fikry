@@ -4,7 +4,7 @@
 // Auto-generates work detail summary lines from survey data
 // Used in PDF Gambar export (top-left legend box)
 
-import { Survey } from '../types';
+import { Survey, BebanTrafoItem } from '../types';
 
 /**
  * Format tinggi tiang string ('9m', '12m') → standard formatted string
@@ -33,8 +33,9 @@ function formatKekuatan(kekuatan?: string): string {
  * - PEKERJAAN SKUTM: (jika ada)
  * - PEKERJAAN SKTM: (jika ada)
  * - GARDU: terpisah sendiri
+ * - BEBAN TRAFO TERUPDATE: (jika disisipkan)
  */
-export function buildRincianPekerjaan(survey: Survey): string[] {
+export function buildRincianPekerjaan(survey: Survey, bebanTrafoMap?: Record<string, BebanTrafoItem>): string[] {
     const lines: string[] = [];
     const tiangList = survey.tiangList || [];
     const jalurList = survey.jalurList || [];
@@ -342,6 +343,24 @@ export function buildRincianPekerjaan(survey: Survey): string[] {
         for (const g of garduList) {
             lines.push(`${nomor}. Pembangunan Gardu ${g.jenisGardu} ${g.kapasitasKVA} kVA`);
             nomor++;
+        }
+        lines.push('');
+    }
+
+    // ─────────────────────────────────────────────
+    // 6. BEBAN TRAFO TERUPDATE (Live Sync Web Database)
+    // ─────────────────────────────────────────────
+    if (bebanTrafoMap && Object.keys(bebanTrafoMap).length > 0) {
+        lines.push('BEBAN TRAFO TERUPDATE (Live Web):');
+        let nomor = 1;
+        for (const g of garduList) {
+            const bt = bebanTrafoMap[g.id];
+            if (bt) {
+                const statusTag = bt.statusBeban === 'Overload' ? 'OVERLOAD (!)' : bt.statusBeban;
+                lines.push(`${nomor}. Gardu ${bt.gardu} (${bt.kapasitasKVA}kVA) : Beban ${bt.persenDayaTrafo}% (${statusTag})`);
+                lines.push(`   Arus: R=${bt.bebanR}A S=${bt.bebanS}A T=${bt.bebanT}A (${bt.tanggalUkur || 'Terbaru'})`);
+                nomor++;
+            }
         }
         lines.push('');
     }
