@@ -34,6 +34,11 @@ import { OverlayFile } from './src/types/overlayTypes';
 import { overlayStorage } from './src/services/overlayStorage';
 import { trafoLoadService } from './src/services/trafoLoadService';
 import { BebanTrafoItem } from './src/types';
+import {
+  getTiangDisplayCode,
+  generateNextBranchCode,
+  getBranchModeBannerLabel,
+} from './src/utils/branchUtils';
 
 // ... other imports
 
@@ -68,6 +73,11 @@ export default function App() {
 
   // Move Tiang state
   const [movingTiangId, setMovingTiangId] = useState<string | null>(null);
+
+  // Branching states
+  const [activeBranchParentId, setActiveBranchParentId] = useState<string | null>(null);
+  const [activeBranchDirection, setActiveBranchDirection] = useState<'R' | 'L' | null>(null);
+  const [lastBranchTiangId, setLastBranchTiangId] = useState<string | null>(null);
 
   // Remember last jenis jaringan for next tiang
   const [lastJenisJaringan, setLastJenisJaringan] = useState<'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR'>('SUTM');
@@ -763,7 +773,27 @@ export default function App() {
       setLastJenisJaringan(data.jenisJaringan);
 
       const previousTiangCount = currentSurvey.tiangList.length;
-      const newTiang = await tiangService.add(currentSurvey.id, data);
+
+      // Determine kodeTiang & branch metadata if in Branching Mode
+      let tiangDataToSave = { ...data };
+      const activeParent = activeBranchParentId ? currentSurvey.tiangList.find(t => t.id === activeBranchParentId) : null;
+      if (activeBranchParentId && activeBranchDirection && activeParent) {
+        const branchInfo = generateNextBranchCode(activeParent, activeBranchDirection, currentSurvey.tiangList);
+        tiangDataToSave = {
+          ...tiangDataToSave,
+          kodeTiang: branchInfo.kodeTiang,
+          parentTiangId: activeParent.id,
+          branchDirection: activeBranchDirection,
+          branchPath: branchInfo.branchPath,
+        };
+      } else if (!tiangDataToSave.kodeTiang) {
+        tiangDataToSave = {
+          ...tiangDataToSave,
+          kodeTiang: `T${previousTiangCount + 1}`,
+        };
+      }
+
+      const newTiang = await tiangService.add(currentSurvey.id, tiangDataToSave);
 
       if (newTiang) {
         const updatedTiangList = [...currentSurvey.tiangList, newTiang];
@@ -776,9 +806,18 @@ export default function App() {
           tiangList: updatedTiangList,
         } : null);
 
-        // If this is tiang #2 or more, offer to auto-connect with previous tiang
-        if (previousTiangCount >= 1) {
-          const prevTiang = currentSurvey.tiangList[previousTiangCount - 1];
+        // Determine connecting previous tiang (branch mode vs main line)
+        let prevTiang: Tiang | null = null;
+        if (activeBranchParentId) {
+          const prevId = lastBranchTiangId || activeBranchParentId;
+          prevTiang = currentSurvey.tiangList.find(t => t.id === prevId) || null;
+        } else if (previousTiangCount >= 1) {
+          prevTiang = currentSurvey.tiangList[previousTiangCount - 1];
+        }
+
+        if (prevTiang) {
+          const prevCode = getTiangDisplayCode(prevTiang);
+          const newCode = getTiangDisplayCode(newTiang);
 
           // Determine penghantar based on jaringan type or lastPenghantar
           const getPenghantar = () => {
@@ -793,7 +832,7 @@ export default function App() {
           // Check if there's an existing jalur that ends at prevTiang with same penghantar
           const existingJalur = currentSurvey.jalurList.find(j =>
             j.tiangIds &&
-            j.tiangIds[j.tiangIds.length - 1] === prevTiang.id &&
+            j.tiangIds[j.tiangIds.length - 1] === prevTiang!.id &&
             j.jenisPenghantar === penghantar.jenis &&
             j.penampangMM === penghantar.penampang
           );
@@ -827,12 +866,12 @@ export default function App() {
               }
             } else {
               const jalurData = {
-                koordinat: [prevTiang.koordinat, newTiang.koordinat],
+                koordinat: [prevTiang!.koordinat, newTiang.koordinat],
                 jenisJaringan: data.jenisJaringan as any,
                 jenisPenghantar: penghantar.jenis,
                 penampangMM: penghantar.penampang,
                 panjangMeter: segmentDistance,
-                tiangIds: [prevTiang.id, newTiang.id],
+                tiangIds: [prevTiang!.id, newTiang.id],
                 status: 'planned' as const,
               };
 
@@ -847,12 +886,17 @@ export default function App() {
                 }
               }
             }
+
+            if (activeBranchParentId) {
+              setLastBranchTiangId(newTiang.id);
+            }
+
             setToolMode(keepAddMode ? 'add-tiang' : 'none');
           };
 
           Alert.alert(
             '🔗 Hubungkan Jalur?',
-            `Tiang ${newTiang.nomorUrut} disimpan!\n\n${actionText} dari Tiang ${prevTiang.nomorUrut} ke Tiang ${newTiang.nomorUrut}?\n\n📌 ${penghantar.jenis} ${penghantar.penampang}\n📏 +${segmentDistance.toFixed(0)}m`,
+            `Tiang ${newCode} disimpan!\n\n${actionText} dari Tiang ${prevCode} ke Tiang ${newCode}?\n\n📌 ${penghantar.jenis} ${penghantar.penampang}\n📏 +${segmentDistance.toFixed(0)}m`,
             [
               { text: 'Tidak', style: 'cancel' },
               { text: 'Ya + Lanjut', onPress: () => connectJalur(true) },
@@ -860,7 +904,8 @@ export default function App() {
             ]
           );
         } else {
-          Alert.alert('Sukses', `Tiang 1 disimpan!\n${data.konstruksi} - ${data.jenisTiang} ${data.tinggiTiang}`);
+          const displayCode = getTiangDisplayCode(newTiang);
+          Alert.alert('Sukses', `Tiang ${displayCode} disimpan!\n${data.konstruksi} - ${data.jenisTiang} ${data.tinggiTiang}`);
           // Stay in add-tiang mode for next tiang
           setToolMode('add-tiang');
         }
@@ -1046,9 +1091,9 @@ export default function App() {
       return;
     }
 
-    // Normal mode - show tiang info with 3 primary action buttons (100% Android compatible)
+    const parentCode = getTiangDisplayCode(tiang);
     Alert.alert(
-      `Tiang ${tiang.nomorUrut}`,
+      `Tiang ${parentCode}`,
       `${tiang.konstruksi} - ${tiang.jenisTiang}\nTinggi: ${tiang.tinggiTiang}\nKekuatan: ${tiang.kekuatanTiang}${tiang.status === 'existing' ? '\n(Existing)' : ''}`,
       [
         {
@@ -1072,7 +1117,7 @@ export default function App() {
           onPress: () => {
             Alert.alert(
               'Hapus Tiang',
-              `Yakin ingin menghapus Tiang ${tiang.nomorUrut} (${tiang.konstruksi})?`,
+              `Yakin ingin menghapus Tiang ${parentCode} (${tiang.konstruksi})?`,
               [
                 { text: 'Batal', style: 'cancel' },
                 {
@@ -1084,6 +1129,10 @@ export default function App() {
             );
           }
         },
+        {
+          text: 'Batal',
+          style: 'cancel'
+        }
       ]
     );
   };
@@ -1586,6 +1635,20 @@ export default function App() {
     return <LoginScreen />;
   }
 
+  const handleCancelBranch = () => {
+    setActiveBranchParentId(null);
+    setActiveBranchDirection(null);
+    setLastBranchTiangId(null);
+    setToolMode('none');
+  };
+
+  const activeBranchParent = (currentSurvey && activeBranchParentId)
+    ? currentSurvey.tiangList.find(t => t.id === activeBranchParentId) || null
+    : null;
+  const branchBannerText = (toolMode === 'add-tiang' && activeBranchParentId && activeBranchDirection)
+    ? getBranchModeBannerLabel(activeBranchParent, activeBranchDirection)
+    : '';
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
@@ -1829,6 +1892,8 @@ export default function App() {
           onFinishUnderbuild={handleFinishUnderbuild}
           onCancelUnderbuild={handleCancelUnderbuild}
           onOpenSummary={() => setShowSummary(true)}
+          branchBannerText={branchBannerText}
+          onCancelBranch={handleCancelBranch}
         />
       )}
 

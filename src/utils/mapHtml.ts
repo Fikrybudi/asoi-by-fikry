@@ -87,7 +87,7 @@ const generateMapHTML = (
     // Two-line format: tinggi on top, kekuatan below
     const ukuranLabel = tinggiNum + '/<br>' + kekuatanNum;
     const konstruksiLabel = t.konstruksi || '-';
-    const nomorLabel = t.nomorUrut || '-';
+    const nomorLabel = t.kodeTiang || (t.nomorUrut ? `T.${t.nomorUrut}` : '-');
 
     // Circle label size & font sizes for ultra-sharp legibility
     const circleSize = isSelected ? 52 : 46;

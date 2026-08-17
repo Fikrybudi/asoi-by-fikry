@@ -31,6 +31,8 @@ export interface PageMeta {
     totalPages: number;
     firstNomor: number;
     lastNomor: number;
+    firstKode?: string;
+    lastKode?: string;
     panjangMeter: number;
 }
 
@@ -311,7 +313,9 @@ function drawOfficialPlnKop(
         const panjangLabel = meta.panjangMeter >= 1000
             ? (meta.panjangMeter / 1000).toFixed(2) + ' km'
             : Math.round(meta.panjangMeter) + 'm';
-        page.drawText(`Halaman ${meta.pageNumber} dari ${meta.totalPages}  |  Tiang T.${meta.firstNomor} s/d T.${meta.lastNomor} (${panjangLabel})`, {
+        const firstTiangCode = meta.firstKode || `T.${meta.firstNomor}`;
+        const lastTiangCode = meta.lastKode || `T.${meta.lastNomor}`;
+        page.drawText(`Halaman ${meta.pageNumber} dari ${meta.totalPages}  |  Tiang ${firstTiangCode} s/d ${lastTiangCode} (${panjangLabel})`, {
             x: col3X + 8,
             y: midY + 8,
             size: 7.5,

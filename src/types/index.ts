@@ -14,6 +14,10 @@ export interface Coordinate {
 export interface Tiang {
     id: string;
     nomorUrut: number;
+    kodeTiang?: string;          // Kode tiang PLN e.g. "T1", "T1R01", "T4L01", "T1R02L01"
+    parentTiangId?: string;      // ID tiang pangkal percabangan
+    branchDirection?: 'R' | 'L'; // 'R' (Kanan) atau 'L' (Kiri)
+    branchPath?: string;         // Prefix hirarki percabangan e.g. "T1R", "T1R02L"
     koordinat: Coordinate;
 
     // Jenis tiang

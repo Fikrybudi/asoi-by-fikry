@@ -23,6 +23,9 @@ interface ToolbarProps {
     onFinishUnderbuild?: () => void;
     onCancelUnderbuild?: () => void;
     onOpenSummary?: () => void;
+    // Branching specific
+    branchBannerText?: string;
+    onCancelBranch?: () => void;
 }
 
 // =============================================================================
@@ -40,11 +43,42 @@ export default function Toolbar({
     onFinishUnderbuild,
     onCancelUnderbuild,
     onOpenSummary,
+    branchBannerText,
+    onCancelBranch,
 }: ToolbarProps) {
 
     const toggleMode = (mode: ToolMode) => {
         onModeChange(currentMode === mode ? 'none' : mode);
     };
+
+    // ==========================================================================
+    // RENDER BRANCHING CONTROLS
+    // ==========================================================================
+
+    if (branchBannerText) {
+        return (
+            <View style={[styles.drawingToolbar, { backgroundColor: '#1b5e20' }]}>
+                <View style={styles.drawingInfo}>
+                    <Text style={styles.drawingInfoText}>
+                        {branchBannerText}
+                    </Text>
+                    <Text style={styles.underbuildSubtext}>
+                        Pasang tiang cabang baru di peta
+                    </Text>
+                </View>
+                <View style={styles.drawingActions}>
+                    <TouchableOpacity
+                        style={[styles.drawingButton, { backgroundColor: '#4caf50' }]}
+                        onPress={onCancelBranch}
+                    >
+                        <Text style={[styles.finishButtonText, { color: '#ffffff', fontWeight: 'bold' }]}>
+                            Selesai Cabang ✓
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
     // ==========================================================================
     // RENDER UNDERBUILD CONTROLS

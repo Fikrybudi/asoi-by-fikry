@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { Coordinate, Tiang } from '../types';
+import { getTiangDisplayCode } from './branchUtils';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -179,6 +180,10 @@ export interface TiangSegment {
     firstNomor: number;
     /** Index urut terakhir tiang (nomorUrut) */
     lastNomor: number;
+    /** Formatted kode tiang pertama (misal T1 atau T1R01) */
+    firstKode?: string;
+    /** Formatted kode tiang terakhir */
+    lastKode?: string;
     /** Total jarak dalam segmen (meter) */
     panjangMeter: number;
     /** Nomor halaman (1-based) */
@@ -243,6 +248,8 @@ export function groupTiangBySegment(
             tiangList,
             firstNomor: tiangList[0].nomorUrut,
             lastNomor: tiangList[tiangList.length - 1].nomorUrut,
+            firstKode: getTiangDisplayCode(tiangList[0]),
+            lastKode: getTiangDisplayCode(tiangList[tiangList.length - 1]),
             panjangMeter: panjang,
             pageNumber: 1,
             totalPages: 1,
@@ -299,6 +306,8 @@ export function groupTiangBySegment(
             tiangList: segList,
             firstNomor: segList[0].nomorUrut,
             lastNomor: segList[segList.length - 1].nomorUrut,
+            firstKode: getTiangDisplayCode(segList[0]),
+            lastKode: getTiangDisplayCode(segList[segList.length - 1]),
             panjangMeter: segPanjang,
             pageNumber: segments.length + 1,
         });
