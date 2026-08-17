@@ -7,6 +7,7 @@ import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacit
 import LayerControlModal from './src/components/Modals/LayerControlModal';
 import MenuModal from './src/components/Modals/MenuModal';
 import AboutModal from './src/components/Modals/AboutModal';
+import TiangActionModal from './src/components/Modals/TiangActionModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -78,6 +79,9 @@ export default function App() {
   const [activeBranchParentId, setActiveBranchParentId] = useState<string | null>(null);
   const [activeBranchDirection, setActiveBranchDirection] = useState<'R' | 'L' | null>(null);
   const [lastBranchTiangId, setLastBranchTiangId] = useState<string | null>(null);
+
+  // Custom Tiang Action Modal state
+  const [selectedTiangForAction, setSelectedTiangForAction] = useState<Tiang | null>(null);
 
   // Remember last jenis jaringan for next tiang
   const [lastJenisJaringan, setLastJenisJaringan] = useState<'SUTM' | 'SKTM' | 'SKUTM' | 'SUTR' | 'SKTR'>('SUTM');
@@ -1077,8 +1081,6 @@ export default function App() {
   // ==========================================================================
 
   const handleTiangPress = (tiang: Tiang) => {
-
-
     // Main Renderbuild mode, add/remove tiang from underbuild list
     if (toolMode === 'underbuild-sutr') {
       if (underbuildTiangIds.includes(tiang.id)) {
@@ -1091,50 +1093,8 @@ export default function App() {
       return;
     }
 
-    const parentCode = getTiangDisplayCode(tiang);
-    Alert.alert(
-      `Tiang ${parentCode}`,
-      `${tiang.konstruksi} - ${tiang.jenisTiang}\nTinggi: ${tiang.tinggiTiang}\nKekuatan: ${tiang.kekuatanTiang}${tiang.status === 'existing' ? '\n(Existing)' : ''}`,
-      [
-        {
-          text: '📍 Geser Posisi',
-          onPress: () => {
-            setMovingTiangId(tiang.id);
-            setToolMode('move-tiang');
-          }
-        },
-        {
-          text: '✏️ Edit Data',
-          onPress: () => {
-            setEditingTiang(tiang);
-            setSelectedCoordinate(tiang.koordinat);
-            setShowTiangForm(true);
-          }
-        },
-        {
-          text: '🗑️ Hapus Tiang',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Hapus Tiang',
-              `Yakin ingin menghapus Tiang ${parentCode} (${tiang.konstruksi})?`,
-              [
-                { text: 'Batal', style: 'cancel' },
-                {
-                  text: 'Hapus',
-                  style: 'destructive',
-                  onPress: () => deleteTiang(tiang.id)
-                }
-              ]
-            );
-          }
-        },
-        {
-          text: 'Batal',
-          style: 'cancel'
-        }
-      ]
-    );
+    // Open custom Tiang Action Modal (Bottom Sheet)
+    setSelectedTiangForAction(tiang);
   };
 
   // Handle tiang label shift (drag to position 0..7)
@@ -2185,6 +2145,52 @@ export default function App() {
       <AboutModal
         visible={showAbout}
         onClose={() => setShowAbout(false)}
+      />
+
+      {/* Custom Tiang Action Modal (Bottom Sheet) */}
+      <TiangActionModal
+        visible={selectedTiangForAction !== null}
+        tiang={selectedTiangForAction}
+        onClose={() => setSelectedTiangForAction(null)}
+        onSelectBranch={(direction) => {
+          if (selectedTiangForAction) {
+            setActiveBranchParentId(selectedTiangForAction.id);
+            setActiveBranchDirection(direction);
+            setLastBranchTiangId(selectedTiangForAction.id);
+            setToolMode('add-tiang');
+          }
+        }}
+        onSelectMove={() => {
+          if (selectedTiangForAction) {
+            setMovingTiangId(selectedTiangForAction.id);
+            setToolMode('move-tiang');
+          }
+        }}
+        onSelectEdit={() => {
+          if (selectedTiangForAction) {
+            setEditingTiang(selectedTiangForAction);
+            setSelectedCoordinate(selectedTiangForAction.koordinat);
+            setShowTiangForm(true);
+          }
+        }}
+        onSelectDelete={() => {
+          if (selectedTiangForAction) {
+            const targetTiang = selectedTiangForAction;
+            const parentCode = getTiangDisplayCode(targetTiang);
+            Alert.alert(
+              'Hapus Tiang',
+              `Yakin ingin menghapus Tiang ${parentCode} (${targetTiang.konstruksi})?`,
+              [
+                { text: 'Batal', style: 'cancel' },
+                {
+                  text: 'Hapus',
+                  style: 'destructive',
+                  onPress: () => deleteTiang(targetTiang.id)
+                }
+              ]
+            );
+          }
+        }}
       />
 
       {/* Modal Export PDF Kop Gambar PLN */}
