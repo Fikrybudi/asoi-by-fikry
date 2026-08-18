@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MAVIS",
-    "slug": "mavis-survey-app",
+    "slug": "pln-survey-app",
     "version": "2.2.4",
     "orientation": "default",
     "icon": "./assets/icon.png",
