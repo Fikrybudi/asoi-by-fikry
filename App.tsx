@@ -226,12 +226,12 @@ export default function App() {
     const splashTimer = setTimeout(() => {
       Animated.timing(splashFadeAnim, {
         toValue: 0,
-        duration: 350,
+        duration: 400,
         useNativeDriver: true,
       }).start(() => {
         setShowSplashScreen(false);
       });
-    }, 1400);
+    }, 2400);
 
     return () => clearTimeout(splashTimer);
   }, []);
