@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView, TextInput, Image } from 'react-native';
+import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView, TextInput, Image, Animated } from 'react-native';
 import LayerControlModal from './src/components/Modals/LayerControlModal';
 import MenuModal from './src/components/Modals/MenuModal';
 import AboutModal from './src/components/Modals/AboutModal';
@@ -47,6 +47,11 @@ export default function App() {
   // ==========================================================================
   // STATE
   // ==========================================================================
+
+  // Fast Startup Splash Screen state
+  const [showSplashScreen, setShowSplashScreen] = useState(true);
+  const splashFadeAnim = useRef(new Animated.Value(1)).current;
+  const splashScaleAnim = useRef(new Animated.Value(0.9)).current;
 
   const [session, setSession] = useState<Session | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -209,8 +214,27 @@ export default function App() {
   const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
 
   // ==========================================================================
-  // EFFECTS
-  // ==========================================================================
+  // Fast Startup Splashscreen animation
+  useEffect(() => {
+    Animated.spring(splashScaleAnim, {
+      toValue: 1,
+      friction: 7,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+
+    const splashTimer = setTimeout(() => {
+      Animated.timing(splashFadeAnim, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowSplashScreen(false);
+      });
+    }, 1400);
+
+    return () => clearTimeout(splashTimer);
+  }, []);
 
   useEffect(() => {
     // 1. Check for valid session
@@ -1583,16 +1607,58 @@ export default function App() {
   // RENDER
   // ==========================================================================
 
+  if (!authInitialized && showSplashScreen) {
+    return (
+      <View style={styles.splashContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <Animated.View style={{ alignItems: 'center', transform: [{ scale: splashScaleAnim }], opacity: splashFadeAnim }}>
+          <Image
+            source={require('./assets/splashs.png')}
+            style={styles.splashImage}
+            resizeMode="contain"
+          />
+          <View style={{ marginTop: 24, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color="#0D47A1" />
+            <Text style={styles.splashFooterText}>PLN OPTADIS GIS SYSTEM</Text>
+          </View>
+        </Animated.View>
+      </View>
+    );
+  }
+
   if (!authInitialized) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1565C0' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D47A1' }}>
         <ActivityIndicator size="large" color="white" />
       </View>
     );
   }
 
   if (!session) {
-    return <LoginScreen />;
+    return (
+      <View style={{ flex: 1 }}>
+        <LoginScreen />
+        {showSplashScreen && (
+          <Animated.View
+            style={[styles.splashOverlay, { opacity: splashFadeAnim }]}
+            pointerEvents={showSplashScreen ? 'auto' : 'none'}
+          >
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <Animated.View style={{ alignItems: 'center', transform: [{ scale: splashScaleAnim }] }}>
+              <Image
+                source={require('./assets/splashs.png')}
+                style={styles.splashImage}
+                resizeMode="contain"
+              />
+              <View style={{ marginTop: 24, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#0D47A1" />
+                <Text style={styles.splashFooterText}>PLN OPTADIS GIS SYSTEM</Text>
+              </View>
+            </Animated.View>
+          </Animated.View>
+        )}
+      </View>
+    );
   }
 
   const handleCancelBranch = () => {
@@ -1611,7 +1677,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
+      <StatusBar barStyle="light-content" backgroundColor="#0D47A1" />
 
       {/* Header */}
       {!uiHidden && (
@@ -2491,6 +2557,26 @@ export default function App() {
           </View>
         </View>
       </Modal>
+      {/* Fast Startup Splash Screen Overlay */}
+      {showSplashScreen && (
+        <Animated.View
+          style={[styles.splashOverlay, { opacity: splashFadeAnim }]}
+          pointerEvents={showSplashScreen ? 'auto' : 'none'}
+        >
+          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+          <Animated.View style={{ alignItems: 'center', transform: [{ scale: splashScaleAnim }] }}>
+            <Image
+              source={require('./assets/splashs.png')}
+              style={styles.splashImage}
+              resizeMode="contain"
+            />
+            <View style={{ marginTop: 24, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#0D47A1" />
+              <Text style={styles.splashFooterText}>PLN OPTADIS GIS SYSTEM</Text>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -2500,6 +2586,34 @@ export default function App() {
 // =============================================================================
 
 const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  splashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999999,
+  },
+  splashImage: {
+    width: 220,
+    height: 220,
+  },
+  splashFooterText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#9E9E9E',
+    letterSpacing: 1.5,
+    marginTop: 12,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',

@@ -649,24 +649,26 @@ const generateMapHTML = (
     const ne = p.koordinatSudut[1];
     const midLat = (sw.latitude + ne.latitude) / 2;
     const midLng = (sw.longitude + ne.longitude) / 2;
+    const minLat = Math.min(sw.latitude, ne.latitude);
     const color = p.warnaBorder || '#E91E63';
     // Escape nama untuk JS string
     const nameEscaped = p.namaPersil.replace(/'/g, "\\'").replace(/"/g, '\\"');
     const catatanEscaped = (p.catatan || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const coordStr = `${midLat.toFixed(6)}, ${midLng.toFixed(6)}`;
     return `
-      // Persil: ${nameEscaped}
+      // Persil: ${nameEscaped} (Solid Border)
       L.rectangle(
         [[${sw.latitude}, ${sw.longitude}], [${ne.latitude}, ${ne.longitude}]],
         {
           color: '${color}',
-          weight: 2,
+          weight: 2.2,
           fillColor: '${color}',
           fillOpacity: 0.12,
-          dashArray: '6, 4',
+          dashArray: '',
           interactive: true
         }
       ).addTo(map)
-        .bindPopup('<b>${nameEscaped}</b>${catatanEscaped ? '<br><i>' + catatanEscaped + '</i>' : ''}')
+        .bindPopup('<b>${nameEscaped}</b><br><small style="color:#555;">📍 Titik Tengah: ${coordStr}</small>${catatanEscaped ? '<br><i>' + catatanEscaped + '</i>' : ''}')
         .on('click', function(e) {
           L.DomEvent.stopPropagation(e);
           window.ReactNativeWebView.postMessage(JSON.stringify({type: 'persil', id: '${p.id}'}));
@@ -679,6 +681,17 @@ const generateMapHTML = (
           html: '<div style="color:${color};font-size:10px;font-weight:bold;white-space:nowrap;text-align:center;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;pointer-events:none;">${nameEscaped}</div>',
           iconSize: [120, 20],
           iconAnchor: [60, 10]
+        }),
+        interactive: false
+      }).addTo(map);
+
+      // Label koordinat titik tengah dibawah kotak persil
+      L.marker([${minLat}, ${midLng}], {
+        icon: L.divIcon({
+          className: 'persil-coord-label',
+          html: '<div style="color:#222;font-size:8px;font-weight:bold;white-space:nowrap;text-align:center;background:rgba(255,255,255,0.92);padding:1px 5px;border-radius:4px;border:0.8px solid ${color};box-shadow:0 1px 3px rgba(0,0,0,0.2);pointer-events:none;display:inline-block;">${coordStr}</div>',
+          iconSize: [140, 18],
+          iconAnchor: [70, -3]
         }),
         interactive: false
       }).addTo(map);
