@@ -1634,8 +1634,10 @@ export default function App() {
               />
               <Text style={styles.headerTitle}>MAVIS</Text>
             </View>
-            <Text style={styles.headerSubtitle}>Mobile Assets Verification & Information System</Text>
-            <Text style={styles.headerStats}>
+            <Text style={styles.headerSubtitle} numberOfLines={2}>
+              Mobile Assets Verification{'\n'}& Information System
+            </Text>
+            <Text style={styles.headerStats} numberOfLines={1}>
               {currentSurvey ?
                 `${currentSurvey.tiangList.length} Tiang • ${currentSurvey.garduList.length} Gardu • ${(() => {
                   const totalM = currentSurvey.jalurList.reduce((acc, curr) => acc + curr.panjangMeter, 0);
@@ -1645,45 +1647,48 @@ export default function App() {
                 : 'Loading...'}
             </Text>
           </View>
-          {/* Cutoff Button */}
-          {/* Layer Control Button */}
-          <TouchableOpacity
-            style={styles.screenshotButton}
-            onPress={() => setShowLayerControl(true)}
-          >
-            <Ionicons name="layers" size={20} color="white" />
-          </TouchableOpacity>
 
-          {/* Toggle UI Button (Eye) */}
-          <TouchableOpacity
-            style={styles.screenshotButton}
-            onPress={() => {
-              setUiHidden(true);
-              Alert.alert(
-                'Mode Screenshot',
-                'UI disembunyikan. Silakan screenshot manual.\n\nTap tombol "X" di pojok kanan atas untuk kembali.',
-                [{ text: 'OK' }]
-              );
-            }}
-          >
-            <Ionicons name="eye" size={20} color="white" />
-          </TouchableOpacity>
+          {/* Action Buttons Right */}
+          <View style={styles.headerRightActions}>
+            {/* Layer Control Button */}
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() => setShowLayerControl(true)}
+            >
+              <Ionicons name="layers" size={18} color="white" />
+            </TouchableOpacity>
 
-          {/* Cutoff Button */}
-          <TouchableOpacity
-            style={styles.cutoffButton}
-            onPress={() => setShowSummary(true)}
-          >
-            <Ionicons name="stats-chart" size={20} color="white" />
-          </TouchableOpacity>
+            {/* Toggle UI Button (Eye) */}
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() => {
+                setUiHidden(true);
+                Alert.alert(
+                  'Mode Screenshot',
+                  'UI disembunyikan. Silakan screenshot manual.\n\nTap tombol "X" di pojok kanan atas untuk kembali.',
+                  [{ text: 'OK' }]
+                );
+              }}
+            >
+              <Ionicons name="eye" size={18} color="white" />
+            </TouchableOpacity>
 
-          {/* Menu Button */}
-          <TouchableOpacity
-            style={styles.cutoffButton}
-            onPress={() => setShowMenu(true)}
-          >
-            <Ionicons name="menu" size={20} color="white" />
-          </TouchableOpacity>
+            {/* Summary Button */}
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() => setShowSummary(true)}
+            >
+              <Ionicons name="stats-chart" size={18} color="white" />
+            </TouchableOpacity>
+
+            {/* Menu Button */}
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() => setShowMenu(true)}
+            >
+              <Ionicons name="menu" size={18} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -2501,11 +2506,10 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#0D47A1',
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingTop: 35,
-    paddingBottom: 12,
+    paddingBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     elevation: 4,
     shadowColor: '#000',
@@ -2513,32 +2517,58 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
+  historyButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerLogo: {
-    width: 22,
-    height: 22,
-    marginRight: 8,
+    width: 18,
+    height: 18,
+    marginRight: 6,
     borderRadius: 4,
     backgroundColor: '#FFFFFF',
     padding: 1,
   },
   headerContent: {
-    flexDirection: 'column',
+    flex: 1,
+    marginHorizontal: 8,
+    justifyContent: 'center',
   },
   headerTitle: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 9.5,
+    lineHeight: 12.5,
+    marginTop: 1,
+    fontWeight: '500',
   },
   headerStats: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 9,
+    marginTop: 1.5,
     fontWeight: '500',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  headerActionButton: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mapContainer: {
     flex: 1,
@@ -2578,15 +2608,6 @@ const styles = StyleSheet.create({
   restoreButtonText: {
     fontSize: 18,
     color: 'white',
-  },
-  historyButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  historyButtonText: {
-    fontSize: 18,
   },
   layerModalContent: {
     backgroundColor: 'white',
