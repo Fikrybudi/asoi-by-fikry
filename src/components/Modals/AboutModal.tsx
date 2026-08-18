@@ -25,9 +25,44 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
             {/* App Logo & Version */}
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <Ionicons name="location" size={50} color="#1565C0" />
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>ASOI</Text>
-              <Text style={{ fontSize: 14, color: '#666' }}>Aplikasi Survey Online</Text>
-              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.0.0</Text>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>MAVIS</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#555', textAlign: 'center', marginTop: 2 }}>
+                Mobile Assets Verification & Information System
+              </Text>
+              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.2.4</Text>
+            </View>
+
+            {/* Filosofi & Nilai MAVIS */}
+            <View style={{ backgroundColor: '#E3F2FD', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#BBDEFB' }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0D47A1', marginBottom: 10 }}>✨ Nilai Utama MAVIS</Text>
+
+              <View style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>⚡ Kecepatan</Text>
+                <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
+                  Mobile berarti bisa dieksekusi langsung dari smartphone masing-masing surveyor tanpa alat tambahan.
+                </Text>
+              </View>
+
+              <View style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>🛡️ Validitas</Text>
+                <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
+                  Verification & Information System memastikan semua data (termasuk standar konstruksi K3) tervalidasi dan tersimpan rapi sebagai informasi yang traceable.
+                </Text>
+              </View>
+
+              <View style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>🎯 Presisi</Text>
+                <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
+                  Berfokus pada pendataan aset secara aktual di titik lokasi.
+                </Text>
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>💡 Kesan</Text>
+                <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
+                  Singkat, padat, dan sangat mudah diucapkan (Ma-vis).
+                </Text>
+              </View>
             </View>
 
             {/* Developer & Team Info */}
@@ -46,7 +81,7 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
 
               <View style={{ height: 1, backgroundColor: '#e0e0e0', marginVertical: 8 }} />
 
-              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0', marginBottom: 6 }}>👥 TIM ASOI:</Text>
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0', marginBottom: 6 }}>👥 TIM MAVIS:</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
                 <Ionicons name="person-circle" size={18} color="#1565C0" style={{ marginRight: 6 }} />
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }}>Rifzki Yanika Sukoco</Text>
@@ -90,7 +125,7 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
             <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 20 }}>
               <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2026 Fikry Budi H / PLN OPTADIS. All Rights Reserved.</Text>
               <Text style={{ fontSize: 11, color: '#aaa', textAlign: 'center', marginTop: 5, fontStyle: 'italic' }}>
-                Aplikasi Survey Online Jaringan Listrik PLN
+                MAVIS - Mobile Assets Verification & Information System
               </Text>
             </View>
           </ScrollView>

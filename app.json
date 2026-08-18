@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ASOI",
-    "slug": "pln-survey-app",
+    "name": "MAVIS",
+    "slug": "mavis-survey-app",
     "version": "2.2.4",
     "orientation": "default",
     "icon": "./assets/icon.png",

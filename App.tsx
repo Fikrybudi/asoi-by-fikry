@@ -1628,9 +1628,9 @@ export default function App() {
           <View style={styles.headerContent}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="location" size={16} color="white" style={{ marginRight: 4 }} />
-              <Text style={styles.headerTitle}>ASOI</Text>
+              <Text style={styles.headerTitle}>MAVIS</Text>
             </View>
-            <Text style={styles.headerSubtitle}>Aplikasi Survey Online</Text>
+            <Text style={styles.headerSubtitle}>Mobile Assets Verification & Information System</Text>
             <Text style={styles.headerStats}>
               {currentSurvey ?
                 `${currentSurvey.tiangList.length} Tiang • ${currentSurvey.garduList.length} Gardu • ${(() => {

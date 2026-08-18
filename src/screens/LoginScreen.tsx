@@ -52,8 +52,8 @@ export default function LoginScreen() {
                     <View style={styles.iconContainer}>
                         <Image source={require('../../assets/logo_asoi.png')} style={styles.logoImage} />
                     </View>
-                    <Text style={styles.title}>ASOI</Text>
-                    <Text style={styles.subtitle}>Aplikasi Survey Online</Text>
+                    <Text style={styles.title}>MAVIS</Text>
+                    <Text style={styles.subtitle}>Mobile Assets Verification & Information System</Text>
                 </View>
 
                 {/* Form Area */}
