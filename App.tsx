@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import { StyleSheet, View, StatusBar, SafeAreaView, Text, Alert, TouchableOpacity, Modal, Switch, ActivityIndicator, ScrollView, TextInput, Image } from 'react-native';
 import LayerControlModal from './src/components/Modals/LayerControlModal';
 import MenuModal from './src/components/Modals/MenuModal';
 import AboutModal from './src/components/Modals/AboutModal';
@@ -1627,7 +1627,11 @@ export default function App() {
 
           <View style={styles.headerContent}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="location" size={16} color="white" style={{ marginRight: 4 }} />
+              <Image
+                source={require('./assets/logo_mavis_icon.png')}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
               <Text style={styles.headerTitle}>MAVIS</Text>
             </View>
             <Text style={styles.headerSubtitle}>Mobile Assets Verification & Information System</Text>
@@ -2496,13 +2500,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#1976D2',
+    backgroundColor: '#0D47A1',
     paddingHorizontal: 16,
     paddingTop: 35,
     paddingBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  headerLogo: {
+    width: 22,
+    height: 22,
+    marginRight: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    padding: 1,
   },
   headerContent: {
     flexDirection: 'column',

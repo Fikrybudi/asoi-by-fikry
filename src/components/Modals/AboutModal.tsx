@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, View, Text, Modal, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { StyleSheet, View, Text, Modal, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AboutModalProps {
@@ -24,8 +24,12 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* App Logo & Version */}
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <Ionicons name="location" size={50} color="#1565C0" />
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1565C0', marginTop: 10 }}>MAVIS</Text>
+              <Image
+                source={require('../../../assets/logo_mavis_icon.png')}
+                style={{ width: 64, height: 64, borderRadius: 12, marginBottom: 8 }}
+                resizeMode="contain"
+              />
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#0D47A1', marginTop: 4 }}>MAVIS</Text>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#555', textAlign: 'center', marginTop: 2 }}>
                 Mobile Assets Verification & Information System
               </Text>

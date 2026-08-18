@@ -50,7 +50,7 @@ export default function LoginScreen() {
                 {/* Header Logo Area */}
                 <View style={styles.header}>
                     <View style={styles.iconContainer}>
-                        <Image source={require('../../assets/logo_asoi.png')} style={styles.logoImage} />
+                        <Image source={require('../../assets/logo_mavis.png')} style={styles.logoImage} />
                     </View>
                     <Text style={styles.title}>MAVIS</Text>
                     <Text style={styles.subtitle}>Mobile Assets Verification & Information System</Text>
@@ -111,7 +111,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1565C0',
+        backgroundColor: '#0D47A1',
     },
     content: {
         flex: 1,
@@ -120,16 +120,22 @@ const styles = StyleSheet.create({
     },
     header: {
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 30,
     },
     iconContainer: {
-        width: 120,
-        height: 120,
-        borderRadius: 20,
-        backgroundColor: 'transparent',
+        width: 130,
+        height: 130,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
+        padding: 8,
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
     },
     logoImage: {
         width: '100%',
