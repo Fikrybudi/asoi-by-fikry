@@ -1634,8 +1634,8 @@ export default function App() {
               />
               <Text style={styles.headerTitle}>MAVIS</Text>
             </View>
-            <Text style={styles.headerSubtitle} numberOfLines={2}>
-              Mobile Assets Verification{'\n'}& Information System
+            <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
+              Mobile Assets Verification & Information System
             </Text>
             <Text style={styles.headerStats} numberOfLines={1}>
               {currentSurvey ?
@@ -1655,7 +1655,7 @@ export default function App() {
               style={styles.headerActionButton}
               onPress={() => setShowLayerControl(true)}
             >
-              <Ionicons name="layers" size={18} color="white" />
+              <Ionicons name="layers" size={19} color="white" />
             </TouchableOpacity>
 
             {/* Toggle UI Button (Eye) */}
@@ -1670,7 +1670,7 @@ export default function App() {
                 );
               }}
             >
-              <Ionicons name="eye" size={18} color="white" />
+              <Ionicons name="eye" size={19} color="white" />
             </TouchableOpacity>
 
             {/* Summary Button */}
@@ -1678,7 +1678,7 @@ export default function App() {
               style={styles.headerActionButton}
               onPress={() => setShowSummary(true)}
             >
-              <Ionicons name="stats-chart" size={18} color="white" />
+              <Ionicons name="stats-chart" size={19} color="white" />
             </TouchableOpacity>
 
             {/* Menu Button */}
@@ -1686,7 +1686,7 @@ export default function App() {
               style={styles.headerActionButton}
               onPress={() => setShowMenu(true)}
             >
-              <Ionicons name="menu" size={18} color="white" />
+              <Ionicons name="menu" size={19} color="white" />
             </TouchableOpacity>
           </View>
         </View>
@@ -2518,18 +2518,18 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   historyButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 9,
     backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerLogo: {
-    width: 18,
-    height: 18,
+    width: 22,
+    height: 22,
     marginRight: 6,
-    borderRadius: 4,
+    borderRadius: 5,
     backgroundColor: '#FFFFFF',
     padding: 1,
   },
@@ -2540,20 +2540,19 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: 'white',
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 9.5,
-    lineHeight: 12.5,
     marginTop: 1,
     fontWeight: '500',
   },
   headerStats: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 9,
+    fontSize: 9.5,
     marginTop: 1.5,
     fontWeight: '500',
   },
@@ -2564,9 +2563,9 @@ const styles = StyleSheet.create({
   },
   headerActionButton: {
     backgroundColor: 'rgba(255,255,255,0.18)',
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 35,
+    height: 35,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },
