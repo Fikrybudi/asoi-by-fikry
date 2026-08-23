@@ -25,20 +25,25 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
             {/* App Logo & Version */}
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <Image
-                source={require('../../../assets/logo_mavis_icon.png')}
+                source={require('../../../assets/logo_masiv_icon.png')}
                 style={{ width: 64, height: 64, borderRadius: 12, marginBottom: 8 }}
                 resizeMode="contain"
               />
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#0D47A1', marginTop: 4 }}>MAVIS</Text>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#0D47A1', marginTop: 4 }}>MASIV</Text>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#555', textAlign: 'center', marginTop: 2 }}>
-                Mobile Assets Verification & Information System
+                Mobile Asset Surveying, Information and Verification system
               </Text>
               <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.2.4</Text>
+              <View style={{ backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 8, borderWidth: 1, borderColor: '#90CAF9' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#0D47A1', textAlign: 'center' }}>
+                  Survey Made Easy : Mudah, Cepat, Akurat
+                </Text>
+              </View>
             </View>
 
-            {/* Filosofi & Nilai MAVIS */}
+            {/* Filosofi & Nilai MASIV */}
             <View style={{ backgroundColor: '#E3F2FD', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#BBDEFB' }}>
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0D47A1', marginBottom: 10 }}>✨ Nilai Utama MAVIS</Text>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0D47A1', marginBottom: 10 }}>✨ Nilai Utama MASIV</Text>
 
               <View style={{ marginBottom: 8 }}>
                 <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>⚡ Kecepatan</Text>
@@ -50,50 +55,44 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
               <View style={{ marginBottom: 8 }}>
                 <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>🛡️ Validitas</Text>
                 <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
-                  Verification & Information System memastikan semua data (termasuk standar konstruksi K3) tervalidasi dan tersimpan rapi sebagai informasi yang traceable.
-                </Text>
-              </View>
-
-              <View style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>🎯 Presisi</Text>
-                <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
-                  Berfokus pada pendataan aset secara aktual di titik lokasi.
+                  Surveying, Information and Verification system memastikan semua data (termasuk standar konstruksi K3) tervalidasi dan tersimpan rapi sebagai informasi yang traceable.
                 </Text>
               </View>
 
               <View>
-                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>💡 Kesan</Text>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0' }}>🎯 Presisi</Text>
                 <Text style={{ fontSize: 12, color: '#444', marginTop: 2 }}>
-                  Singkat, padat, dan sangat mudah diucapkan (Ma-vis).
+                  Berfokus pada pendataan aset secara aktual di titik lokasi.
                 </Text>
               </View>
             </View>
 
             {/* Developer & Team Info */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 15, borderRadius: 10, marginBottom: 15 }}>
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>👨‍💻 Informasi Pengembang & Tim</Text>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 10 }}>👥 Tim MASIV</Text>
               
-              <Text style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>Pengembang Utama:</Text>
-              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#1565C0', marginBottom: 4 }}>Fikry Budi H</Text>
-              
-              <TouchableOpacity
-                onPress={() => Linking.openURL('https://wa.me/6287773068968')}
-                style={{ marginBottom: 10 }}
-              >
-                <Text style={{ fontSize: 13, color: '#25D366', fontWeight: '600' }}>💬 WhatsApp: 087773068968</Text>
-              </TouchableOpacity>
-
-              <View style={{ height: 1, backgroundColor: '#e0e0e0', marginVertical: 8 }} />
-
-              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1565C0', marginBottom: 6 }}>👥 TIM MAVIS:</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <Ionicons name="person-circle" size={18} color="#1565C0" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }}>Fikry Budi H</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                 <Ionicons name="person-circle" size={18} color="#1565C0" style={{ marginRight: 6 }} />
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }}>Rifzki Yanika Sukoco</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <Ionicons name="person-circle" size={18} color="#1565C0" style={{ marginRight: 6 }} />
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }}>Dinda Widi Mirna</Text>
               </View>
+
+              <View style={{ height: 1, backgroundColor: '#e0e0e0', marginBottom: 10 }} />
+
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://wa.me/6287773068968')}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Ionicons name="logo-whatsapp" size={18} color="#25D366" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, color: '#25D366', fontWeight: 'bold' }}>WhatsApp: 087773068968</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Legalitas & Kebijakan */}
@@ -127,9 +126,9 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
 
             {/* Copyright */}
             <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 20 }}>
-              <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2026 Fikry Budi H / PLN OPTADIS. All Rights Reserved.</Text>
+              <Text style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>© 2026 Tim MASIV / PLN OPTADIS. All Rights Reserved.</Text>
               <Text style={{ fontSize: 11, color: '#aaa', textAlign: 'center', marginTop: 5, fontStyle: 'italic' }}>
-                MAVIS - Mobile Assets Verification & Information System
+                MASIV - Mobile Asset Surveying, Information and Verification system
               </Text>
             </View>
           </ScrollView>

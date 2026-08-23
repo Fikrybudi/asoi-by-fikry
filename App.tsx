@@ -1619,6 +1619,7 @@ export default function App() {
           />
           <View style={{ marginTop: 24, alignItems: 'center' }}>
             <ActivityIndicator size="small" color="#0D47A1" />
+            <Text style={styles.splashTaglineText}>Survey Made Easy : Mudah, Cepat, Akurat</Text>
             <Text style={styles.splashFooterText}>PLN OPTADIS GIS SYSTEM</Text>
           </View>
         </Animated.View>
@@ -1652,6 +1653,7 @@ export default function App() {
               />
               <View style={{ marginTop: 24, alignItems: 'center' }}>
                 <ActivityIndicator size="small" color="#0D47A1" />
+                <Text style={styles.splashTaglineText}>Survey Made Easy : Mudah, Cepat, Akurat</Text>
                 <Text style={styles.splashFooterText}>PLN OPTADIS GIS SYSTEM</Text>
               </View>
             </Animated.View>
@@ -1694,14 +1696,14 @@ export default function App() {
           <View style={styles.headerContent}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Image
-                source={require('./assets/logo_mavis_icon.png')}
+                source={require('./assets/logo_masiv_icon.png')}
                 style={styles.headerLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.headerTitle}>MAVIS</Text>
+              <Text style={styles.headerTitle}>MASIV</Text>
             </View>
             <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
-              Mobile Assets Verification & Information System
+              Survey Made Easy : Mudah, Cepat, Akurat
             </Text>
             <Text style={styles.headerStats} numberOfLines={1}>
               {currentSurvey ?
@@ -1718,7 +1720,7 @@ export default function App() {
           <View style={styles.headerRightActions}>
             {/* Layer Control Button */}
             <TouchableOpacity
-              style={styles.headerActionButton}
+              style={[styles.headerActionButton, styles.layerActionButton]}
               onPress={() => setShowLayerControl(true)}
             >
               <Ionicons name="layers" size={19} color="white" />
@@ -1726,7 +1728,7 @@ export default function App() {
 
             {/* Toggle UI Button (Eye) */}
             <TouchableOpacity
-              style={styles.headerActionButton}
+              style={[styles.headerActionButton, styles.screenshotActionButton]}
               onPress={() => {
                 setUiHidden(true);
                 Alert.alert(
@@ -2572,6 +2574,7 @@ export default function App() {
             />
             <View style={{ marginTop: 24, alignItems: 'center' }}>
               <ActivityIndicator size="small" color="#0D47A1" />
+              <Text style={styles.splashTaglineText}>Survey Made Easy : Mudah, Cepat, Akurat</Text>
               <Text style={styles.splashFooterText}>PLN OPTADIS GIS SYSTEM</Text>
             </View>
           </Animated.View>
@@ -2607,12 +2610,19 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
   },
+  splashTaglineText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D47A1',
+    marginTop: 10,
+    letterSpacing: 0.2,
+  },
   splashFooterText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: 'bold',
     color: '#9E9E9E',
     letterSpacing: 1.5,
-    marginTop: 12,
+    marginTop: 4,
   },
   container: {
     flex: 1,
@@ -2682,6 +2692,16 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  layerActionButton: {
+    backgroundColor: 'rgba(0, 172, 193, 0.38)',
+    borderWidth: 1,
+    borderColor: 'rgba(77, 208, 225, 0.55)',
+  },
+  screenshotActionButton: {
+    backgroundColor: 'rgba(255, 152, 0, 0.38)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 183, 77, 0.55)',
   },
   mapContainer: {
     flex: 1,

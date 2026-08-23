@@ -50,10 +50,10 @@ export default function LoginScreen() {
                 {/* Header Logo Area */}
                 <View style={styles.header}>
                     <View style={styles.iconContainer}>
-                        <Image source={require('../../assets/logo_mavis.png')} style={styles.logoImage} />
+                        <Image source={require('../../assets/logo_masiv_icon.png')} style={styles.logoImage} />
                     </View>
-                    <Text style={styles.title}>MAVIS</Text>
-                    <Text style={styles.subtitle}>Mobile Assets Verification & Information System</Text>
+                    <Text style={styles.title}>MASIV</Text>
+                    <Text style={styles.subtitle}>Mobile Asset Surveying, Information and Verification system</Text>
                 </View>
 
                 {/* Form Area */}
