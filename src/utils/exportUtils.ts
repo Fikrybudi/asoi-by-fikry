@@ -5,8 +5,9 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Survey, BebanTrafoItem } from '../types';
+import { Survey, BebanTrafoItem, Coordinate } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
+import { getTiangDisplayCode } from './branchUtils';
 
 export interface ExportPDFOptions {
     isUpratingTrafo?: boolean;
@@ -478,19 +479,46 @@ const generateKML = (survey: Survey, overlayLayers?: OverlayFile[]): string => {
         });
     };
 
-    // Generate tiang placemarks with status
-    const tiangPlacemarks = survey.tiangList.map(t => {
+    // Helper to calculate distance between coordinates (in meters)
+    const calcDistanceMeters = (c1: Coordinate, c2: Coordinate): number => {
+        const R = 6371000;
+        const dLat = (c2.latitude - c1.latitude) * Math.PI / 180;
+        const dLon = (c2.longitude - c1.longitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(c1.latitude * Math.PI / 180) * Math.cos(c2.latitude * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
+
+    // Helper to pick line style Url based on jaringan type
+    const getLineStyleUrl = (jaringan?: string) => {
+        const upper = (jaringan || '').toUpperCase();
+        if (upper.includes('SKTM')) return '#jalur-sktm-style';
+        if (upper.includes('SKUTM')) return '#jalur-skutm-style';
+        if (upper.includes('SUTR') || upper.includes('SKTR') || upper.includes('TR')) return '#jalur-sutr-style';
+        return '#jalur-sutm-style';
+    };
+
+    // 1. Generate tiang placemarks with status and display code
+    const tiangPlacemarks = (survey.tiangList || []).map(t => {
         const statusLabel = t.status === 'existing' ? 'EKSISTING' : 'BARU';
+        const displayCode = getTiangDisplayCode(t);
         return `
         <Placemark>
-            <name>Tiang ${t.nomorUrut} (${statusLabel})</name>
+            <name>${displayCode} (${statusLabel})</name>
             <description><![CDATA[
+                <b>Kode Tiang:</b> ${displayCode}<br/>
                 <b>Status:</b> ${statusLabel}<br/>
                 <b>Konstruksi:</b> ${t.konstruksi}<br/>
-                <b>Jenis:</b> ${t.jenisTiang}<br/>
+                <b>Jenis Tiang:</b> ${t.jenisTiang}<br/>
                 <b>Tinggi:</b> ${t.tinggiTiang}<br/>
                 <b>Kekuatan:</b> ${t.kekuatanTiang || '-'}<br/>
-                <b>Jaringan:</b> ${t.jenisJaringan}
+                <b>Jaringan:</b> ${t.jenisJaringan}<br/>
+                ${t.penguat ? `<b>Penguat:</b> ${t.penguat}<br/>` : ''}
+                ${t.grounding ? `<b>Grounding:</b> Ya<br/>` : ''}
+                ${t.catatan ? `<b>Catatan:</b> ${escapeXml(t.catatan)}<br/>` : ''}
+                <b>Koordinat:</b> ${t.koordinat.latitude.toFixed(6)}, ${t.koordinat.longitude.toFixed(6)}
             ]]></description>
             <styleUrl>#tiang-${t.status === 'existing' ? 'eksisting' : 'baru'}-style</styleUrl>
             <Point>
@@ -499,15 +527,18 @@ const generateKML = (survey: Survey, overlayLayers?: OverlayFile[]): string => {
         </Placemark>`;
     }).join('\n');
 
-    // Generate gardu placemarks
-    const garduPlacemarks = survey.garduList.map(g => `
+    // 2. Generate gardu placemarks
+    const garduPlacemarks = (survey.garduList || []).map(g => `
         <Placemark>
             <name>${escapeXml(g.nomorGardu)}</name>
             <description><![CDATA[
-                <b>Jenis:</b> ${g.jenisGardu}<br/>
+                <b>Nama/Nomor:</b> ${escapeXml(g.nomorGardu)}<br/>
+                <b>Jenis Gardu:</b> ${g.jenisGardu}<br/>
                 <b>Kapasitas:</b> ${g.kapasitasKVA} kVA<br/>
-                <b>Merek:</b> ${g.merekTrafo || '-'}<br/>
-                <b>Tahun:</b> ${g.tahunPasang || '-'}
+                <b>Merek Trafo:</b> ${g.merekTrafo || '-'}<br/>
+                <b>Tahun Pasang:</b> ${g.tahunPasang || '-'}<br/>
+                <b>Fasa:</b> ${g.fasa || '3 Fasa'}<br/>
+                <b>Koordinat:</b> ${g.koordinat.latitude.toFixed(6)}, ${g.koordinat.longitude.toFixed(6)}
             ]]></description>
             <styleUrl>#gardu-style</styleUrl>
             <Point>
@@ -515,17 +546,130 @@ const generateKML = (survey: Survey, overlayLayers?: OverlayFile[]): string => {
             </Point>
         </Placemark>`).join('\n');
 
-    // Generate jalur lines
-    const jalurLines = survey.jalurList.map((j, i) => {
-        const coords = j.koordinat.map(c => `${c.longitude},${c.latitude},0`).join(' ');
-        const styleUrl = j.jenisJaringan.includes('TM') ? '#jalur-tm-style' : '#jalur-tr-style';
+    // 3. Generate Jalur Lines (Polylines)
+    interface ExportLineItem {
+        name: string;
+        jaringan: string;
+        penghantar: string;
+        penampang: string;
+        panjangMeter: number;
+        status: string;
+        coords: Coordinate[];
+    }
+
+    const linesToExport: ExportLineItem[] = [];
+
+    const rawJalurList = (survey.jalurList || []).filter(j => j.koordinat && j.koordinat.length >= 2);
+
+    if (rawJalurList.length > 0) {
+        rawJalurList.forEach((j, i) => {
+            linesToExport.push({
+                name: `Jalur ${i + 1} - ${j.jenisJaringan || 'SUTM'}`,
+                jaringan: j.jenisJaringan || 'SUTM',
+                penghantar: j.jenisPenghantar || 'A3C',
+                penampang: j.penampangMM || '3x70mm²',
+                panjangMeter: j.panjangMeter || 0,
+                status: j.status || 'planned',
+                coords: j.koordinat,
+            });
+        });
+    } else if (survey.tiangList && survey.tiangList.length >= 2) {
+        // Fallback: Auto-construct network lines directly from surveyed poles (tiangList)
+        const tiangs = survey.tiangList;
+
+        // A. Mainline poles (no branch parent)
+        const mainlinePoles = tiangs.filter(t => !t.parentTiangId && (!t.branchPath || t.branchPath === ''));
+        mainlinePoles.sort((a, b) => a.nomorUrut - b.nomorUrut);
+
+        if (mainlinePoles.length >= 2) {
+            let totalLen = 0;
+            for (let i = 0; i < mainlinePoles.length - 1; i++) {
+                totalLen += calcDistanceMeters(mainlinePoles[i].koordinat, mainlinePoles[i + 1].koordinat);
+            }
+            const jType = mainlinePoles[0].jenisJaringan || 'SUTM';
+            linesToExport.push({
+                name: `Mainline (${getTiangDisplayCode(mainlinePoles[0])} - ${getTiangDisplayCode(mainlinePoles[mainlinePoles.length - 1])})`,
+                jaringan: jType,
+                penghantar: jType === 'SUTR' ? 'NFA2X' : 'A3C',
+                penampang: jType === 'SUTR' ? '3x70+1x50mm²' : '3x150mm²',
+                panjangMeter: totalLen,
+                status: 'planned',
+                coords: mainlinePoles.map(t => t.koordinat),
+            });
+        }
+
+        // B. Branch groups
+        const branchPoles = tiangs.filter(t => t.parentTiangId || (t.branchPath && t.branchPath !== ''));
+        const branchGroups: Record<string, typeof tiangs> = {};
+
+        branchPoles.forEach(t => {
+            const key = t.branchPath || t.parentTiangId || 'branch';
+            if (!branchGroups[key]) branchGroups[key] = [];
+            branchGroups[key].push(t);
+        });
+
+        Object.entries(branchGroups).forEach(([key, bPoles]) => {
+            bPoles.sort((a, b) => a.nomorUrut - b.nomorUrut);
+            
+            // Find parent pole coordinate
+            const parentPole = tiangs.find(t => t.id === bPoles[0].parentTiangId) ||
+                tiangs.find(t => bPoles[0].kodeTiang && bPoles[0].kodeTiang.startsWith(getTiangDisplayCode(t)));
+
+            const lineCoords: Coordinate[] = [];
+            if (parentPole) {
+                lineCoords.push(parentPole.koordinat);
+            }
+            bPoles.forEach(t => lineCoords.push(t.koordinat));
+
+            if (lineCoords.length >= 2) {
+                let totalLen = 0;
+                for (let i = 0; i < lineCoords.length - 1; i++) {
+                    totalLen += calcDistanceMeters(lineCoords[i], lineCoords[i + 1]);
+                }
+                const jType = bPoles[0].jenisJaringan || 'SUTM';
+                linesToExport.push({
+                    name: `Percabangan ${key} (${parentPole ? getTiangDisplayCode(parentPole) + ' ➔ ' : ''}${getTiangDisplayCode(bPoles[bPoles.length - 1])})`,
+                    jaringan: jType,
+                    penghantar: jType === 'SUTR' ? 'NFA2X' : 'A3C',
+                    penampang: jType === 'SUTR' ? '3x70+1x50mm²' : '3x150mm²',
+                    panjangMeter: totalLen,
+                    status: 'planned',
+                    coords: lineCoords,
+                });
+            }
+        });
+
+        // C. Fallback: If still no lines generated, connect all poles sequentially by nomorUrut
+        if (linesToExport.length === 0 && tiangs.length >= 2) {
+            const sorted = [...tiangs].sort((a, b) => a.nomorUrut - b.nomorUrut);
+            let totalLen = 0;
+            for (let i = 0; i < sorted.length - 1; i++) {
+                totalLen += calcDistanceMeters(sorted[i].koordinat, sorted[i + 1].koordinat);
+            }
+            const jType = sorted[0].jenisJaringan || 'SUTM';
+            linesToExport.push({
+                name: `Jalur Jaringan (${getTiangDisplayCode(sorted[0])} - ${getTiangDisplayCode(sorted[sorted.length - 1])})`,
+                jaringan: jType,
+                penghantar: jType === 'SUTR' ? 'NFA2X' : 'A3C',
+                penampang: jType === 'SUTR' ? '3x70+1x50mm²' : '3x150mm²',
+                panjangMeter: totalLen,
+                status: 'planned',
+                coords: sorted.map(t => t.koordinat),
+            });
+        }
+    }
+
+    const jalurPlacemarks = linesToExport.map(j => {
+        const coords = j.coords.map(c => `${c.longitude},${c.latitude},0`).join(' ');
+        const styleUrl = getLineStyleUrl(j.jaringan);
         return `
         <Placemark>
-            <name>Jalur ${i + 1} - ${j.jenisJaringan}</name>
+            <name>${escapeXml(j.name)}</name>
             <description><![CDATA[
-                <b>Jaringan:</b> ${j.jenisJaringan}<br/>
-                <b>Penghantar:</b> ${j.jenisPenghantar}<br/>
-                <b>Penampang:</b> ${j.penampangMM}<br/>
+                <b>Nama Jalur:</b> ${escapeXml(j.name)}<br/>
+                <b>Jenis Jaringan:</b> ${j.jaringan}<br/>
+                <b>Penghantar:</b> ${j.penghantar}<br/>
+                <b>Penampang:</b> ${j.penampang}<br/>
                 <b>Panjang:</b> ${j.panjangMeter.toFixed(0)} m<br/>
                 <b>Status:</b> ${j.status}
             ]]></description>
@@ -543,60 +687,96 @@ const generateKML = (survey: Survey, overlayLayers?: OverlayFile[]): string => {
     <name>${escapeXml(survey.namaSurvey)}</name>
     <description>Survey: ${escapeXml(survey.jenisSurvey)} - Lokasi: ${escapeXml(survey.lokasi)} - Surveyor: ${escapeXml(survey.surveyor)}</description>
     
+    <!-- Tiang Styles -->
     <Style id="tiang-baru-style">
         <IconStyle>
             <color>ff00aa00</color>
             <scale>0.9</scale>
             <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
         </IconStyle>
-        <LabelStyle><scale>0.7</scale></LabelStyle>
+        <LabelStyle><scale>0.75</scale></LabelStyle>
     </Style>
     
     <Style id="tiang-eksisting-style">
         <IconStyle>
             <color>ff757575</color>
-            <scale>0.7</scale>
+            <scale>0.8</scale>
             <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
         </IconStyle>
-        <LabelStyle><scale>0.6</scale></LabelStyle>
+        <LabelStyle><scale>0.7</scale></LabelStyle>
     </Style>
     
+    <!-- Gardu Style -->
     <Style id="gardu-style">
         <IconStyle>
-            <color>ff00ff00</color>
+            <color>ff00aaff</color>
             <scale>1.0</scale>
             <Icon><href>http://maps.google.com/mapfiles/kml/shapes/square.png</href></Icon>
         </IconStyle>
-        <LabelStyle><scale>0.8</scale></LabelStyle>
+        <LabelStyle><scale>0.85</scale></LabelStyle>
     </Style>
     
+    <!-- Jalur Styles (PLN Colors in AABBGGRR format) -->
+    <!-- SUTM: Merah/Pink (#E91E63 -> KML: ff631ee9) -->
+    <Style id="jalur-sutm-style">
+        <LineStyle>
+            <color>ff631ee9</color>
+            <width>3.5</width>
+        </LineStyle>
+    </Style>
+    
+    <!-- SUTR: Hijau (#00E676 -> KML: ff76e600) -->
+    <Style id="jalur-sutr-style">
+        <LineStyle>
+            <color>ff76e600</color>
+            <width>3.0</width>
+        </LineStyle>
+    </Style>
+    
+    <!-- SKTM: Ungu (#9C27B0 -> KML: ffb0279c) -->
+    <Style id="jalur-sktm-style">
+        <LineStyle>
+            <color>ffb0279c</color>
+            <width>3.5</width>
+        </LineStyle>
+    </Style>
+    
+    <!-- SKUTM: Cyan (#00BCD4 -> KML: ffd4bc00) -->
+    <Style id="jalur-skutm-style">
+        <LineStyle>
+            <color>ffd4bc00</color>
+            <width>3.5</width>
+        </LineStyle>
+    </Style>
+
+    <!-- Legacy styles -->
     <Style id="jalur-tm-style">
         <LineStyle>
-            <color>ff0000ff</color>
-            <width>3</width>
+            <color>ff631ee9</color>
+            <width>3.5</width>
         </LineStyle>
     </Style>
     
     <Style id="jalur-tr-style">
         <LineStyle>
-            <color>ff00ff00</color>
-            <width>2</width>
+            <color>ff76e600</color>
+            <width>3.0</width>
         </LineStyle>
     </Style>
     
     <Folder>
-        <name>Tiang (${survey.tiangList.length})</name>
+        <name>Tiang (${(survey.tiangList || []).length})</name>
         ${tiangPlacemarks}
     </Folder>
     
     <Folder>
-        <name>Gardu (${survey.garduList.length})</name>
+        <name>Gardu (${(survey.garduList || []).length})</name>
         ${garduPlacemarks}
     </Folder>
     
     <Folder>
-        <name>Jalur (${survey.jalurList.length})</name>
-        ${jalurLines}
+        <name>Jalur Jaringan (${linesToExport.length})</name>
+        ${jalurPlacemarks}
     </Folder>
     
     ${generateOverlayKML(overlayLayers)}
