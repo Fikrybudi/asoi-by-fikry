@@ -259,6 +259,35 @@ export default function App() {
     checkOTAUpdates();
   }, []);
 
+  const handleManualCheckUpdate = async () => {
+    if (__DEV__) {
+      Alert.alert('ℹ️ Mode Development', 'Fitur OTA Update aktif pada build aplikasi terpasang (APK).');
+      return;
+    }
+
+    try {
+      Alert.alert('⏳ Memeriksa Pembaruan', 'Sedang memeriksa update ke server Expo...');
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        Alert.alert('⬇️ Mengunduh Pembaruan', 'Pembaruan aplikasi ditemukan. Sedang mengunduh...');
+        await Updates.fetchUpdateAsync();
+        Alert.alert(
+          '🚀 Pembaruan Terpasang!',
+          'Versi terbaru telah berhasil diunduh. Mulai ulang aplikasi sekarang?',
+          [
+            { text: 'Nanti', style: 'cancel' },
+            { text: 'Perbarui Sekarang', onPress: () => Updates.reloadAsync() }
+          ]
+        );
+      } else {
+        Alert.alert('✅ Aplikasi Terkini', 'Aplikasi Anda sudah menggunakan versi terbaru (v2.2.5).');
+      }
+    } catch (error: any) {
+      console.error('Check update error:', error);
+      Alert.alert('ℹ️ Status Update', 'Tidak dapat memeriksa update. Pastikan HP Anda terhubung ke internet.');
+    }
+  };
+
   useEffect(() => {
     // 1. Check for valid session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -2248,6 +2277,7 @@ export default function App() {
         userEmail={session?.user?.email || 'User'}
         onOpenAbout={() => setShowAbout(true)}
         onOpenOverlayManager={() => setShowOverlayManager(true)}
+        onCheckUpdate={handleManualCheckUpdate}
       />
 
       {/* Overlay Manager Modal */}
@@ -2262,6 +2292,7 @@ export default function App() {
       <AboutModal
         visible={showAbout}
         onClose={() => setShowAbout(false)}
+        onCheckUpdate={handleManualCheckUpdate}
       />
 
       {/* Custom Tiang Action Modal (Bottom Sheet) */}

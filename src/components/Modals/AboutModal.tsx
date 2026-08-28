@@ -9,9 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 interface AboutModalProps {
   visible: boolean;
   onClose: () => void;
+  onCheckUpdate?: () => void;
 }
 
-function AboutModal({ visible, onClose }: AboutModalProps) {
+function AboutModal({ visible, onClose, onCheckUpdate }: AboutModalProps) {
   return (
     <Modal
       visible={visible}
@@ -33,7 +34,27 @@ function AboutModal({ visible, onClose }: AboutModalProps) {
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#555', textAlign: 'center', marginTop: 2 }}>
                 Mobile Asset Surveying, Information and Verification system
               </Text>
-              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.2.4</Text>
+              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.2.5</Text>
+              
+              {onCheckUpdate && (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#2E7D32',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                    borderRadius: 20,
+                    marginTop: 8,
+                  }}
+                  onPress={onCheckUpdate}
+                >
+                  <Ionicons name="cloud-download-outline" size={16} color="white" style={{ marginRight: 6 }} />
+                  <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>Cek Pembaruan Aplikasi</Text>
+                </TouchableOpacity>
+              )}
+
               <View style={{ backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 8, borderWidth: 1, borderColor: '#90CAF9' }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#0D47A1', textAlign: 'center' }}>
                   Survey Made Easy : Mudah, Cepat, Akurat

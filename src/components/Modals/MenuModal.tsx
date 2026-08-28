@@ -13,6 +13,7 @@ interface MenuModalProps {
   userEmail: string;
   onOpenAbout: () => void;
   onOpenOverlayManager: () => void;
+  onCheckUpdate?: () => void;
 }
 
 function MenuModal({
@@ -21,6 +22,7 @@ function MenuModal({
   userEmail,
   onOpenAbout,
   onOpenOverlayManager,
+  onCheckUpdate,
 }: MenuModalProps) {
   const handleLogout = () => {
     Alert.alert(
@@ -58,6 +60,20 @@ function MenuModal({
             </View>
             <Text style={{ fontSize: 14, color: '#666' }}>{userEmail}</Text>
           </View>
+
+          {/* Check OTA Update Button */}
+          {onCheckUpdate && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                onClose();
+                onCheckUpdate();
+              }}
+            >
+              <Ionicons name="cloud-download-outline" size={24} color="#2E7D32" style={{ marginRight: 12 }} />
+              <Text style={{ fontSize: 16, color: '#2E7D32', fontWeight: 'bold' }}>Cek Pembaruan Aplikasi</Text>
+            </TouchableOpacity>
+          )}
 
           {/* About Button */}
           <TouchableOpacity
