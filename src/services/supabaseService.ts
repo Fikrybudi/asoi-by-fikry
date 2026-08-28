@@ -52,6 +52,10 @@ interface TiangRow {
     label_position?: number;
     penguat?: string;
     grounding?: boolean;
+    kode_tiang?: string;
+    parent_tiang_id?: string;
+    branch_direction?: string;
+    branch_path?: string;
     created_at: string;
     updated_at: string;
 }
@@ -277,10 +281,17 @@ export const supabaseSurveyService = {
                     label_position: tiang.labelPosition,
                     penguat: tiang.penguat,
                     grounding: tiang.grounding,
+                    kode_tiang: tiang.kodeTiang,
+                    parent_tiang_id: tiang.parentTiangId,
+                    branch_direction: tiang.branchDirection,
+                    branch_path: tiang.branchPath,
                     updated_at: new Date().toISOString(),
                 };
 
-                await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+                const { error: tiangErr } = await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+                if (tiangErr) {
+                    console.error(`Error syncing tiang ${tiang.id} (${tiang.kodeTiang || tiang.nomorUrut}):`, tiangErr);
+                }
             } catch (err) {
                 console.error(`Error syncing tiang ${tiang.id}:`, err);
             }
@@ -310,7 +321,10 @@ export const supabaseSurveyService = {
                     updated_at: new Date().toISOString(),
                 };
 
-                await supabase.from('gardu').upsert(garduRow, { onConflict: 'id' });
+                const { error: garduErr } = await supabase.from('gardu').upsert(garduRow, { onConflict: 'id' });
+                if (garduErr) {
+                    console.error(`Error syncing gardu ${gardu.id}:`, garduErr);
+                }
             } catch (err) {
                 console.error(`Error syncing gardu ${gardu.id}:`, err);
             }
@@ -338,7 +352,10 @@ export const supabaseSurveyService = {
                     updated_at: new Date().toISOString(),
                 };
 
-                await supabase.from('jalur').upsert(jalurRow, { onConflict: 'id' });
+                const { error: jalurErr } = await supabase.from('jalur').upsert(jalurRow, { onConflict: 'id' });
+                if (jalurErr) {
+                    console.error(`Error syncing jalur ${jalur.id}:`, jalurErr);
+                }
             } catch (err) {
                 console.error(`Error syncing jalur ${jalur.id}:`, err);
             }
@@ -395,12 +412,17 @@ export const supabaseSurveyService = {
     },
 
     async fetchTiangBySurvey(surveyId: string): Promise<Tiang[]> {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('tiang')
             .select('*')
             .eq('survey_id', surveyId)
-            .order('nomor_urut');
+            .order('nomor_urut')
+            .range(0, 9999);
 
+        if (error) {
+            console.error(`Error fetching tiang for survey ${surveyId}:`, error);
+            return [];
+        }
         if (!data) return [];
 
         return data.map((t: TiangRow) => ({
@@ -418,6 +440,10 @@ export const supabaseSurveyService = {
             labelPosition: (t.label_position !== null && t.label_position !== undefined) ? t.label_position : undefined,
             penguat: t.penguat as any,
             grounding: t.grounding,
+            kodeTiang: t.kode_tiang,
+            parentTiangId: t.parent_tiang_id,
+            branchDirection: t.branch_direction as any,
+            branchPath: t.branch_path,
             createdAt: new Date(t.created_at),
             updatedAt: new Date(t.updated_at),
             isSynced: true,

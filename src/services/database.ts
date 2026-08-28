@@ -158,12 +158,23 @@ export const surveyService = {
             const currentMap = new Map(currentSurveys.map(s => [s.id, s]));
 
             for (const imported of importedSurveys) {
-                // Determine if we should update:
-                // 1. If it doesn't exist locally -> Add it
-                // 2. If it exists but cloud version is newer (based on updatedAt) -> Update it
-                // 3. For now, simple strategy: Always overwrite/add if explicitly requested by sync
+                const existing = currentMap.get(imported.id);
+                // Safe merge: If cloud tiangList/garduList/jalurList is empty BUT existing local survey had data, retain local data
+                const safeTiangList = (imported.tiangList && imported.tiangList.length > 0)
+                    ? imported.tiangList
+                    : (existing?.tiangList || []);
+                const safeGarduList = (imported.garduList && imported.garduList.length > 0)
+                    ? imported.garduList
+                    : (existing?.garduList || []);
+                const safeJalurList = (imported.jalurList && imported.jalurList.length > 0)
+                    ? imported.jalurList
+                    : (existing?.jalurList || []);
+
                 currentMap.set(imported.id, {
                     ...imported,
+                    tiangList: safeTiangList,
+                    garduList: safeGarduList,
+                    jalurList: safeJalurList,
                     isSynced: true // Mark as valid synced copy
                 });
             }

@@ -44,9 +44,25 @@ CREATE TABLE IF NOT EXISTS tiang (
     perlengkapan JSONB DEFAULT '[]',
     foto JSONB DEFAULT '[]',
     catatan TEXT,
+    label_position INTEGER,
+    penguat TEXT,
+    grounding BOOLEAN,
+    kode_tiang TEXT,
+    parent_tiang_id TEXT,
+    branch_direction TEXT,
+    branch_path TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrations for existing tiang table (safe execution)
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS label_position INTEGER;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS penguat TEXT;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS grounding BOOLEAN;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS kode_tiang TEXT;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS parent_tiang_id TEXT;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS branch_direction TEXT;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS branch_path TEXT;
 
 -- Index for faster survey lookups
 CREATE INDEX IF NOT EXISTS idx_tiang_survey_id ON tiang(survey_id);
