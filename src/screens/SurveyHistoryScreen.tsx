@@ -38,6 +38,7 @@ import { generateBASurveyPdf } from '../utils/baSurveyPdf';
 import SignatureCapture from '../components/Forms/SignatureCapture';
 import ShareSurveyModal from '../components/Forms/ShareSurveyModal';
 import { Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // CONSTANTS: imported from '../constants/surveyOptions'
 
@@ -76,6 +77,10 @@ export default function SurveyHistoryScreen({
     // Share Modal State
     const [shareSurveyId, setShareSurveyId] = useState<string | null>(null);
     const [shareSurveyName, setShareSurveyName] = useState<string>('');
+
+    // Search & Sort states
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name-asc' | 'name-desc' | 'tiang-desc'>('newest');
 
     useEffect(() => {
         if (visible) {
@@ -337,6 +342,35 @@ export default function SurveyHistoryScreen({
 
     const unsyncedCount = surveys.filter(s => !s.isSynced).length;
 
+    const filteredSurveys = surveys.filter(s => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase().trim();
+        return (
+            (s.namaSurvey && s.namaSurvey.toLowerCase().includes(q)) ||
+            (s.lokasi && s.lokasi.toLowerCase().includes(q)) ||
+            (s.kecamatan && s.kecamatan.toLowerCase().includes(q)) ||
+            (s.kelurahan && s.kelurahan.toLowerCase().includes(q)) ||
+            (s.surveyor && s.surveyor.toLowerCase().includes(q)) ||
+            (s.jenisSurvey && s.jenisSurvey.toLowerCase().includes(q))
+        );
+    });
+
+    const sortedSurveys = [...filteredSurveys].sort((a, b) => {
+        if (sortBy === 'oldest') {
+            return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+        }
+        if (sortBy === 'name-asc') {
+            return (a.namaSurvey || '').localeCompare(b.namaSurvey || '');
+        }
+        if (sortBy === 'name-desc') {
+            return (b.namaSurvey || '').localeCompare(a.namaSurvey || '');
+        }
+        if (sortBy === 'tiang-desc') {
+            return (b.tiangList?.length || 0) - (a.tiangList?.length || 0);
+        }
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+
     return (
         <Modal
             visible={visible}
@@ -454,6 +488,77 @@ export default function SurveyHistoryScreen({
                     </View>
                 )}
 
+                {/* Search & Sort Bar */}
+                {!loading && surveys.length > 0 && (
+                    <View style={styles.searchSortContainer}>
+                        {/* Search Input */}
+                        <View style={styles.searchBar}>
+                            <Ionicons name="search-outline" size={18} color="#666" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Cari nama survey, lokasi, surveyor..."
+                                placeholderTextColor="#999"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <Ionicons name="close-circle" size={18} color="#999" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* Sort Chips */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.sortChipsContainer}
+                        >
+                            <Text style={styles.sortLabel}>Urutkan:</Text>
+                            <TouchableOpacity
+                                style={[styles.sortChip, sortBy === 'newest' && styles.sortChipActive]}
+                                onPress={() => setSortBy('newest')}
+                            >
+                                <Text style={[styles.sortChipText, sortBy === 'newest' && styles.sortChipTextActive]}>
+                                    📅 Terbaru
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.sortChip, sortBy === 'oldest' && styles.sortChipActive]}
+                                onPress={() => setSortBy('oldest')}
+                            >
+                                <Text style={[styles.sortChipText, sortBy === 'oldest' && styles.sortChipTextActive]}>
+                                    ⌛ Terlama
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.sortChip, sortBy === 'name-asc' && styles.sortChipActive]}
+                                onPress={() => setSortBy('name-asc')}
+                            >
+                                <Text style={[styles.sortChipText, sortBy === 'name-asc' && styles.sortChipTextActive]}>
+                                    🔤 Nama A-Z
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.sortChip, sortBy === 'name-desc' && styles.sortChipActive]}
+                                onPress={() => setSortBy('name-desc')}
+                            >
+                                <Text style={[styles.sortChipText, sortBy === 'name-desc' && styles.sortChipTextActive]}>
+                                    🔠 Nama Z-A
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.sortChip, sortBy === 'tiang-desc' && styles.sortChipActive]}
+                                onPress={() => setSortBy('tiang-desc')}
+                            >
+                                <Text style={[styles.sortChipText, sortBy === 'tiang-desc' && styles.sortChipTextActive]}>
+                                    📍 Tiang Terbanyak
+                                </Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                )}
+
                 {/* Survey List */}
                 {loading ? (
                     <View style={styles.loadingContainer}>
@@ -470,9 +575,23 @@ export default function SurveyHistoryScreen({
                             <Text style={styles.createButtonText}>+ Buat Survey Baru</Text>
                         </TouchableOpacity>
                     </View>
+                ) : sortedSurveys.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyIcon}>🔍</Text>
+                        <Text style={styles.emptyTitle}>Tidak Ditemukan</Text>
+                        <Text style={styles.emptyText}>
+                            Tidak ada survey yang cocok dengan kata kunci "{searchQuery}"
+                        </Text>
+                        <TouchableOpacity
+                            style={[styles.createButton, { backgroundColor: '#757575', marginTop: 12 }]}
+                            onPress={() => setSearchQuery('')}
+                        >
+                            <Text style={styles.createButtonText}>Reset Pencarian</Text>
+                        </TouchableOpacity>
+                    </View>
                 ) : (
                     <FlatList
-                        data={surveys}
+                        data={sortedSurveys}
                         keyExtractor={(item) => item.id}
                         renderItem={renderSurveyItem}
                         contentContainerStyle={styles.listContainer}
@@ -487,7 +606,9 @@ export default function SurveyHistoryScreen({
                             <Text style={styles.footerHint}>
                                 {isSelectMode
                                     ? '☁️ = sudah sync • 📱 = belum sync'
-                                    : 'Tekan lama untuk menghapus survey'}
+                                    : searchQuery
+                                        ? `Menampilkan ${sortedSurveys.length} dari ${surveys.length} survey`
+                                        : 'Tekan lama untuk menghapus survey'}
                             </Text>
                         }
                     />
@@ -827,6 +948,64 @@ const styles = StyleSheet.create({
     checklistLabel: {
         fontSize: 14,
         color: '#333',
+    },
+    // Search & Sort Styles
+    searchSortContainer: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        height: 38,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#212121',
+        paddingVertical: 0,
+    },
+    sortChipsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingTop: 8,
+        gap: 6,
+    },
+    sortLabel: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: 'bold',
+        marginRight: 4,
+    },
+    sortChip: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 16,
+        backgroundColor: '#F0F0F0',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    sortChipActive: {
+        backgroundColor: '#1976D2',
+        borderColor: '#1565C0',
+    },
+    sortChipText: {
+        fontSize: 12,
+        color: '#424242',
+        fontWeight: '500',
+    },
+    sortChipTextActive: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
     },
 });
 
