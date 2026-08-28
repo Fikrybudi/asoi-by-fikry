@@ -40,8 +40,7 @@ import {
   generateNextBranchCode,
   getBranchModeBannerLabel,
 } from './src/utils/branchUtils';
-
-// ... other imports
+import * as Updates from 'expo-updates';
 
 export default function App() {
   // ==========================================================================
@@ -234,6 +233,30 @@ export default function App() {
     }, 2400);
 
     return () => clearTimeout(splashTimer);
+  }, []);
+
+  // Check for OTA updates on app launch
+  useEffect(() => {
+    async function checkOTAUpdates() {
+      if (__DEV__) return;
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          Alert.alert(
+            '🚀 Pembaruan Aplikasi Terdeteksi',
+            'Versi terbaru telah siap dipasang. Mulai ulang aplikasi sekarang?',
+            [
+              { text: 'Nanti', style: 'cancel' },
+              { text: 'Perbarui Sekarang', onPress: () => Updates.reloadAsync() }
+            ]
+          );
+        }
+      } catch (error) {
+        // Ignore update errors
+      }
+    }
+    checkOTAUpdates();
   }, []);
 
   useEffect(() => {
