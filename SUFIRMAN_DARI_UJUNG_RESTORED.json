@@ -1,0 +1,2189 @@
+[
+  {
+    "id": "8eb8b9fa-89d3-47f7-aefd-5a4a7dd2e2d9",
+    "namaSurvey": "Pasang Baru - SUFIRMAN DARI UJUNG (24/8/2026)",
+    "jenisSurvey": "Pasang Baru",
+    "lokasi": "Rorah lele, Karaybuana, Cigeulis",
+    "kecamatan": "Cigeulis",
+    "kelurahan": "Karaybuana",
+    "namaFeeder": "Feeder Cigeulis",
+    "namaGarduInduk": "GI Cigeulis",
+    "surveyor": "eazytronik@gmail.com",
+    "tanggalSurvey": "2026-08-24T00:00:00.000Z",
+    "tiangList": [
+      {
+        "id": "94031d76-c104-4134-9360-66e1e25bba3c",
+        "nomorUrut": 1,
+        "kodeTiang": "T1",
+        "koordinat": {
+          "latitude": -6.595397,
+          "longitude": 105.669635
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-4T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "3e06ca8a-16ae-4abb-91db-96de73150411",
+        "nomorUrut": 2,
+        "kodeTiang": "T2",
+        "koordinat": {
+          "latitude": -6.595506,
+          "longitude": 105.669386
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-7T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "5d064874-b214-4534-81b7-55619d543455",
+        "nomorUrut": 3,
+        "kodeTiang": "T3",
+        "koordinat": {
+          "latitude": -6.595396,
+          "longitude": 105.669228
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "2aee928b-1485-4c4a-bb90-69911c0e474a",
+        "nomorUrut": 4,
+        "kodeTiang": "T4",
+        "koordinat": {
+          "latitude": -6.595218,
+          "longitude": 105.668968
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "6a0902c2-898f-40dd-95bc-aa2a478bd6c3",
+        "nomorUrut": 5,
+        "kodeTiang": "T5",
+        "koordinat": {
+          "latitude": -6.595109,
+          "longitude": 105.6687
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "94655574-abfb-4439-98d2-c22ccd842b18",
+        "nomorUrut": 6,
+        "kodeTiang": "T6",
+        "koordinat": {
+          "latitude": -6.595189,
+          "longitude": 105.668481
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "393188f2-80fd-4ba0-8e7c-e56f10af4ca5",
+        "nomorUrut": 7,
+        "kodeTiang": "T7",
+        "koordinat": {
+          "latitude": -6.595113,
+          "longitude": 105.668185
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "c67486d2-dcd8-4358-93d9-a5817ad65e9b",
+        "nomorUrut": 8,
+        "kodeTiang": "T8",
+        "koordinat": {
+          "latitude": -6.595059,
+          "longitude": 105.668017
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "9e05a671-634b-4885-8e2a-24f90e7d995c",
+        "nomorUrut": 9,
+        "kodeTiang": "T9",
+        "koordinat": {
+          "latitude": -6.595046,
+          "longitude": 105.667821
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-3T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "a5b9da53-2b12-409c-a9ab-bc15d1b215b6",
+        "nomorUrut": 10,
+        "kodeTiang": "T10",
+        "koordinat": {
+          "latitude": -6.595108,
+          "longitude": 105.667577
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "3ce82ed2-955b-401d-a799-ccb175e33c60",
+        "nomorUrut": 11,
+        "kodeTiang": "T11",
+        "koordinat": {
+          "latitude": -6.595222,
+          "longitude": 105.667368
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "24894446-1688-4c84-8166-5669d358d9e9",
+        "nomorUrut": 12,
+        "kodeTiang": "T12",
+        "koordinat": {
+          "latitude": -6.595338,
+          "longitude": 105.667139
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "0717f1f2-40b8-4af4-a6b7-41776fa1f88d",
+        "nomorUrut": 13,
+        "kodeTiang": "T13",
+        "koordinat": {
+          "latitude": -6.595516,
+          "longitude": 105.666925
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "85b603e9-0a2c-41ce-b935-79ff9bdea0ea",
+        "nomorUrut": 14,
+        "kodeTiang": "T14",
+        "koordinat": {
+          "latitude": -6.595759,
+          "longitude": 105.666572
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "9d0c695b-03e4-4d3e-919f-098849a708e9",
+        "nomorUrut": 15,
+        "kodeTiang": "T15",
+        "koordinat": {
+          "latitude": -6.59599,
+          "longitude": 105.666373
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "c63b10cb-975c-459d-9af9-ee07bd02fa68",
+        "nomorUrut": 16,
+        "kodeTiang": "T16",
+        "koordinat": {
+          "latitude": -6.596194,
+          "longitude": 105.666189
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "d9967f87-b163-4fe2-a072-a4df044fb9a6",
+        "nomorUrut": 17,
+        "kodeTiang": "T17",
+        "koordinat": {
+          "latitude": -6.596458,
+          "longitude": 105.666048
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "8c27f9c5-e246-4814-934f-f27bdd86e035",
+        "nomorUrut": 18,
+        "kodeTiang": "T18",
+        "koordinat": {
+          "latitude": -6.596725,
+          "longitude": 105.666087
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "cfed5685-a9c0-40b2-b3f6-b379c44be7c0",
+        "nomorUrut": 19,
+        "kodeTiang": "T19",
+        "koordinat": {
+          "latitude": -6.596994,
+          "longitude": 105.666145
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "9c77ef94-18bc-4c3f-8990-11472688d67e",
+        "nomorUrut": 20,
+        "kodeTiang": "T20",
+        "koordinat": {
+          "latitude": -6.597332,
+          "longitude": 105.666147
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "63867dd5-dd8b-46ad-a6cc-0c04ed7d7643",
+        "nomorUrut": 21,
+        "kodeTiang": "T21",
+        "koordinat": {
+          "latitude": -6.597724,
+          "longitude": 105.666183
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "b8a4f785-c934-4bd9-b320-751df2c7e83f",
+        "nomorUrut": 22,
+        "kodeTiang": "T22",
+        "koordinat": {
+          "latitude": -6.598004,
+          "longitude": 105.666256
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "007f3a6d-1c03-418a-8f8a-1874eab9794b",
+        "nomorUrut": 23,
+        "kodeTiang": "T23",
+        "koordinat": {
+          "latitude": -6.598287,
+          "longitude": 105.666329
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "9e84fc4f-503f-4bcd-a651-7c71d487cd2c",
+        "nomorUrut": 24,
+        "kodeTiang": "T24",
+        "koordinat": {
+          "latitude": -6.598606,
+          "longitude": 105.666456
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "4f11c5f4-bf73-4ddd-bf3a-3e68929f41af",
+        "nomorUrut": 25,
+        "kodeTiang": "T25",
+        "koordinat": {
+          "latitude": -6.598779,
+          "longitude": 105.666693
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-3T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "871533c9-f95f-49fb-85be-0092ffc7e94b",
+        "nomorUrut": 26,
+        "kodeTiang": "T26",
+        "koordinat": {
+          "latitude": -6.598863,
+          "longitude": 105.666971
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "5dae1814-4d40-4a10-81f2-9a597b3b4a21",
+        "nomorUrut": 27,
+        "kodeTiang": "T27",
+        "koordinat": {
+          "latitude": -6.598975,
+          "longitude": 105.667246
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "c59de356-9f47-41fa-9967-1796d7a4a188",
+        "nomorUrut": 28,
+        "kodeTiang": "T28",
+        "koordinat": {
+          "latitude": -6.599066,
+          "longitude": 105.667502
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "11192cf1-62ad-4055-b194-91be0074e157",
+        "nomorUrut": 29,
+        "kodeTiang": "T29",
+        "koordinat": {
+          "latitude": -6.599184,
+          "longitude": 105.667735
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "de45fc7c-ade9-4c1d-ac91-3fe66e820acc",
+        "nomorUrut": 30,
+        "kodeTiang": "T30",
+        "koordinat": {
+          "latitude": -6.599356,
+          "longitude": 105.667905
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "754187d0-0835-455a-9f6f-af63c4cba782",
+        "nomorUrut": 31,
+        "kodeTiang": "T31",
+        "koordinat": {
+          "latitude": -6.599568,
+          "longitude": 105.668067
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "0bde2eff-27fb-4601-b29c-dbe0be4b3645",
+        "nomorUrut": 32,
+        "kodeTiang": "T32",
+        "koordinat": {
+          "latitude": -6.59987,
+          "longitude": 105.668343
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "ee71c478-3879-428d-9240-f5bf4e3046bc",
+        "nomorUrut": 33,
+        "kodeTiang": "T33",
+        "koordinat": {
+          "latitude": -6.60018,
+          "longitude": 105.6685
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-8T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "5a6aa010-b1c0-46f4-92f8-203b0c8937b7",
+        "nomorUrut": 34,
+        "kodeTiang": "T34",
+        "koordinat": {
+          "latitude": -6.600424,
+          "longitude": 105.668742
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-3T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "053cb3e9-db43-4da1-8117-d7d2e5c39ce1",
+        "nomorUrut": 35,
+        "kodeTiang": "T35",
+        "koordinat": {
+          "latitude": -6.600716,
+          "longitude": 105.668782
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "466b85a2-517e-4d43-b551-89704e87fc2d",
+        "nomorUrut": 36,
+        "kodeTiang": "T36",
+        "koordinat": {
+          "latitude": -6.600992,
+          "longitude": 105.668792
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "3a828348-5250-471a-9173-f8422f6251e6",
+        "nomorUrut": 37,
+        "kodeTiang": "T37",
+        "koordinat": {
+          "latitude": -6.601349,
+          "longitude": 105.668829
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "d6cf6e8e-1f48-44b7-a4ea-52f4ad09bb0b",
+        "nomorUrut": 38,
+        "kodeTiang": "T38",
+        "koordinat": {
+          "latitude": -6.601488,
+          "longitude": 105.669147
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "f054e3c7-c19b-4d8b-b6cf-b8d57b5a4041",
+        "nomorUrut": 39,
+        "kodeTiang": "T39",
+        "koordinat": {
+          "latitude": -6.601632,
+          "longitude": 105.669578
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "35d546d7-2d20-44b4-b0ed-91e27b02d6f3",
+        "nomorUrut": 40,
+        "kodeTiang": "T40",
+        "koordinat": {
+          "latitude": -6.601646,
+          "longitude": 105.67008
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "f5217ed8-7f1b-41d5-926a-55829547700f",
+        "nomorUrut": 41,
+        "kodeTiang": "T41",
+        "koordinat": {
+          "latitude": -6.601663,
+          "longitude": 105.670632
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "f78de58c-cbad-4b58-8b4b-695359cf547c",
+        "nomorUrut": 42,
+        "kodeTiang": "T42",
+        "koordinat": {
+          "latitude": -6.601604,
+          "longitude": 105.671164
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "1ff938d0-ff8b-4983-9c32-681ec43ea363",
+        "nomorUrut": 43,
+        "kodeTiang": "T43",
+        "koordinat": {
+          "latitude": -6.60173,
+          "longitude": 105.671706
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "cbbab837-9b02-464d-b39a-b6c7730dfc35",
+        "nomorUrut": 44,
+        "kodeTiang": "T44",
+        "koordinat": {
+          "latitude": -6.601892,
+          "longitude": 105.671991
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "650b1f9d-99e7-4552-851f-3dae54ccd23c",
+        "nomorUrut": 45,
+        "kodeTiang": "T45",
+        "koordinat": {
+          "latitude": -6.602076,
+          "longitude": 105.672183
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "ca5c410e-7738-414e-a536-df9a4b45e720",
+        "nomorUrut": 46,
+        "kodeTiang": "T46",
+        "koordinat": {
+          "latitude": -6.602233,
+          "longitude": 105.672439
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "324b1a86-d316-4d54-971c-ce781286cbdf",
+        "nomorUrut": 47,
+        "kodeTiang": "T47",
+        "koordinat": {
+          "latitude": -6.602268,
+          "longitude": 105.672719
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "e3b7a113-1a89-44c8-82b9-5801ec8a0ac9",
+        "nomorUrut": 48,
+        "kodeTiang": "T48",
+        "koordinat": {
+          "latitude": -6.602346,
+          "longitude": 105.672986
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "0d3c07f2-c05e-4edd-8a88-b85bf4309221",
+        "nomorUrut": 49,
+        "kodeTiang": "T49",
+        "koordinat": {
+          "latitude": -6.602445,
+          "longitude": 105.673361
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "0e11d78c-3bf5-42b5-930c-3bf08ddb178b",
+        "nomorUrut": 50,
+        "kodeTiang": "T50",
+        "koordinat": {
+          "latitude": -6.602682,
+          "longitude": 105.67359
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "160c8b0b-87ee-412c-b46b-1880fa0d7419",
+        "nomorUrut": 51,
+        "kodeTiang": "T51",
+        "koordinat": {
+          "latitude": -6.603113,
+          "longitude": 105.673782
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "7a8b4900-d53d-44b6-848c-88ccc096000d",
+        "nomorUrut": 52,
+        "kodeTiang": "T52",
+        "koordinat": {
+          "latitude": -6.603383,
+          "longitude": 105.674067
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "39a0436f-befd-4052-9f47-01adcf85c0be",
+        "nomorUrut": 53,
+        "kodeTiang": "T53",
+        "koordinat": {
+          "latitude": -6.603619,
+          "longitude": 105.674287
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "979bf3c1-6a9a-45ef-a0b3-828d541d209b",
+        "nomorUrut": 54,
+        "kodeTiang": "T54",
+        "koordinat": {
+          "latitude": -6.604012,
+          "longitude": 105.674526
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "21fa974a-1c9a-4f3e-81d3-9aad1d57aa64",
+        "nomorUrut": 55,
+        "kodeTiang": "T55",
+        "koordinat": {
+          "latitude": -6.604238,
+          "longitude": 105.674813
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "8c149556-a4f9-4c07-ad0c-32802f0a848b",
+        "nomorUrut": 56,
+        "kodeTiang": "T56",
+        "koordinat": {
+          "latitude": -6.604398,
+          "longitude": 105.675126
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "c00a46ac-d03b-4963-bf5f-ae512753c3b1",
+        "nomorUrut": 57,
+        "kodeTiang": "T57",
+        "koordinat": {
+          "latitude": -6.60448,
+          "longitude": 105.675467
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "eb7fe8f6-4dd8-429b-b6fc-44d0a0d74779",
+        "nomorUrut": 58,
+        "kodeTiang": "T58",
+        "koordinat": {
+          "latitude": -6.604445,
+          "longitude": 105.675725
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "69982026-aa7b-4330-8ec9-092159a7c3f3",
+        "nomorUrut": 59,
+        "kodeTiang": "T59",
+        "koordinat": {
+          "latitude": -6.60436,
+          "longitude": 105.675994
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "d4ddff5c-c999-4187-aefa-5c5dc9de6e55",
+        "nomorUrut": 60,
+        "kodeTiang": "T60",
+        "koordinat": {
+          "latitude": -6.604214,
+          "longitude": 105.676252
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "f75b943c-2219-4023-ac49-34adf0d9b908",
+        "nomorUrut": 61,
+        "kodeTiang": "T61",
+        "koordinat": {
+          "latitude": -6.604208,
+          "longitude": 105.676528
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "5b6b4ec1-dee2-4a14-a32e-8a390a8000f5",
+        "nomorUrut": 62,
+        "kodeTiang": "T62",
+        "koordinat": {
+          "latitude": -6.604338,
+          "longitude": 105.676824
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "6c2f3546-029d-4748-95c6-0e98f88bdba1",
+        "nomorUrut": 63,
+        "kodeTiang": "T63",
+        "koordinat": {
+          "latitude": -6.604297,
+          "longitude": 105.677079
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "442b23b2-f05a-430d-b2bb-a0d06ae8209a",
+        "nomorUrut": 64,
+        "kodeTiang": "T64",
+        "koordinat": {
+          "latitude": -6.604305,
+          "longitude": 105.677386
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "527409cd-8ecb-4de7-b656-128866740c86",
+        "nomorUrut": 65,
+        "kodeTiang": "T65",
+        "koordinat": {
+          "latitude": -6.604276,
+          "longitude": 105.677721
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "eb7f88f2-2709-4b81-b306-1f3e4073a1af",
+        "nomorUrut": 66,
+        "kodeTiang": "T66",
+        "koordinat": {
+          "latitude": -6.604107,
+          "longitude": 105.677963
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "181df44a-152d-41a5-afbd-db755e81c740",
+        "nomorUrut": 67,
+        "kodeTiang": "T67",
+        "koordinat": {
+          "latitude": -6.603913,
+          "longitude": 105.678303
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "42585332-7e81-4360-b2b8-1503a8331f4a",
+        "nomorUrut": 68,
+        "kodeTiang": "T68",
+        "koordinat": {
+          "latitude": -6.603632,
+          "longitude": 105.678706
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "5d0aeb4e-055c-4f87-a260-9f21d6941894",
+        "nomorUrut": 69,
+        "kodeTiang": "T69",
+        "koordinat": {
+          "latitude": -6.603533,
+          "longitude": 105.679002
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "f8251fe3-1c5c-4ebf-a23a-b9a0acffca85",
+        "nomorUrut": 70,
+        "kodeTiang": "T70",
+        "koordinat": {
+          "latitude": -6.603503,
+          "longitude": 105.679361
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "4cdaf1c6-7fe6-4fa9-a11d-2fa5990cf729",
+        "nomorUrut": 71,
+        "kodeTiang": "T71",
+        "koordinat": {
+          "latitude": -6.603594,
+          "longitude": 105.679716
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "7eece734-c779-4378-8854-408ad8818890",
+        "nomorUrut": 72,
+        "kodeTiang": "T72",
+        "koordinat": {
+          "latitude": -6.603729,
+          "longitude": 105.680083
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "3182e090-becb-44ed-bbd0-3f8ef98d70e9",
+        "nomorUrut": 73,
+        "kodeTiang": "T73",
+        "koordinat": {
+          "latitude": -6.603854,
+          "longitude": 105.680463
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "d3909674-0cfa-4977-82a8-3d2702bfdcbb",
+        "nomorUrut": 74,
+        "kodeTiang": "T74",
+        "koordinat": {
+          "latitude": -6.603714,
+          "longitude": 105.680881
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "cce147ec-6501-433e-ac20-579a7c8797bb",
+        "nomorUrut": 75,
+        "kodeTiang": "T75",
+        "koordinat": {
+          "latitude": -6.603675,
+          "longitude": 105.681184
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "48f540b9-33c3-4e94-ab75-0ae4ac4bcd9a",
+        "nomorUrut": 76,
+        "kodeTiang": "T76",
+        "koordinat": {
+          "latitude": -6.603759,
+          "longitude": 105.681626
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-7T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "f06ae192-3381-4939-9fab-498f4cc9d97c",
+        "nomorUrut": 77,
+        "kodeTiang": "T77",
+        "koordinat": {
+          "latitude": -6.603965,
+          "longitude": 105.681594
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "b322dc38-b041-45cf-86ed-e5ac43ecf8ea",
+        "nomorUrut": 78,
+        "kodeTiang": "T78",
+        "koordinat": {
+          "latitude": -6.604173,
+          "longitude": 105.681512
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "dfbae576-45b7-4126-a25f-4e65fba75b68",
+        "nomorUrut": 79,
+        "kodeTiang": "T79",
+        "koordinat": {
+          "latitude": -6.604365,
+          "longitude": 105.681415
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "e7a85335-d1dd-444f-ba36-7d26699ecd83",
+        "nomorUrut": 80,
+        "kodeTiang": "T80",
+        "koordinat": {
+          "latitude": -6.604448,
+          "longitude": 105.681209
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "6c684887-0bb6-42be-b31b-8452478ab948",
+        "nomorUrut": 81,
+        "kodeTiang": "T81",
+        "koordinat": {
+          "latitude": -6.604786,
+          "longitude": 105.681271
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "93f73503-496a-462e-9970-4f25c657c021",
+        "nomorUrut": 82,
+        "kodeTiang": "T82",
+        "koordinat": {
+          "latitude": -6.60503,
+          "longitude": 105.68139
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "977753d7-c352-465d-821c-ea2053cd47a4",
+        "nomorUrut": 83,
+        "kodeTiang": "T83",
+        "koordinat": {
+          "latitude": -6.605342,
+          "longitude": 105.681432
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "6a359341-540f-426d-9b50-92f863e45f33",
+        "nomorUrut": 84,
+        "kodeTiang": "T84",
+        "koordinat": {
+          "latitude": -6.605586,
+          "longitude": 105.681319
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-1T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "236dd7e9-90c4-47c7-a0ac-fef0f27047c3",
+        "nomorUrut": 85,
+        "kodeTiang": "T85",
+        "koordinat": {
+          "latitude": -6.605711,
+          "longitude": 105.681151
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-2T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: BARU",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      },
+      {
+        "id": "3a39faf7-000c-45f0-a6b3-f83a4510700f",
+        "nomorUrut": 86,
+        "kodeTiang": "T86",
+        "koordinat": {
+          "latitude": -6.605939,
+          "longitude": 105.681132
+        },
+        "jenisTiang": "Beton",
+        "tinggiTiang": "12m",
+        "kekuatanTiang": "350 daN",
+        "jenisJaringan": "SUTM",
+        "konstruksi": "TM-4T",
+        "perlengkapan": [],
+        "foto": [],
+        "catatan": "Status: EKSISTING",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      }
+    ],
+    "garduList": [],
+    "jalurList": [
+      {
+        "id": "360080a7-ded2-492f-b019-a6ff68b6f1c9",
+        "namaJalur": "SKUTM A3CS 150mm²",
+        "koordinat": [
+          {
+            "latitude": -6.595397,
+            "longitude": 105.669635
+          },
+          {
+            "latitude": -6.595506,
+            "longitude": 105.669386
+          },
+          {
+            "latitude": -6.595396,
+            "longitude": 105.669228
+          },
+          {
+            "latitude": -6.595218,
+            "longitude": 105.668968
+          },
+          {
+            "latitude": -6.595109,
+            "longitude": 105.6687
+          },
+          {
+            "latitude": -6.595189,
+            "longitude": 105.668481
+          },
+          {
+            "latitude": -6.595113,
+            "longitude": 105.668185
+          },
+          {
+            "latitude": -6.595059,
+            "longitude": 105.668017
+          },
+          {
+            "latitude": -6.595046,
+            "longitude": 105.667821
+          },
+          {
+            "latitude": -6.595108,
+            "longitude": 105.667577
+          },
+          {
+            "latitude": -6.595222,
+            "longitude": 105.667368
+          },
+          {
+            "latitude": -6.595338,
+            "longitude": 105.667139
+          },
+          {
+            "latitude": -6.595516,
+            "longitude": 105.666925
+          },
+          {
+            "latitude": -6.595759,
+            "longitude": 105.666572
+          },
+          {
+            "latitude": -6.59599,
+            "longitude": 105.666373
+          },
+          {
+            "latitude": -6.596194,
+            "longitude": 105.666189
+          },
+          {
+            "latitude": -6.596458,
+            "longitude": 105.666048
+          },
+          {
+            "latitude": -6.596725,
+            "longitude": 105.666087
+          },
+          {
+            "latitude": -6.596994,
+            "longitude": 105.666145
+          },
+          {
+            "latitude": -6.597332,
+            "longitude": 105.666147
+          },
+          {
+            "latitude": -6.597724,
+            "longitude": 105.666183
+          },
+          {
+            "latitude": -6.598004,
+            "longitude": 105.666256
+          },
+          {
+            "latitude": -6.598287,
+            "longitude": 105.666329
+          },
+          {
+            "latitude": -6.598606,
+            "longitude": 105.666456
+          },
+          {
+            "latitude": -6.598779,
+            "longitude": 105.666693
+          },
+          {
+            "latitude": -6.598863,
+            "longitude": 105.666971
+          },
+          {
+            "latitude": -6.598975,
+            "longitude": 105.667246
+          },
+          {
+            "latitude": -6.599066,
+            "longitude": 105.667502
+          },
+          {
+            "latitude": -6.599184,
+            "longitude": 105.667735
+          },
+          {
+            "latitude": -6.599356,
+            "longitude": 105.667905
+          },
+          {
+            "latitude": -6.599568,
+            "longitude": 105.668067
+          },
+          {
+            "latitude": -6.59987,
+            "longitude": 105.668343
+          },
+          {
+            "latitude": -6.60018,
+            "longitude": 105.6685
+          },
+          {
+            "latitude": -6.600424,
+            "longitude": 105.668742
+          },
+          {
+            "latitude": -6.600716,
+            "longitude": 105.668782
+          },
+          {
+            "latitude": -6.600992,
+            "longitude": 105.668792
+          },
+          {
+            "latitude": -6.601349,
+            "longitude": 105.668829
+          },
+          {
+            "latitude": -6.601488,
+            "longitude": 105.669147
+          },
+          {
+            "latitude": -6.601632,
+            "longitude": 105.669578
+          },
+          {
+            "latitude": -6.601646,
+            "longitude": 105.67008
+          },
+          {
+            "latitude": -6.601663,
+            "longitude": 105.670632
+          },
+          {
+            "latitude": -6.601604,
+            "longitude": 105.671164
+          },
+          {
+            "latitude": -6.60173,
+            "longitude": 105.671706
+          },
+          {
+            "latitude": -6.601892,
+            "longitude": 105.671991
+          },
+          {
+            "latitude": -6.602076,
+            "longitude": 105.672183
+          },
+          {
+            "latitude": -6.602233,
+            "longitude": 105.672439
+          },
+          {
+            "latitude": -6.602268,
+            "longitude": 105.672719
+          },
+          {
+            "latitude": -6.602346,
+            "longitude": 105.672986
+          },
+          {
+            "latitude": -6.602445,
+            "longitude": 105.673361
+          },
+          {
+            "latitude": -6.602682,
+            "longitude": 105.67359
+          },
+          {
+            "latitude": -6.603113,
+            "longitude": 105.673782
+          },
+          {
+            "latitude": -6.603383,
+            "longitude": 105.674067
+          },
+          {
+            "latitude": -6.603619,
+            "longitude": 105.674287
+          },
+          {
+            "latitude": -6.604012,
+            "longitude": 105.674526
+          },
+          {
+            "latitude": -6.604238,
+            "longitude": 105.674813
+          },
+          {
+            "latitude": -6.604398,
+            "longitude": 105.675126
+          },
+          {
+            "latitude": -6.60448,
+            "longitude": 105.675467
+          },
+          {
+            "latitude": -6.604445,
+            "longitude": 105.675725
+          },
+          {
+            "latitude": -6.60436,
+            "longitude": 105.675994
+          },
+          {
+            "latitude": -6.604214,
+            "longitude": 105.676252
+          },
+          {
+            "latitude": -6.604208,
+            "longitude": 105.676528
+          },
+          {
+            "latitude": -6.604338,
+            "longitude": 105.676824
+          },
+          {
+            "latitude": -6.604297,
+            "longitude": 105.677079
+          },
+          {
+            "latitude": -6.604305,
+            "longitude": 105.677386
+          },
+          {
+            "latitude": -6.604276,
+            "longitude": 105.677721
+          },
+          {
+            "latitude": -6.604107,
+            "longitude": 105.677963
+          },
+          {
+            "latitude": -6.603913,
+            "longitude": 105.678303
+          },
+          {
+            "latitude": -6.603632,
+            "longitude": 105.678706
+          },
+          {
+            "latitude": -6.603533,
+            "longitude": 105.679002
+          },
+          {
+            "latitude": -6.603503,
+            "longitude": 105.679361
+          },
+          {
+            "latitude": -6.603594,
+            "longitude": 105.679716
+          },
+          {
+            "latitude": -6.603729,
+            "longitude": 105.680083
+          },
+          {
+            "latitude": -6.603854,
+            "longitude": 105.680463
+          },
+          {
+            "latitude": -6.603714,
+            "longitude": 105.680881
+          },
+          {
+            "latitude": -6.603675,
+            "longitude": 105.681184
+          },
+          {
+            "latitude": -6.603759,
+            "longitude": 105.681626
+          },
+          {
+            "latitude": -6.603965,
+            "longitude": 105.681594
+          },
+          {
+            "latitude": -6.604173,
+            "longitude": 105.681512
+          },
+          {
+            "latitude": -6.604365,
+            "longitude": 105.681415
+          },
+          {
+            "latitude": -6.604448,
+            "longitude": 105.681209
+          },
+          {
+            "latitude": -6.604786,
+            "longitude": 105.681271
+          },
+          {
+            "latitude": -6.60503,
+            "longitude": 105.68139
+          },
+          {
+            "latitude": -6.605342,
+            "longitude": 105.681432
+          },
+          {
+            "latitude": -6.605586,
+            "longitude": 105.681319
+          },
+          {
+            "latitude": -6.605711,
+            "longitude": 105.681151
+          },
+          {
+            "latitude": -6.605939,
+            "longitude": 105.681132
+          }
+        ],
+        "jenisJaringan": "SKUTM",
+        "jenisPenghantar": "A3CS",
+        "penampangMM": "150mm²",
+        "panjangMeter": 3029,
+        "tiangIds": [
+          "94031d76-c104-4134-9360-66e1e25bba3c",
+          "3e06ca8a-16ae-4abb-91db-96de73150411",
+          "5d064874-b214-4534-81b7-55619d543455",
+          "2aee928b-1485-4c4a-bb90-69911c0e474a",
+          "6a0902c2-898f-40dd-95bc-aa2a478bd6c3",
+          "94655574-abfb-4439-98d2-c22ccd842b18",
+          "393188f2-80fd-4ba0-8e7c-e56f10af4ca5",
+          "c67486d2-dcd8-4358-93d9-a5817ad65e9b",
+          "9e05a671-634b-4885-8e2a-24f90e7d995c",
+          "a5b9da53-2b12-409c-a9ab-bc15d1b215b6",
+          "3ce82ed2-955b-401d-a799-ccb175e33c60",
+          "24894446-1688-4c84-8166-5669d358d9e9",
+          "0717f1f2-40b8-4af4-a6b7-41776fa1f88d",
+          "85b603e9-0a2c-41ce-b935-79ff9bdea0ea",
+          "9d0c695b-03e4-4d3e-919f-098849a708e9",
+          "c63b10cb-975c-459d-9af9-ee07bd02fa68",
+          "d9967f87-b163-4fe2-a072-a4df044fb9a6",
+          "8c27f9c5-e246-4814-934f-f27bdd86e035",
+          "cfed5685-a9c0-40b2-b3f6-b379c44be7c0",
+          "9c77ef94-18bc-4c3f-8990-11472688d67e",
+          "63867dd5-dd8b-46ad-a6cc-0c04ed7d7643",
+          "b8a4f785-c934-4bd9-b320-751df2c7e83f",
+          "007f3a6d-1c03-418a-8f8a-1874eab9794b",
+          "9e84fc4f-503f-4bcd-a651-7c71d487cd2c",
+          "4f11c5f4-bf73-4ddd-bf3a-3e68929f41af",
+          "871533c9-f95f-49fb-85be-0092ffc7e94b",
+          "5dae1814-4d40-4a10-81f2-9a597b3b4a21",
+          "c59de356-9f47-41fa-9967-1796d7a4a188",
+          "11192cf1-62ad-4055-b194-91be0074e157",
+          "de45fc7c-ade9-4c1d-ac91-3fe66e820acc",
+          "754187d0-0835-455a-9f6f-af63c4cba782",
+          "0bde2eff-27fb-4601-b29c-dbe0be4b3645",
+          "ee71c478-3879-428d-9240-f5bf4e3046bc",
+          "5a6aa010-b1c0-46f4-92f8-203b0c8937b7",
+          "053cb3e9-db43-4da1-8117-d7d2e5c39ce1",
+          "466b85a2-517e-4d43-b551-89704e87fc2d",
+          "3a828348-5250-471a-9173-f8422f6251e6",
+          "d6cf6e8e-1f48-44b7-a4ea-52f4ad09bb0b",
+          "f054e3c7-c19b-4d8b-b6cf-b8d57b5a4041",
+          "35d546d7-2d20-44b4-b0ed-91e27b02d6f3",
+          "f5217ed8-7f1b-41d5-926a-55829547700f",
+          "f78de58c-cbad-4b58-8b4b-695359cf547c",
+          "1ff938d0-ff8b-4983-9c32-681ec43ea363",
+          "cbbab837-9b02-464d-b39a-b6c7730dfc35",
+          "650b1f9d-99e7-4552-851f-3dae54ccd23c",
+          "ca5c410e-7738-414e-a536-df9a4b45e720",
+          "324b1a86-d316-4d54-971c-ce781286cbdf",
+          "e3b7a113-1a89-44c8-82b9-5801ec8a0ac9",
+          "0d3c07f2-c05e-4edd-8a88-b85bf4309221",
+          "0e11d78c-3bf5-42b5-930c-3bf08ddb178b",
+          "160c8b0b-87ee-412c-b46b-1880fa0d7419",
+          "7a8b4900-d53d-44b6-848c-88ccc096000d",
+          "39a0436f-befd-4052-9f47-01adcf85c0be",
+          "979bf3c1-6a9a-45ef-a0b3-828d541d209b",
+          "21fa974a-1c9a-4f3e-81d3-9aad1d57aa64",
+          "8c149556-a4f9-4c07-ad0c-32802f0a848b",
+          "c00a46ac-d03b-4963-bf5f-ae512753c3b1",
+          "eb7fe8f6-4dd8-429b-b6fc-44d0a0d74779",
+          "69982026-aa7b-4330-8ec9-092159a7c3f3",
+          "d4ddff5c-c999-4187-aefa-5c5dc9de6e55",
+          "f75b943c-2219-4023-ac49-34adf0d9b908",
+          "5b6b4ec1-dee2-4a14-a32e-8a390a8000f5",
+          "6c2f3546-029d-4748-95c6-0e98f88bdba1",
+          "442b23b2-f05a-430d-b2bb-a0d06ae8209a",
+          "527409cd-8ecb-4de7-b656-128866740c86",
+          "eb7f88f2-2709-4b81-b306-1f3e4073a1af",
+          "181df44a-152d-41a5-afbd-db755e81c740",
+          "42585332-7e81-4360-b2b8-1503a8331f4a",
+          "5d0aeb4e-055c-4f87-a260-9f21d6941894",
+          "f8251fe3-1c5c-4ebf-a23a-b9a0acffca85",
+          "4cdaf1c6-7fe6-4fa9-a11d-2fa5990cf729",
+          "7eece734-c779-4378-8854-408ad8818890",
+          "3182e090-becb-44ed-bbd0-3f8ef98d70e9",
+          "d3909674-0cfa-4977-82a8-3d2702bfdcbb",
+          "cce147ec-6501-433e-ac20-579a7c8797bb",
+          "48f540b9-33c3-4e94-ab75-0ae4ac4bcd9a",
+          "f06ae192-3381-4939-9fab-498f4cc9d97c",
+          "b322dc38-b041-45cf-86ed-e5ac43ecf8ea",
+          "dfbae576-45b7-4126-a25f-4e65fba75b68",
+          "e7a85335-d1dd-444f-ba36-7d26699ecd83",
+          "6c684887-0bb6-42be-b31b-8452478ab948",
+          "93f73503-496a-462e-9970-4f25c657c021",
+          "977753d7-c352-465d-821c-ea2053cd47a4",
+          "6a359341-540f-426d-9b50-92f863e45f33",
+          "236dd7e9-90c4-47c7-a0ac-fef0f27047c3",
+          "3a39faf7-000c-45f0-a6b3-f83a4510700f"
+        ],
+        "status": "planned",
+        "catatan": "Restored from PDF",
+        "createdAt": "2026-08-28T06:18:41.530Z",
+        "updatedAt": "2026-08-28T06:18:41.530Z",
+        "isSynced": true
+      }
+    ],
+    "createdAt": "2026-08-24T00:00:00.000Z",
+    "updatedAt": "2026-08-28T06:18:41.530Z",
+    "isSynced": true
+  }
+]

@@ -60,7 +60,23 @@ export const surveyService = {
     async getAll(): Promise<Survey[]> {
         try {
             const data = await AsyncStorage.getItem(KEYS.SURVEYS);
-            return data ? JSON.parse(data) : [];
+            let surveys: Survey[] = data ? JSON.parse(data) : [];
+
+            // Auto-restore Sufirman survey from extracted PDF data if not present
+            const hasSufirman = surveys.some(s => s.namaSurvey && s.namaSurvey.toUpperCase().includes('SUFIRMAN'));
+            if (!hasSufirman) {
+                try {
+                    const restoredSufirman = require('../../SUFIRMAN_DARI_UJUNG_RESTORED.json');
+                    if (Array.isArray(restoredSufirman) && restoredSufirman.length > 0) {
+                        surveys = [...surveys, ...restoredSufirman];
+                        await AsyncStorage.setItem(KEYS.SURVEYS, JSON.stringify(surveys));
+                    }
+                } catch (e) {
+                    // Ignore if fallback file not found
+                }
+            }
+
+            return surveys;
         } catch (error) {
             console.error('Error getting surveys:', error);
             return [];

@@ -34,6 +34,11 @@
         "ACCESS_FINE_LOCATION",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "INTERNET"
       ]
     },
@@ -52,6 +57,9 @@
     },
     "updates": {
       "url": "https://u.expo.dev/a36e1f53-9910-4c53-92c2-2512187a8ff2"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
