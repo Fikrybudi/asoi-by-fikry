@@ -438,7 +438,7 @@ export default function SurveyHistoryScreen({
                                     </Text>
                                 </TouchableOpacity>
 
-                                {/* Download Button */}
+                                 {/* Download Button */}
                                 <TouchableOpacity
                                     style={[styles.selectModeButton, { flex: 1, backgroundColor: '#E8F5E9' }]}
                                     onPress={async () => {
@@ -481,6 +481,49 @@ export default function SurveyHistoryScreen({
                                     <Text style={styles.selectModeIcon}>☁️⬇️</Text>
                                     <Text style={styles.selectModeText}>
                                         Ambil Data
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Restore Sufirman Button */}
+                                <TouchableOpacity
+                                    style={[styles.selectModeButton, { flex: 1, backgroundColor: '#FFF3E0' }]}
+                                    onPress={() => {
+                                        Alert.alert(
+                                            '🔄 Pulihkan Survey Sufirman',
+                                            'Pulihkan data survey Sufirman (86 Tiang & 1 Jalur) ke HP?',
+                                            [
+                                                { text: 'Batal', style: 'cancel' },
+                                                {
+                                                    text: 'Pulihkan',
+                                                    onPress: async () => {
+                                                        try {
+                                                            const restoredSufirman = require('../../SUFIRMAN_DARI_UJUNG_RESTORED.json');
+                                                            if (Array.isArray(restoredSufirman) && restoredSufirman.length > 0) {
+                                                                const currentSurveys = await surveyService.getAll();
+                                                                const index = currentSurveys.findIndex(s => s.namaSurvey && s.namaSurvey.toUpperCase().includes('SUFIRMAN'));
+                                                                if (index !== -1) {
+                                                                    currentSurveys[index] = restoredSufirman[0];
+                                                                } else {
+                                                                    currentSurveys.unshift(restoredSufirman[0]);
+                                                                }
+                                                                const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                                                                await AsyncStorage.setItem('@pln_surveys', JSON.stringify(currentSurveys));
+                                                                await loadSurveys();
+                                                                Alert.alert('✅ Berhasil', 'Survey Sufirman dengan 86 Tiang berhasil dipulihkan!');
+                                                            }
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            Alert.alert('Error', 'Gagal memulihkan data Sufirman.');
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <Text style={styles.selectModeIcon}>🔄</Text>
+                                    <Text style={styles.selectModeText}>
+                                        Sufirman (86 Tiang)
                                     </Text>
                                 </TouchableOpacity>
                             </View>
