@@ -834,6 +834,10 @@ export default function App() {
           tiangList: updatedTiangList,
         } : null);
 
+        if (activeBranchParentId) {
+          setLastBranchTiangId(newTiang.id);
+        }
+
         // Determine connecting previous tiang (branch mode vs main line)
         let prevTiang: Tiang | null = null;
         if (activeBranchParentId) {
@@ -1581,13 +1585,26 @@ export default function App() {
   // RENDER HELPERS
   // ==========================================================================
 
+  // Calculate effective last tiang for distance line & pill (supports branch mode)
+  const effectiveLastTiang = (() => {
+    if (!currentSurvey?.tiangList || currentSurvey.tiangList.length === 0) return undefined;
+    if (activeBranchParentId) {
+      const prevId = lastBranchTiangId || activeBranchParentId;
+      const found = currentSurvey.tiangList.find(t => t.id === prevId);
+      if (found) return found;
+      const parentFound = currentSurvey.tiangList.find(t => t.id === activeBranchParentId);
+      if (parentFound) return parentFound;
+    }
+    return currentSurvey.tiangList[currentSurvey.tiangList.length - 1];
+  })();
+
   // Calculate distance pill content for Add Tiang mode
   const distancePill = (() => {
     if (toolMode !== 'add-tiang' || !currentSurvey?.tiangList || currentSurvey.tiangList.length === 0 || !centerCoordinate) {
       return null;
     }
 
-    const lastTiang = currentSurvey.tiangList[currentSurvey.tiangList.length - 1];
+    const lastTiang = effectiveLastTiang;
     if (!lastTiang || !lastTiang.koordinat) return null;
 
     const dist = calculateDistance(lastTiang.koordinat, centerCoordinate);
@@ -1780,7 +1797,7 @@ export default function App() {
           lastTiangCoord={
             toolMode === 'move-tiang' && movingTiangId
               ? currentSurvey?.tiangList.find(t => t.id === movingTiangId)?.koordinat
-              : (currentSurvey?.tiangList.length ? currentSurvey.tiangList[currentSurvey.tiangList.length - 1].koordinat : undefined)
+              : effectiveLastTiang?.koordinat
           }
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}

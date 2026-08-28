@@ -2,7 +2,7 @@
   "expo": {
     "name": "MASIV",
     "slug": "pln-survey-app",
-    "version": "2.2.4",
+    "version": "2.2.5",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.fikry.plnsurveyapp",
-      "versionCode": 9,
+      "versionCode": 10,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -40,17 +40,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "a199a9af-cefa-451c-a074-add37725a564"
-      }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/a199a9af-cefa-451c-a074-add37725a564"
-    },
     "plugins": [
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "owner": "masiv-dev",
+    "extra": {
+      "eas": {
+        "projectId": "a36e1f53-9910-4c53-92c2-2512187a8ff2"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a36e1f53-9910-4c53-92c2-2512187a8ff2"
+    }
   }
 }
