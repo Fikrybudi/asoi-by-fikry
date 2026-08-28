@@ -62,11 +62,15 @@ export const surveyService = {
             const data = await AsyncStorage.getItem(KEYS.SURVEYS);
             let surveys: Survey[] = data ? JSON.parse(data) : [];
 
-            // Auto-restore Sufirman survey from extracted PDF data if not present OR if incomplete (< 86 poles)
+            // Auto-restore / update Sufirman survey with reversed pole order (new T1 at -6.605939)
             const sufirmanIndex = surveys.findIndex(s => s.namaSurvey && s.namaSurvey.toUpperCase().includes('SUFIRMAN'));
-            const isSufirmanIncomplete = sufirmanIndex !== -1 && (!surveys[sufirmanIndex].tiangList || surveys[sufirmanIndex].tiangList.length < 86);
+            const needReversedUpdate = sufirmanIndex !== -1 && (
+                !surveys[sufirmanIndex].tiangList ||
+                surveys[sufirmanIndex].tiangList.length < 86 ||
+                (surveys[sufirmanIndex].tiangList[0] && surveys[sufirmanIndex].tiangList[0].koordinat?.latitude > -6.60)
+            );
 
-            if (sufirmanIndex === -1 || isSufirmanIncomplete) {
+            if (sufirmanIndex === -1 || needReversedUpdate) {
                 try {
                     const restoredSufirman = require('../../SUFIRMAN_DARI_UJUNG_RESTORED.json');
                     if (Array.isArray(restoredSufirman) && restoredSufirman.length > 0) {
