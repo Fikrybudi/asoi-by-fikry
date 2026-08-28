@@ -537,7 +537,7 @@ const generateKML = (survey: Survey, overlayLayers?: OverlayFile[]): string => {
                 <b>Kapasitas:</b> ${g.kapasitasKVA} kVA<br/>
                 <b>Merek Trafo:</b> ${g.merekTrafo || '-'}<br/>
                 <b>Tahun Pasang:</b> ${g.tahunPasang || '-'}<br/>
-                <b>Fasa:</b> ${g.fasa || '3 Fasa'}<br/>
+                <b>Fasa:</b> ${(g as any).fasa || '3 Fasa'}<br/>
                 <b>Koordinat:</b> ${g.koordinat.latitude.toFixed(6)}, ${g.koordinat.longitude.toFixed(6)}
             ]]></description>
             <styleUrl>#gardu-style</styleUrl>
@@ -848,6 +848,17 @@ export const exportToCSV = async (survey: Survey): Promise<boolean> => {
             const cleanDesc = desc.replace(/"/g, '""');
             csvContent += `${g.nomorGardu},Gardu,-,${g.koordinat.latitude},${g.koordinat.longitude},"${cleanDesc}",${g.jenisGardu}\n`;
         });
+
+        // Add Jalur Data if present
+        if (survey.jalurList && survey.jalurList.length > 0) {
+            survey.jalurList.forEach((j, idx) => {
+                const statusLabel = j.status === 'existing' ? 'EKSISTING' : 'BARU';
+                const desc = `Penghantar: ${j.jenisPenghantar || '-'} ${j.penampangMM || ''} | Panjang: ${j.panjangMeter || 0}m`;
+                const cleanDesc = desc.replace(/"/g, '""');
+                const startCoord = j.koordinat && j.koordinat.length > 0 ? j.koordinat[0] : { latitude: 0, longitude: 0 };
+                csvContent += `${j.namaJalur || `Jalur ${idx + 1}`},Jalur,${statusLabel},${startCoord.latitude},${startCoord.longitude},"${cleanDesc}",${j.jenisJaringan || '-'}\n`;
+            });
+        }
 
         const safeName = survey.namaSurvey.replace(/[^a-zA-Z0-9]/g, '_');
         const fileName = `${safeName}_${Date.now()}.csv`;

@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Survey, JalurKabel, Tiang, Gardu, BebanTrafoItem } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
-import { exportToPDF, exportToKML } from '../utils/exportUtils';
+import { exportToPDF, exportToKML, exportToCSV } from '../utils/exportUtils';
 import { generateBASurveyPdf } from '../utils/baSurveyPdf';
 import { BASurveyData } from '../components/Forms/BASurveyForm';
 import { trafoLoadService } from '../services/trafoLoadService';
@@ -199,6 +199,21 @@ export default function SurveySummaryScreen({
         } catch (error: any) {
             console.error('KML export error:', error);
             Alert.alert('Error', `Gagal export KML: ${error?.message || 'Unknown error'}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleExportCSV = async () => {
+        setIsExporting(true);
+        try {
+            const success = await exportToCSV(survey);
+            if (!success) {
+                Alert.alert('Error', 'Gagal mengexport CSV');
+            }
+        } catch (error: any) {
+            console.error('CSV export error:', error);
+            Alert.alert('Error', `Gagal export CSV: ${error?.message || 'Unknown error'}`);
         } finally {
             setIsExporting(false);
         }
@@ -691,8 +706,24 @@ export default function SurveySummaryScreen({
                                         </>
                                     )}
                                 </TouchableOpacity>
+
+                                {/* CSV (Excel) Export */}
+                                <TouchableOpacity
+                                    style={[styles.exportButton, styles.exportCSV]}
+                                    onPress={handleExportCSV}
+                                    disabled={isExporting}
+                                >
+                                    {isExporting ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="grid" size={24} color="white" style={{ marginRight: 8 }} />
+                                            <Text style={styles.exportButtonText}>Export CSV (Excel)</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
                             </View>
-                            <Text style={styles.exportHint}>KML bisa dibuka di Google Earth/Maps</Text>
+                            <Text style={styles.exportHint}>KML & CSV dapat digunakan untuk analisis & Google Earth/Excel</Text>
                         </View>
                     )}
 
@@ -938,6 +969,9 @@ const styles = StyleSheet.create({
     },
     exportBASurvey: {
         backgroundColor: '#2E7D32', // Green
+    },
+    exportCSV: {
+        backgroundColor: '#00796B', // Teal / Excel Green
     },
     exportIcon: {
         fontSize: 18,

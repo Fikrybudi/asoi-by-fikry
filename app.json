@@ -45,6 +45,9 @@
         "projectId": "a199a9af-cefa-451c-a074-add37725a564"
       }
     },
+    "updates": {
+      "url": "https://u.expo.dev/a199a9af-cefa-451c-a074-add37725a564"
+    },
     "plugins": [
       "expo-asset",
       "expo-font"
