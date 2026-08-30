@@ -47,7 +47,8 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-updates"
     ],
     "owner": "masiv-dev",
     "extra": {
@@ -56,7 +57,8 @@
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/a36e1f53-9910-4c53-92c2-2512187a8ff2"
+      "url": "https://u.expo.dev/a36e1f53-9910-4c53-92c2-2512187a8ff2",
+      "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": {
       "policy": "appVersion"

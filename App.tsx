@@ -261,12 +261,16 @@ export default function App() {
 
   const handleManualCheckUpdate = async () => {
     if (__DEV__) {
-      Alert.alert('ℹ️ Mode Development', 'Fitur OTA Update aktif pada build aplikasi terpasang (APK).');
+      Alert.alert('ℹ️ Mode Development', 'Fitur OTA Update aktif pada APK Release/Preview.');
+      return;
+    }
+
+    if (!Updates.isEnabled) {
+      Alert.alert('ℹ️ OTA Update Nonaktif', 'Aplikasi ini belum memiliki konfigurasi channel OTA yang aktif. Silakan install APK Preview terbaru.');
       return;
     }
 
     try {
-      Alert.alert('⏳ Memeriksa Pembaruan', 'Sedang memeriksa update ke server Expo...');
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
         Alert.alert('⬇️ Mengunduh Pembaruan', 'Pembaruan aplikasi ditemukan. Sedang mengunduh...');
@@ -280,11 +284,13 @@ export default function App() {
           ]
         );
       } else {
-        Alert.alert('✅ Aplikasi Terkini', 'Aplikasi Anda sudah menggunakan versi terbaru (v2.2.5).');
+        const channelInfo = Updates.channel ? ` (Channel: ${Updates.channel})` : '';
+        Alert.alert('✅ Aplikasi Terkini', `Aplikasi Anda sudah menggunakan versi terbaru (v2.2.5)${channelInfo}.`);
       }
     } catch (error: any) {
       console.error('Check update error:', error);
-      Alert.alert('ℹ️ Status Update', 'Tidak dapat memeriksa update. Pastikan HP Anda terhubung ke internet.');
+      const msg = error?.message || 'Tidak dapat terhubung ke server update.';
+      Alert.alert('ℹ️ Status Update', `Pemeriksaan update: ${msg}`);
     }
   };
 
