@@ -8,6 +8,8 @@ import LayerControlModal from './src/components/Modals/LayerControlModal';
 import MenuModal from './src/components/Modals/MenuModal';
 import AboutModal from './src/components/Modals/AboutModal';
 import TiangActionModal from './src/components/Modals/TiangActionModal';
+import NotificationModal from './src/components/Modals/NotificationModal';
+import { mobileNotificationService, SuperadminNotification } from './src/services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -54,6 +56,15 @@ export default function App() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
+
+  // Superadmin push notifications
+  const [notifications, setNotifications] = useState<SuperadminNotification[]>([]);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [activeToast, setActiveToast] = useState<SuperadminNotification | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isSuperadmin = session?.user?.user_metadata?.role === 'superadmin';
+  const unreadNotificationCount = notifications.filter(n => !n.read).length;
 
   const [currentSurvey, setCurrentSurvey] = useState<Survey | null>(null);
   const [toolMode, setToolMode] = useState<ToolMode>('none');
@@ -111,6 +122,7 @@ export default function App() {
   const [pdfCustomGarduSearch, setPdfCustomGarduSearch] = useState('');
   const [isUpratingTrafo, setIsUpratingTrafo] = useState(false);
   const [upratingKva, setUpratingKva] = useState('250 kVA');
+  const [pdfRincianPosition, setPdfRincianPosition] = useState<'first' | 'all'>('first');
 
   const CONFIG_PATH = `${FileSystem.documentDirectory}pln_pdf_config.json`;
 
@@ -127,6 +139,7 @@ export default function App() {
         if (data.pemeriksaTitle !== undefined) setPdfPemeriksaTitle(data.pemeriksaTitle);
         if (data.pemeriksaName !== undefined) setPdfPemeriksaName(data.pemeriksaName);
         if (data.managerName !== undefined) setPdfManagerName(data.managerName);
+        if (data.rincianPosition !== undefined) setPdfRincianPosition(data.rincianPosition);
       }
     } catch (e) {}
   };
@@ -211,6 +224,7 @@ export default function App() {
     | { type: 'delete-jalur'; data: JalurKabel }
     | { type: 'edit-jalur'; oldData: JalurKabel; newData: JalurKabel };
   const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoAction[]>([]);
 
   // ==========================================================================
   // Fast Startup Splashscreen animation
@@ -285,7 +299,7 @@ export default function App() {
         );
       } else {
         const channelInfo = Updates.channel ? ` (Channel: ${Updates.channel})` : '';
-        Alert.alert('✅ Aplikasi Terkini', `Aplikasi Anda sudah menggunakan versi terbaru (v2.2.5)${channelInfo}.`);
+        Alert.alert('✅ Aplikasi Terkini', `Aplikasi Anda sudah menggunakan versi terbaru (v2.2.6)${channelInfo}.`);
       }
     } catch (error: any) {
       console.error('Check update error:', error);
@@ -319,6 +333,100 @@ export default function App() {
   useEffect(() => {
     overlayStorage.getAllOverlays().then(setOverlayLayers).catch(console.error);
   }, []);
+
+  // Superadmin push notification subscription & catchup
+  useEffect(() => {
+    if (!session || !isSuperadmin) {
+      setNotifications([]);
+      return;
+    }
+
+    // Load initial stored notifications
+    mobileNotificationService.getStoredNotifications().then((stored: SuperadminNotification[]) => {
+      setNotifications(stored);
+    });
+
+    // Check for surveys uploaded/updated while offline/app closed
+    mobileNotificationService.checkCatchupSurveys(session.user.id).then(newNotifs => {
+      if (newNotifs.length > 0) {
+        setNotifications(prev => {
+          const ids = new Set(prev.map(p => p.id));
+          const toAdd = newNotifs.filter(n => !ids.has(n.id));
+          return [...toAdd, ...prev];
+        });
+        showToast(newNotifs[0]);
+      }
+    });
+
+    // Realtime channel for live inserts & updates
+    const unsubscribe = mobileNotificationService.subscribeToSuperadminNotifications(
+      session.user.id,
+      (newNotif) => {
+        setNotifications(prev => [newNotif, ...prev.filter(n => n.id !== newNotif.id)]);
+        showToast(newNotif);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [session, isSuperadmin]);
+
+  const showToast = (notif: SuperadminNotification) => {
+    setActiveToast(notif);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setActiveToast(null);
+    }, 6000);
+  };
+
+  const handleSelectNotificationSurvey = async (surveyId: string) => {
+    setShowNotificationModal(false);
+    setActiveToast(null);
+    try {
+      const survey = await surveyService.getById(surveyId);
+      if (survey) {
+        await surveyService.setCurrent(survey.id);
+        setCurrentSurvey(survey);
+        Alert.alert('Survey Dimuat', `Survey "${survey.namaSurvey}" berhasil dibuka di peta.`);
+      } else {
+        // Fetch from Supabase if not yet in SQLite local
+        const { data: cloudSurvey, error } = await supabase
+          .from('surveys')
+          .select('*')
+          .eq('id', surveyId)
+          .single();
+
+        if (cloudSurvey && !error) {
+          const restored: Survey = {
+            id: cloudSurvey.id,
+            namaSurvey: cloudSurvey.nama_survey,
+            jenisSurvey: cloudSurvey.jenis_survey || 'Survey Umum',
+            lokasi: cloudSurvey.lokasi || '',
+            surveyor: cloudSurvey.surveyor || '',
+            tanggalSurvey: new Date(cloudSurvey.tanggal_survey || Date.now()),
+            tiangList: cloudSurvey.tiang_list || [],
+            garduList: cloudSurvey.gardu_list || [],
+            jalurList: cloudSurvey.jalur_list || [],
+            jembatanKabelList: cloudSurvey.jembatan_kabel_list || [],
+            persilList: cloudSurvey.persil_list || [],
+            createdAt: new Date(cloudSurvey.created_at || Date.now()),
+            updatedAt: new Date(cloudSurvey.updated_at || Date.now()),
+            isSynced: true,
+          };
+          await surveyService.saveDirect(restored);
+          await surveyService.setCurrent(restored.id);
+          setCurrentSurvey(restored);
+          Alert.alert('Survey Diunduh', `Survey "${restored.namaSurvey}" berhasil diunduh dari cloud & dibuka di peta.`);
+        } else {
+          Alert.alert('Peringatan', 'Data survey tidak ditemukan di perangkat atau cloud.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error loading notification survey:', err);
+      Alert.alert('Error', 'Gagal memuat data survey: ' + (err.message || ''));
+    }
+  };
 
   const initializeSurvey = async () => {
     // ... logic to load survey (same as before)
@@ -648,6 +756,7 @@ export default function App() {
       pemeriksaTitle: pdfPemeriksaTitle.trim() || 'TL HAR',
       pemeriksaName: pdfPemeriksaName.trim(),
       managerName: pdfManagerName.trim(),
+      rincianMode: pdfRincianPosition,
       rincianLines: buildRincianPekerjaan(currentSurvey, {
         bebanTrafoMap: includeBebanTrafo ? bebanTrafoMap : undefined,
         bebanTrafoList: includeBebanTrafo ? bebanTrafoList : undefined,
@@ -666,6 +775,7 @@ export default function App() {
       pemeriksaTitle: pdfPemeriksaTitle.trim(),
       pemeriksaName: pdfPemeriksaName.trim(),
       managerName: pdfManagerName.trim(),
+      rincianPosition: pdfRincianPosition,
     });
 
     setShowExportPdfModal(false);
@@ -781,13 +891,65 @@ export default function App() {
           return;
         }
 
+        let pageRincianLines: string[] | undefined = undefined;
+
+        if (pdfRincianPosition === 'all') {
+          const pageTiangs = seg.tiangList;
+          const pageTiangIds = new Set(pageTiangs.map(t => t.id));
+
+          // Filter jalurs whose endpoints or coordinates overlap with this segment's tiangs
+          const pageJalurs = (currentSurvey.jalurList || []).filter(j =>
+            j.tiangIds?.some(id => pageTiangIds.has(id)) ||
+            j.koordinat.some(c => pageTiangs.some(t => Math.abs(t.koordinat.latitude - c.latitude) < 0.00005 && Math.abs(t.koordinat.longitude - c.longitude) < 0.00005))
+          );
+
+          // Filter gardus matching this segment's tiang locations
+          const pageGardus = (currentSurvey.garduList || []).filter(g =>
+            pageTiangs.some(t => Math.abs(t.koordinat.latitude - g.koordinat.latitude) < 0.0001 && Math.abs(t.koordinat.longitude - g.koordinat.longitude) < 0.0001)
+          );
+
+          const pageSurvey: Survey = {
+            ...currentSurvey,
+            tiangList: pageTiangs,
+            jalurList: pageJalurs,
+            garduList: pageGardus,
+          };
+
+          const firstTiangCode = seg.firstKode || `T.${seg.firstNomor}`;
+          const lastTiangCode = seg.lastKode || `T.${seg.lastNomor}`;
+
+          let bebanTrafoMap: Record<string, BebanTrafoItem> = {};
+          if (includeBebanTrafo) {
+            try {
+              const allBeban = await trafoLoadService.fetchBebanTrafoData();
+              if (pageGardus.length > 0) {
+                for (const g of pageGardus) {
+                  const match = trafoLoadService.findBebanTrafoForGardu(g, allBeban);
+                  if (match) bebanTrafoMap[g.id] = match;
+                }
+              }
+            } catch (e) {}
+          }
+
+          pageRincianLines = buildRincianPekerjaan(pageSurvey, {
+            bebanTrafoMap: includeBebanTrafo ? bebanTrafoMap : undefined,
+            isUpratingTrafo,
+            upratingKva: upratingKva.trim(),
+            targetGarduName: pdfCustomGarduSearch.trim() || (pageGardus[0]?.namaGardu || pageGardus[0]?.nomorGardu),
+            headerTitle: `RINCIAN PEKERJAAN (${firstTiangCode} s/d ${lastTiangCode}) :`,
+          });
+        }
+
         mapBase64s.push(base64);
         pageMetas.push({
           pageNumber: seg.pageNumber,
           totalPages: seg.totalPages,
           firstNomor: seg.firstNomor,
           lastNomor: seg.lastNomor,
+          firstKode: seg.firstKode,
+          lastKode: seg.lastKode,
           panjangMeter: seg.panjangMeter,
+          rincianLines: pageRincianLines,
         });
 
         // Delay minim agar WebView reset state sebelum capture berikutnya
@@ -1381,6 +1543,7 @@ export default function App() {
 
     const lastAction = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev.slice(-19), lastAction]);
 
     try {
       switch (lastAction.type) {
@@ -1462,6 +1625,92 @@ export default function App() {
     } catch (error) {
       console.error('Undo failed:', error);
       Alert.alert('Error', 'Gagal melakukan undo');
+    }
+  };
+
+  // Handle redo action
+  const handleRedo = async () => {
+    if (!currentSurvey || redoStack.length === 0) return;
+
+    const nextAction = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+
+    try {
+      switch (nextAction.type) {
+        case 'add-tiang':
+          const addedTiang = await tiangService.add(currentSurvey.id, nextAction.data);
+          if (addedTiang) {
+            setCurrentSurvey(prev => prev ? {
+              ...prev,
+              tiangList: [...prev.tiangList, { ...nextAction.data, id: addedTiang.id }],
+            } : null);
+          }
+          break;
+        case 'delete-tiang':
+          await tiangService.delete(currentSurvey.id, nextAction.data.id);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            tiangList: prev.tiangList.filter(t => t.id !== nextAction.data.id),
+          } : null);
+          break;
+        case 'add-gardu':
+          const addedGardu = await garduService.add(currentSurvey.id, nextAction.data);
+          if (addedGardu) {
+            setCurrentSurvey(prev => prev ? {
+              ...prev,
+              garduList: [...prev.garduList, { ...nextAction.data, id: addedGardu.id }],
+            } : null);
+          }
+          break;
+        case 'delete-gardu':
+          await garduService.delete(currentSurvey.id, nextAction.data.id);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            garduList: prev.garduList.filter(g => g.id !== nextAction.data.id),
+          } : null);
+          break;
+        case 'add-jalur':
+          const addedJalur = await jalurService.add(currentSurvey.id, nextAction.data);
+          if (addedJalur) {
+            setCurrentSurvey(prev => prev ? {
+              ...prev,
+              jalurList: [...prev.jalurList, { ...nextAction.data, id: addedJalur.id }],
+            } : null);
+          }
+          break;
+        case 'delete-jalur':
+          await jalurService.delete(currentSurvey.id, nextAction.data.id);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            jalurList: prev.jalurList.filter(j => j.id !== nextAction.data.id),
+          } : null);
+          break;
+        case 'edit-tiang':
+          await tiangService.update(currentSurvey.id, nextAction.newData.id, nextAction.newData);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            tiangList: prev.tiangList.map(t => t.id === nextAction.newData.id ? nextAction.newData : t),
+          } : null);
+          break;
+        case 'edit-gardu':
+          await garduService.update(currentSurvey.id, nextAction.newData.id, nextAction.newData);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            garduList: prev.garduList.map(g => g.id === nextAction.newData.id ? nextAction.newData : g),
+          } : null);
+          break;
+        case 'edit-jalur':
+          await jalurService.update(currentSurvey.id, nextAction.newData.id, nextAction.newData);
+          setCurrentSurvey(prev => prev ? {
+            ...prev,
+            jalurList: prev.jalurList.map(j => j.id === nextAction.newData.id ? nextAction.newData : j),
+          } : null);
+          break;
+      }
+      setUndoStack(prev => [...prev.slice(-19), nextAction]);
+    } catch (error) {
+      console.error('Redo failed:', error);
+      Alert.alert('Error', 'Gagal melakukan redo');
     }
   };
 
@@ -1801,20 +2050,41 @@ export default function App() {
               <Ionicons name="layers" size={19} color="white" />
             </TouchableOpacity>
 
-            {/* Toggle UI Button (Eye) */}
-            <TouchableOpacity
-              style={[styles.headerActionButton, styles.screenshotActionButton]}
-              onPress={() => {
-                setUiHidden(true);
-                Alert.alert(
-                  'Mode Screenshot',
-                  'UI disembunyikan. Silakan screenshot manual.\n\nTap tombol "X" di pojok kanan atas untuk kembali.',
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Ionicons name="eye" size={19} color="white" />
-            </TouchableOpacity>
+            {/* Superadmin Notification Bell (Auto-Hides when 0 unread) */}
+            {isSuperadmin && unreadNotificationCount > 0 && (
+              <TouchableOpacity
+                style={[
+                  styles.headerActionButton,
+                  {
+                    position: 'relative',
+                    backgroundColor: '#B45309',
+                    borderWidth: 1,
+                    borderColor: '#F59E0B',
+                  }
+                ]}
+                onPress={() => setShowNotificationModal(true)}
+              >
+                <Ionicons name="notifications" size={19} color="#FEF08A" />
+                <View style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 9,
+                  minWidth: 16,
+                  height: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                  borderWidth: 1.5,
+                  borderColor: '#0D47A1',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             {/* Summary Button */}
             <TouchableOpacity
@@ -1833,6 +2103,68 @@ export default function App() {
             </TouchableOpacity>
           </View>
         </View>
+      )}
+
+      {/* Floating In-App Toast for Realtime Push Notification */}
+      {activeToast && !uiHidden && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={{
+            position: 'absolute',
+            top: 68,
+            left: 12,
+            right: 12,
+            backgroundColor: '#0F172A',
+            borderRadius: 14,
+            padding: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.4,
+            shadowRadius: 10,
+            elevation: 10,
+            borderWidth: 1,
+            borderColor: activeToast.type === 'INSERT' ? '#10B981' : '#3B82F6',
+            zIndex: 99999,
+          }}
+          onPress={() => {
+            handleSelectNotificationSurvey(activeToast.surveyId);
+          }}
+        >
+          <View style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            backgroundColor: activeToast.type === 'INSERT' ? '#065F46' : '#1E3A8A',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 10,
+          }}>
+            <Ionicons
+              name={activeToast.type === 'INSERT' ? 'cloud-upload' : 'pencil'}
+              size={20}
+              color={activeToast.type === 'INSERT' ? '#34D399' : '#60A5FA'}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: '#F8FAFC', fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
+                {activeToast.title}
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 10 }}>Baru saja</Text>
+            </View>
+            <Text style={{ color: '#CBD5E1', fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+              {activeToast.message}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={{ padding: 6, marginLeft: 6 }}
+            onPress={() => setActiveToast(null)}
+          >
+            <Ionicons name="close" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+        </TouchableOpacity>
       )}
 
       {/* Map */}
@@ -1916,32 +2248,68 @@ export default function App() {
         </View>
       )}
 
-      {/* Floating Undo Button */}
-      {undoStack.length > 0 && !uiHidden && (
-        <TouchableOpacity
+      {/* Floating Bottom-Left Undo & Redo Controls */}
+      {currentSurvey && !uiHidden && (
+        <View
           style={{
             position: 'absolute',
             left: 16,
             bottom: 90,
-            backgroundColor: '#FF5722',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderRadius: 25,
             flexDirection: 'row',
             alignItems: 'center',
+            backgroundColor: '#1E293B',
+            borderRadius: 25,
+            paddingHorizontal: 6,
+            paddingVertical: 5,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 4,
             elevation: 5,
+            borderWidth: 1,
+            borderColor: '#334155',
           }}
-          onPress={handleUndo}
         >
-          <Ionicons name="arrow-undo" size={20} color="white" style={{ marginRight: 6 }} />
-          <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>
-            Undo ({undoStack.length})
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: undoStack.length > 0 ? '#EA580C' : 'transparent',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 18,
+              opacity: undoStack.length > 0 ? 1 : 0.45,
+            }}
+            onPress={handleUndo}
+            disabled={undoStack.length === 0}
+          >
+            <Ionicons name="arrow-undo" size={16} color={undoStack.length > 0 ? 'white' : '#94A3B8'} style={{ marginRight: 4 }} />
+            <Text style={{ color: undoStack.length > 0 ? 'white' : '#94A3B8', fontWeight: '700', fontSize: 12 }}>
+              Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ width: 1, height: 16, backgroundColor: '#334155', marginHorizontal: 4 }} />
+
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: redoStack.length > 0 ? '#0284C7' : 'transparent',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 18,
+              opacity: redoStack.length > 0 ? 1 : 0.45,
+            }}
+            onPress={handleRedo}
+            disabled={redoStack.length === 0}
+          >
+            <Ionicons name="arrow-redo" size={16} color={redoStack.length > 0 ? 'white' : '#94A3B8'} style={{ marginRight: 4 }} />
+            <Text style={{ color: redoStack.length > 0 ? 'white' : '#94A3B8', fontWeight: '700', fontSize: 12 }}>
+              Redo{redoStack.length > 0 ? ` (${redoStack.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Floating Selesai Button */}
@@ -2276,6 +2644,22 @@ export default function App() {
       </Modal>
 
 
+      {/* Superadmin Notification Modal */}
+      <NotificationModal
+        visible={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        notifications={notifications}
+        onMarkAllRead={async () => {
+          await mobileNotificationService.markAllAsRead();
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }}
+        onClearAll={async () => {
+          await mobileNotificationService.clearAllNotifications();
+          setNotifications([]);
+        }}
+        onSelectSurvey={handleSelectNotificationSurvey}
+      />
+
       {/* Menu Modal */}
       <MenuModal
         visible={showMenu}
@@ -2284,6 +2668,17 @@ export default function App() {
         onOpenAbout={() => setShowAbout(true)}
         onOpenOverlayManager={() => setShowOverlayManager(true)}
         onCheckUpdate={handleManualCheckUpdate}
+        onHideUI={() => {
+          setUiHidden(true);
+          Alert.alert(
+            'Mode Screenshot',
+            'UI disembunyikan. Silakan screenshot manual.\n\nTap tombol "X" di pojok kanan atas untuk kembali.',
+            [{ text: 'OK' }]
+          );
+        }}
+        isSuperadmin={isSuperadmin}
+        onOpenNotifications={() => setShowNotificationModal(true)}
+        unreadCount={unreadNotificationCount}
       />
 
       {/* Overlay Manager Modal */}
@@ -2580,6 +2975,36 @@ export default function App() {
                     </View>
                   </View>
                 )}
+              </View>
+
+              {/* Option 3: Posisi Tabel Rincian Pekerjaan (First Page Only vs All Pages) */}
+              <Text style={[styles.exportFormLabel, { marginTop: 14, fontSize: 13, color: '#0D47A1' }]}>
+                📋 Posisi & Mode Tabel Rincian Pekerjaan:
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.exportModeCard,
+                    { flex: 1, padding: 10 },
+                    pdfRincianPosition === 'first' && styles.exportModeCardActive
+                  ]}
+                  onPress={() => setPdfRincianPosition('first')}
+                >
+                  <Text style={styles.exportModeCardTitle}>📄 Hal 1 (Total Akumulasi)</Text>
+                  <Text style={styles.exportModeCardSub}>Ringkasan Total Seluruh Survey di Hal 1</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.exportModeCard,
+                    { flex: 1, padding: 10 },
+                    pdfRincianPosition === 'all' && styles.exportModeCardActive
+                  ]}
+                  onPress={() => setPdfRincianPosition('all')}
+                >
+                  <Text style={styles.exportModeCardTitle}>📑 Per Halaman (Breakdown)</Text>
+                  <Text style={styles.exportModeCardSub}>Breakdown tiang & kabel khusus lembar tsb</Text>
+                </TouchableOpacity>
               </View>
 
               <Text style={[styles.exportFormLabel, { marginTop: 14, fontSize: 13, color: '#0D47A1' }]}>📐 Mode Segmentasi Halaman PDF:</Text>

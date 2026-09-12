@@ -30,6 +30,7 @@ export interface RincianPekerjaanOptions {
     isUpratingTrafo?: boolean;
     upratingKva?: string;
     targetGarduName?: string;
+    headerTitle?: string;
 }
 
 /**
@@ -44,7 +45,7 @@ export interface RincianPekerjaanOptions {
  * - BEBAN TRAFO TERUPDATE: (jika disisipkan)
  */
 export function buildRincianPekerjaan(survey: Survey, options?: RincianPekerjaanOptions | Record<string, BebanTrafoItem>): string[] {
-    const opts: RincianPekerjaanOptions = (options && ('bebanTrafoMap' in options || 'isUpratingTrafo' in options || 'bebanTrafoList' in options))
+    const opts: RincianPekerjaanOptions = (options && ('bebanTrafoMap' in options || 'isUpratingTrafo' in options || 'bebanTrafoList' in options || 'headerTitle' in options))
         ? (options as RincianPekerjaanOptions)
         : { bebanTrafoMap: options as Record<string, BebanTrafoItem> };
 
@@ -57,7 +58,7 @@ export function buildRincianPekerjaan(survey: Survey, options?: RincianPekerjaan
         return [];
     }
 
-    lines.push('RINCIAN PEKERJAAN :');
+    lines.push(opts.headerTitle || 'RINCIAN PEKERJAAN :');
     lines.push('');
 
     // ─────────────────────────────────────────────

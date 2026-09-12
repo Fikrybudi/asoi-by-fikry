@@ -1,6 +1,6 @@
 {
   "name": "masiv-survey-app",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

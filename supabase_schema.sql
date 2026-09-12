@@ -186,3 +186,27 @@ UPDATE auth.users
 SET raw_user_meta_data = '{"role": "superadmin"}'::jsonb
 WHERE email = 'email_akun_anda@domain.com';
 */
+
+-- =============================================================================
+-- REALTIME PUBLICATION FOR SUPERADMIN PUSH NOTIFICATIONS
+-- =============================================================================
+
+-- 1. Ensure updated_by column exists on surveys
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS updated_by TEXT;
+
+-- 2. Add surveys table to supabase_realtime publication
+-- This enables postgres_changes events on the surveys table so superadmin
+-- clients receive instant notifications when surveys are uploaded or modified.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'surveys'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE surveys;
+  END IF;
+END $$;
+
+-- 3. Set replica identity to FULL so UPDATE payloads contain all survey details
+ALTER TABLE surveys REPLICA IDENTITY FULL;
+

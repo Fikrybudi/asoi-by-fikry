@@ -24,6 +24,7 @@ export interface SurveyInfo {
     pemeriksaName?: string;   // e.g. "Budi Santoso"
     managerName?: string;     // e.g. "Ahmad Hidayat"
     rincianLines?: string[];
+    rincianMode?: 'first' | 'all'; // 'first' = halaman pertama saja (default), 'all' = per halaman / semua halaman
 }
 
 export interface PageMeta {
@@ -34,6 +35,7 @@ export interface PageMeta {
     firstKode?: string;
     lastKode?: string;
     panjangMeter: number;
+    rincianLines?: string[];
 }
 
 // Rincian Pekerjaan box style
@@ -784,9 +786,14 @@ export async function generateMultiPagePdf(
             // Draw Official Kop PLN
             drawOfficialPlnKop(page, embeddedFont, embeddedFontBold, surveyInfo, meta, pageWidth, pageHeight, plnLogoImage);
 
-            // Draw Rincian Pekerjaan block on FIRST PAGE ONLY
-            if (i === 0 && surveyInfo.rincianLines && surveyInfo.rincianLines.length > 0) {
-                drawRincianBlock(page, embeddedFont, embeddedFontBold, surveyInfo.rincianLines, mapX, mapY);
+            // Draw Rincian Pekerjaan block
+            // If rincianMode === 'all', use per-page meta.rincianLines if available, else fall back to surveyInfo.rincianLines
+            const rincianForThisPage = (surveyInfo.rincianMode === 'all')
+                ? (meta?.rincianLines || surveyInfo.rincianLines)
+                : (i === 0 ? surveyInfo.rincianLines : undefined);
+
+            if (rincianForThisPage && rincianForThisPage.length > 0) {
+                drawRincianBlock(page, embeddedFont, embeddedFontBold, rincianForThisPage, mapX, mapY);
             }
 
             // Draw Official Legenda Peta block on FIRST PAGE ONLY (bottom-right of map area)

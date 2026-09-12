@@ -126,6 +126,19 @@ export const surveyService = {
         return newSurvey;
     },
 
+    // Save full survey instance directly (e.g. downloaded from cloud)
+    async saveDirect(survey: Survey): Promise<Survey> {
+        const surveys = await this.getAll();
+        const index = surveys.findIndex(s => s.id === survey.id);
+        if (index !== -1) {
+            surveys[index] = survey;
+        } else {
+            surveys.push(survey);
+        }
+        await AsyncStorage.setItem(KEYS.SURVEYS, JSON.stringify(surveys));
+        return survey;
+    },
+
     // Update survey
     async update(id: string, updates: Partial<Survey>): Promise<Survey | null> {
         const surveys = await this.getAll();

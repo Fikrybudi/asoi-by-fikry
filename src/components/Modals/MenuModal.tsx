@@ -14,6 +14,10 @@ interface MenuModalProps {
   onOpenAbout: () => void;
   onOpenOverlayManager: () => void;
   onCheckUpdate?: () => void;
+  onHideUI?: () => void;
+  isSuperadmin?: boolean;
+  onOpenNotifications?: () => void;
+  unreadCount?: number;
 }
 
 function MenuModal({
@@ -23,6 +27,10 @@ function MenuModal({
   onOpenAbout,
   onOpenOverlayManager,
   onCheckUpdate,
+  onHideUI,
+  isSuperadmin,
+  onOpenNotifications,
+  unreadCount = 0,
 }: MenuModalProps) {
   const handleLogout = () => {
     Alert.alert(
@@ -50,16 +58,51 @@ function MenuModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.modalContent, { width: '80%' }]}>
+        <View style={[styles.modalContent, { width: '85%' }]}>
           <Text style={styles.title}>Menu</Text>
 
           {/* User Info */}
-          <View style={{ alignItems: 'center', marginBottom: 20 }}>
-            <View style={{ backgroundColor: '#1565C0', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
-              <Ionicons name="person" size={30} color="white" />
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ backgroundColor: '#1565C0', width: 54, height: 54, borderRadius: 27, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
+              <Ionicons name="person" size={28} color="white" />
             </View>
-            <Text style={{ fontSize: 14, color: '#666' }}>{userEmail}</Text>
+            <Text style={{ fontSize: 13, color: '#666' }}>{userEmail}</Text>
           </View>
+
+          {/* Superadmin Notification History */}
+          {isSuperadmin && onOpenNotifications && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                onClose();
+                onOpenNotifications();
+              }}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#D97706" style={{ marginRight: 12 }} />
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 15, color: '#333', fontWeight: '600' }}>Pemberitahuan Survey</Text>
+                {unreadCount > 0 && (
+                  <View style={{ backgroundColor: '#EF4444', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>{unreadCount}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Mode Screenshot Button */}
+          {onHideUI && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                onClose();
+                onHideUI();
+              }}
+            >
+              <Ionicons name="eye-outline" size={24} color="#0284C7" style={{ marginRight: 12 }} />
+              <Text style={{ fontSize: 15, color: '#333' }}>Mode Screenshot (Sembunyikan UI)</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Check OTA Update Button */}
           {onCheckUpdate && (
@@ -71,7 +114,7 @@ function MenuModal({
               }}
             >
               <Ionicons name="cloud-download-outline" size={24} color="#2E7D32" style={{ marginRight: 12 }} />
-              <Text style={{ fontSize: 16, color: '#2E7D32', fontWeight: 'bold' }}>Cek Pembaruan Aplikasi</Text>
+              <Text style={{ fontSize: 15, color: '#2E7D32', fontWeight: 'bold' }}>Cek Pembaruan Aplikasi</Text>
             </TouchableOpacity>
           )}
 
@@ -84,7 +127,7 @@ function MenuModal({
             }}
           >
             <Ionicons name="information-circle-outline" size={24} color="#1565C0" style={{ marginRight: 12 }} />
-            <Text style={{ fontSize: 16, color: '#333' }}>Tentang Aplikasi</Text>
+            <Text style={{ fontSize: 15, color: '#333' }}>Tentang Aplikasi</Text>
           </TouchableOpacity>
 
           {/* Import Data Eksisting Button */}
@@ -96,7 +139,7 @@ function MenuModal({
             }}
           >
             <Ionicons name="layers-outline" size={24} color="#FF9800" style={{ marginRight: 12 }} />
-            <Text style={{ fontSize: 16, color: '#333' }}>Import Data Eksisting</Text>
+            <Text style={{ fontSize: 15, color: '#333' }}>Import Data Eksisting</Text>
           </TouchableOpacity>
 
           {/* Logout Button */}
@@ -105,12 +148,12 @@ function MenuModal({
             onPress={handleLogout}
           >
             <Ionicons name="log-out-outline" size={24} color="#F44336" style={{ marginRight: 12 }} />
-            <Text style={{ fontSize: 16, color: '#F44336' }}>Logout</Text>
+            <Text style={{ fontSize: 15, color: '#F44336' }}>Logout</Text>
           </TouchableOpacity>
 
           {/* Close Button */}
           <TouchableOpacity
-            style={[styles.closeButton, { marginTop: 20 }]}
+            style={[styles.closeButton, { marginTop: 14 }]}
             onPress={onClose}
           >
             <Text style={styles.closeText}>Tutup</Text>

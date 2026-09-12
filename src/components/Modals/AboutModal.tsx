@@ -34,7 +34,7 @@ function AboutModal({ visible, onClose, onCheckUpdate }: AboutModalProps) {
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#555', textAlign: 'center', marginTop: 2 }}>
                 Mobile Asset Surveying, Information and Verification system
               </Text>
-              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.2.5</Text>
+              <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>Versi 2.2.6</Text>
               
               {onCheckUpdate && (
                 <TouchableOpacity
