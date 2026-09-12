@@ -1120,8 +1120,21 @@ const generateMapHTML = (
       flex-direction: row-reverse !important;
       align-items: flex-start !important;
       gap: 6px !important;
-      margin-top: 10px !important;
-      margin-right: 10px !important;
+      margin-top: 16px !important;
+      margin-right: 12px !important;
+    }
+    .leaflet-control-layers {
+      border-radius: 8px !important;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25) !important;
+      border: 1px solid rgba(0,0,0,0.15) !important;
+    }
+    .leaflet-control-layers-expanded {
+      padding: 8px 12px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      line-height: 1.6 !important;
+      background: rgba(255, 255, 255, 0.96) !important;
+      border-radius: 8px !important;
     }
     .leaflet-control-scale {
       margin: 0 !important;
