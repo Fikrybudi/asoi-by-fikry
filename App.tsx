@@ -2248,82 +2248,129 @@ export default function App() {
         </View>
       )}
 
-      {/* Floating Bottom-Left Undo & Redo Controls */}
-      {currentSurvey && !uiHidden && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 16,
-            bottom: 90,
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#1E293B',
-            borderRadius: 25,
-            paddingHorizontal: 6,
-            paddingVertical: 5,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-            borderWidth: 1,
-            borderColor: '#334155',
-          }}
-        >
-          <TouchableOpacity
+      {/* Floating Compact Undo & Redo Controls (Symbol-Only, Non-Obstructive) */}
+      {currentSurvey && !uiHidden && (() => {
+        const isPinModeActive = (toolMode === 'add-tiang' || toolMode === 'add-gardu' || toolMode === 'draw-jalur' || toolMode === 'draw-jembatan') && centerCoordinate !== null;
+        return (
+          <View
             style={{
+              position: 'absolute',
+              left: 14,
+              bottom: isPinModeActive ? 150 : 86,
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: undoStack.length > 0 ? '#EA580C' : 'transparent',
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 18,
-              opacity: undoStack.length > 0 ? 1 : 0.45,
+              backgroundColor: '#1E293B',
+              borderRadius: 22,
+              paddingHorizontal: 4,
+              paddingVertical: 4,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.3,
+              shadowRadius: 5,
+              elevation: 6,
+              borderWidth: 1,
+              borderColor: '#334155',
+              zIndex: 1001,
             }}
-            onPress={handleUndo}
-            disabled={undoStack.length === 0}
           >
-            <Ionicons name="arrow-undo" size={16} color={undoStack.length > 0 ? 'white' : '#94A3B8'} style={{ marginRight: 4 }} />
-            <Text style={{ color: undoStack.length > 0 ? 'white' : '#94A3B8', fontWeight: '700', fontSize: 12 }}>
-              Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
-            </Text>
-          </TouchableOpacity>
+            {/* Undo Symbol Button */}
+            <TouchableOpacity
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: undoStack.length > 0 ? '#EA580C' : 'transparent',
+                opacity: undoStack.length > 0 ? 1 : 0.4,
+              }}
+              onPress={handleUndo}
+              disabled={undoStack.length === 0}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-undo" size={17} color={undoStack.length > 0 ? '#FFFFFF' : '#94A3B8'} />
+              {undoStack.length > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -3,
+                    right: -3,
+                    backgroundColor: '#DC2626',
+                    borderRadius: 7,
+                    minWidth: 14,
+                    height: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 2,
+                    borderWidth: 1.5,
+                    borderColor: '#1E293B',
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 8.5, fontWeight: 'bold' }}>
+                    {undoStack.length > 9 ? '9+' : undoStack.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          <View style={{ width: 1, height: 16, backgroundColor: '#334155', marginHorizontal: 4 }} />
+            {/* Separator Divider */}
+            <View style={{ width: 1, height: 16, backgroundColor: '#334155', marginHorizontal: 3 }} />
 
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: redoStack.length > 0 ? '#0284C7' : 'transparent',
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 18,
-              opacity: redoStack.length > 0 ? 1 : 0.45,
-            }}
-            onPress={handleRedo}
-            disabled={redoStack.length === 0}
-          >
-            <Ionicons name="arrow-redo" size={16} color={redoStack.length > 0 ? 'white' : '#94A3B8'} style={{ marginRight: 4 }} />
-            <Text style={{ color: redoStack.length > 0 ? 'white' : '#94A3B8', fontWeight: '700', fontSize: 12 }}>
-              Redo{redoStack.length > 0 ? ` (${redoStack.length})` : ''}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            {/* Redo Symbol Button */}
+            <TouchableOpacity
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: redoStack.length > 0 ? '#0284C7' : 'transparent',
+                opacity: redoStack.length > 0 ? 1 : 0.4,
+              }}
+              onPress={handleRedo}
+              disabled={redoStack.length === 0}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-redo" size={17} color={redoStack.length > 0 ? '#FFFFFF' : '#94A3B8'} />
+              {redoStack.length > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -3,
+                    right: -3,
+                    backgroundColor: '#0284C7',
+                    borderRadius: 7,
+                    minWidth: 14,
+                    height: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 2,
+                    borderWidth: 1.5,
+                    borderColor: '#1E293B',
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 8.5, fontWeight: 'bold' }}>
+                    {redoStack.length > 9 ? '9+' : redoStack.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
 
-      {/* Floating Selesai Button */}
-      {!uiHidden && (
+      {/* Floating Selesai Button (Hidden during interactive pin/drawing mode to prevent layout overlap) */}
+      {!uiHidden && !((toolMode === 'add-tiang' || toolMode === 'add-gardu' || toolMode === 'draw-jalur' || toolMode === 'draw-jembatan') && centerCoordinate !== null) && (
         <TouchableOpacity
           style={{
             position: 'absolute',
             right: 16,
-            bottom: 90,
+            bottom: 86,
             backgroundColor: '#E8F5E9',
             borderWidth: 1,
             borderColor: '#4CAF50',
             paddingHorizontal: 16,
-            paddingVertical: 12,
+            paddingVertical: 10,
             borderRadius: 25,
             flexDirection: 'row',
             alignItems: 'center',
