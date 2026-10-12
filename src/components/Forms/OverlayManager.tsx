@@ -1,10 +1,13 @@
 // =============================================================================
-// PLN SURVEY APP - Overlay Manager Component
+// PLN SURVEY APP - Overlay Manager Component (Light Mobile Theme)
 // =============================================================================
-// Supports:
-// 1. Cloud GIS On-Demand (JTM per Penyulang, JTR per Gardu, Gardu & Proteksi per ULP)
-//    hosted on Cloudflare CDN / aaPanel static hosting.
-// 2. Local File Import (CSV, KML, and KMZ files).
+// Fitur:
+// 1. Cloud GIS On-Demand:
+//    - JTM 20 kV per Penyulang (warna-warni per penyulang)
+//    - JTR per Gardu (Kabel TR Oren Menyala #FF6600 & Tiang TR Ungu #7C3AED)
+//    - Titik Gardu Distribusi & Proteksi/GH per ULP
+// 2. Import File Lokal (CSV, KML, KMZ)
+// 3. Manajemen Layer Aktif (Visibility, Opacity Slider, Zoom/Focus, Hapus)
 // =============================================================================
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -30,7 +33,6 @@ import {
     cloudGisService,
     CloudGisCatalog,
     CloudGardu,
-    DEFAULT_CLOUD_GIS_URL,
 } from '../../services/cloudGisService';
 
 function generateId(): string {
@@ -42,14 +44,14 @@ const TYPE_LABELS: Record<OverlayDataType, string> = {
     jtr: '🔌 JTR (Tegangan Rendah)',
     gardu: '🏠 Gardu Distribusi',
     proteksi: '🛡️ Proteksi & GH',
-    custom: '📍 Custom',
+    custom: '📍 Titik / Jalur',
 };
 
 const TYPE_OPTIONS: { value: OverlayDataType; label: string }[] = [
-    { value: 'jtm', label: '⚡ JTM (Jaringan/Polyline)' },
-    { value: 'jtr', label: '🔌 JTR (Jaringan & Tiang TR)' },
-    { value: 'gardu', label: '🏠 Gardu (Titik)' },
-    { value: 'proteksi', label: '🛡️ Proteksi (Titik)' },
+    { value: 'jtm', label: '⚡ JTM 20 kV' },
+    { value: 'jtr', label: '🔌 JTR & Tiang TR' },
+    { value: 'gardu', label: '🏠 Gardu' },
+    { value: 'proteksi', label: '🛡️ Proteksi' },
     { value: 'custom', label: '📍 Custom' },
 ];
 
@@ -144,7 +146,7 @@ export default function OverlayManager({
         }
         const q = garduSearch.trim().toLowerCase();
         if (!q) {
-            return list.slice(0, 15);
+            return list.slice(0, 10);
         }
         return list
             .filter(
@@ -153,7 +155,7 @@ export default function OverlayManager({
                     g.nama.toLowerCase().includes(q) ||
                     g.penyulang.toLowerCase().includes(q)
             )
-            .slice(0, 40);
+            .slice(0, 25);
     }, [catalog, selectedUlp, garduSearch]);
 
     // ── Cloud GIS Actions ────────────────────────────────────────────────
@@ -453,62 +455,73 @@ export default function OverlayManager({
         <Modal
             visible={visible}
             transparent={true}
-            animationType="slide"
+            animationType="fade"
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
                 <View style={styles.container}>
-                    {/* Header */}
+                    {/* Header Modal */}
                     <View style={styles.header}>
                         <View style={styles.headerTitleRow}>
                             <View style={styles.headerIconBadge}>
-                                <Ionicons name="globe-outline" size={18} color="white" />
+                                <Ionicons name="globe-outline" size={20} color="white" />
                             </View>
                             <View>
                                 <Text style={styles.title}>Data Jaringan Eksisting</Text>
-                                <Text style={styles.subtitle}>Cloud GIS On-Demand & File Import</Text>
+                                <Text style={styles.subtitle}>Peta JTM & JTR On-Demand Cloud GIS</Text>
                             </View>
                         </View>
-                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={24} color="#94a3b8" />
+                        <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Ionicons name="close" size={22} color="#64748B" />
                         </TouchableOpacity>
                     </View>
 
-                    {/* Tab Bar */}
-                    <View style={styles.tabBar}>
-                        <TouchableOpacity
-                            style={[styles.tabButton, activeTab === 'cloud' && styles.tabButtonActiveCloud]}
-                            onPress={() => setActiveTab('cloud')}
-                        >
-                            <Ionicons
-                                name="cloud-download-outline"
-                                size={16}
-                                color={activeTab === 'cloud' ? '#ea580c' : '#94a3b8'}
-                            />
-                            <Text style={[styles.tabText, activeTab === 'cloud' && styles.tabTextActiveCloud]}>
-                                Cloud GIS
-                            </Text>
-                            <View style={[styles.badgeRecommend, activeTab === 'cloud' ? styles.badgeActive : null]}>
-                                <Text style={styles.badgeText}>AUTO</Text>
-                            </View>
-                        </TouchableOpacity>
+                    {/* Segmented Tab Controls */}
+                    <View style={styles.tabBarContainer}>
+                        <View style={styles.tabBar}>
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeTab === 'cloud' && styles.tabButtonActive]}
+                                onPress={() => setActiveTab('cloud')}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons
+                                    name="cloud-download-outline"
+                                    size={16}
+                                    color={activeTab === 'cloud' ? '#1565C0' : '#64748B'}
+                                />
+                                <Text style={[styles.tabText, activeTab === 'cloud' && styles.tabTextActive]}>
+                                    Cloud GIS
+                                </Text>
+                                <View style={[styles.badgeAuto, activeTab === 'cloud' && styles.badgeAutoActive]}>
+                                    <Text style={[styles.badgeAutoText, activeTab === 'cloud' && styles.badgeAutoTextActive]}>
+                                        AUTO
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={[styles.tabButton, activeTab === 'local' && styles.tabButtonActiveLocal]}
-                            onPress={() => setActiveTab('local')}
-                        >
-                            <Ionicons
-                                name="document-text-outline"
-                                size={16}
-                                color={activeTab === 'local' ? '#0284c7' : '#94a3b8'}
-                            />
-                            <Text style={[styles.tabText, activeTab === 'local' && styles.tabTextActiveLocal]}>
-                                File Lokal
-                            </Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeTab === 'local' && styles.tabButtonActive]}
+                                onPress={() => setActiveTab('local')}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons
+                                    name="document-attach-outline"
+                                    size={16}
+                                    color={activeTab === 'local' ? '#1565C0' : '#64748B'}
+                                />
+                                <Text style={[styles.tabText, activeTab === 'local' && styles.tabTextActive]}>
+                                    File Lokal
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
-                    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    {/* Body Scroll */}
+                    <ScrollView
+                        style={styles.content}
+                        showsVerticalScrollIndicator={true}
+                        keyboardShouldPersistTaps="handled"
+                    >
                         {/* ========================================================= */}
                         {/* TAB 1: CLOUD GIS */}
                         {/* ========================================================= */}
@@ -518,34 +531,33 @@ export default function OverlayManager({
                                 <View style={styles.serverStatusCard}>
                                     <View style={styles.statusIndicatorRow}>
                                         <View style={[styles.statusDot, catalog ? styles.dotGreen : styles.dotOrange]} />
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.serverStatusText}>
-                                                {loadingCatalog ? (
-                                                    'Menghubungkan ke Cloud Server...'
-                                                ) : catalog ? (
-                                                    `Server Online: ${catalog.gardu.length.toLocaleString()} Gardu · ${catalog.penyulang.length} Penyulang`
-                                                ) : (
-                                                    'Gagal terhubung ke Cloud GIS'
-                                                )}
-                                            </Text>
-                                        </View>
+                                        <Text style={styles.serverStatusText} numberOfLines={1}>
+                                            {loadingCatalog ? (
+                                                'Menghubungkan ke Cloud Server...'
+                                            ) : catalog ? (
+                                                `Online: ${catalog.gardu.length.toLocaleString()} Gardu · ${catalog.penyulang.length} Penyulang`
+                                            ) : (
+                                                'Gagal terhubung ke Cloud GIS'
+                                            )}
+                                        </Text>
                                     </View>
                                     <TouchableOpacity
                                         style={styles.refreshButton}
                                         onPress={() => loadCatalog(true)}
                                         disabled={loadingCatalog}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                     >
                                         {loadingCatalog ? (
-                                            <ActivityIndicator size="small" color="#cbd5e1" />
+                                            <ActivityIndicator size="small" color="#1565C0" />
                                         ) : (
-                                            <Ionicons name="refresh-outline" size={16} color="#cbd5e1" />
+                                            <Ionicons name="reload-outline" size={15} color="#1565C0" />
                                         )}
                                     </TouchableOpacity>
                                 </View>
 
                                 {catalogError && (
                                     <View style={styles.errorBox}>
-                                        <Ionicons name="alert-circle-outline" size={18} color="#ef4444" />
+                                        <Ionicons name="alert-circle" size={16} color="#DC2626" />
                                         <Text style={styles.errorText}>{catalogError}</Text>
                                     </View>
                                 )}
@@ -553,7 +565,7 @@ export default function OverlayManager({
                                 {/* ULP Filter Pills */}
                                 {catalog && (
                                     <View style={styles.filterSection}>
-                                        <Text style={styles.filterLabel}>WILAYAH ULP:</Text>
+                                        <Text style={styles.filterLabel}>WILAYAH KERJA ULP:</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ulpScroll}>
                                             <TouchableOpacity
                                                 style={[styles.ulpPill, selectedUlp === 'ALL' && styles.ulpPillActive]}
@@ -584,11 +596,11 @@ export default function OverlayManager({
 
                                 {/* CARD 1: JTM 20 kV */}
                                 {catalog && (
-                                    <View style={styles.featureCard}>
+                                    <View style={styles.cardBox}>
                                         <View style={styles.cardHeaderRow}>
                                             <View style={styles.cardTitleWithIcon}>
-                                                <Ionicons name="flash-outline" size={16} color="#0284c7" />
-                                                <Text style={styles.cardTitle}>JTM 20 kV (Per Penyulang)</Text>
+                                                <Ionicons name="flash" size={16} color="#1565C0" />
+                                                <Text style={styles.cardTitle}>JTM 20 kV (Penyulang)</Text>
                                             </View>
                                             <Text style={styles.cardBadgeCount}>{filteredPenyulang.length} penyulang</Text>
                                         </View>
@@ -598,7 +610,7 @@ export default function OverlayManager({
                                                 selectedValue={selectedPenyulangId}
                                                 onValueChange={(itemValue) => setSelectedPenyulangId(itemValue)}
                                                 style={styles.picker}
-                                                dropdownIconColor="#cbd5e1"
+                                                dropdownIconColor="#1565C0"
                                             >
                                                 {filteredPenyulang.map((p) => {
                                                     const isLoaded = overlays.some((o) => o.id === `cloud_jtm_${p.file.replace('.geojson', '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
@@ -607,7 +619,7 @@ export default function OverlayManager({
                                                             key={p.id}
                                                             label={`${p.nama} (${p.ulp})${isLoaded ? ' ✓ [Aktif]' : ''}`}
                                                             value={p.id}
-                                                            color="#f8fafc"
+                                                            color="#1E293B"
                                                         />
                                                     );
                                                 })}
@@ -618,14 +630,15 @@ export default function OverlayManager({
                                             style={styles.actionBtnPrimary}
                                             onPress={handleLoadJtm}
                                             disabled={!selectedPenyulangId || loadingAction?.startsWith('jtm-')}
+                                            activeOpacity={0.8}
                                         >
                                             {loadingAction?.startsWith('jtm-') ? (
                                                 <ActivityIndicator size="small" color="white" />
                                             ) : (
-                                                <Ionicons name="eye-outline" size={16} color="white" />
+                                                <Ionicons name="map-outline" size={16} color="white" />
                                             )}
                                             <Text style={styles.actionBtnText}>
-                                                {loadingAction?.startsWith('jtm-') ? 'Memuat JTM...' : 'Tampilkan JTM'}
+                                                {loadingAction?.startsWith('jtm-') ? 'Memuat JTM...' : 'Tampilkan JTM di Peta'}
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
@@ -633,37 +646,40 @@ export default function OverlayManager({
 
                                 {/* CARD 2: JTR PER GARDU */}
                                 {catalog && (
-                                    <View style={[styles.featureCard, styles.jtrCard]}>
+                                    <View style={[styles.cardBox, styles.cardBoxJtr]}>
                                         <View style={styles.cardHeaderRow}>
                                             <View style={styles.cardTitleWithIcon}>
-                                                <Ionicons name="git-network-outline" size={16} color="#ea580c" />
-                                                <Text style={[styles.cardTitle, { color: '#ea580c' }]}>
+                                                <Ionicons name="git-network" size={16} color="#EA580C" />
+                                                <Text style={[styles.cardTitle, { color: '#C2410C' }]}>
                                                     JTR & Tiang TR (Per Gardu)
                                                 </Text>
                                             </View>
                                             <View style={styles.colorPillOrange}>
-                                                <Text style={styles.colorPillText}>Oren Menyala</Text>
+                                                <Text style={styles.colorPillText}>Oren & Ungu</Text>
                                             </View>
                                         </View>
+                                        <Text style={styles.cardDescText}>
+                                            Muat jalur kabel TR (Oren) & posisi tiang TR (Ungu) sesuai gardu distribusi.
+                                        </Text>
 
                                         {/* Search Input */}
                                         <View style={styles.searchBar}>
-                                            <Ionicons name="search-outline" size={16} color="#64748b" style={styles.searchIcon} />
+                                            <Ionicons name="search" size={16} color="#64748B" style={styles.searchIcon} />
                                             <TextInput
                                                 style={styles.searchInput}
-                                                placeholder="Cari Gardu (contoh: TGP240, AAP, TELUK)..."
-                                                placeholderTextColor="#64748b"
+                                                placeholder="Ketik kode/nama gardu (cth: TGP240, AAP, TELUK)..."
+                                                placeholderTextColor="#94A3B8"
                                                 value={garduSearch}
                                                 onChangeText={setGarduSearch}
                                             />
                                             {garduSearch.length > 0 && (
                                                 <TouchableOpacity onPress={() => setGarduSearch('')} style={styles.clearSearchBtn}>
-                                                    <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                                                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
                                                 </TouchableOpacity>
                                             )}
                                         </View>
 
-                                        {/* Gardu Results */}
+                                        {/* Gardu Results (Smooth Non-Conflicting List) */}
                                         <View style={styles.garduListContainer}>
                                             {filteredGardu.length === 0 ? (
                                                 <Text style={styles.garduEmptyText}>Tidak ditemukan gardu "{garduSearch}"</Text>
@@ -698,13 +714,14 @@ export default function OverlayManager({
                                                                 ]}
                                                                 disabled={!g.ada_jtr || isLoading}
                                                                 onPress={() => handleLoadJtr(g)}
+                                                                activeOpacity={0.8}
                                                             >
                                                                 {isLoading ? (
                                                                     <ActivityIndicator size="small" color="white" />
                                                                 ) : (
                                                                     <>
                                                                         <Ionicons
-                                                                            name={isLoaded ? 'checkmark-outline' : 'flash-outline'}
+                                                                            name={isLoaded ? 'checkmark-circle' : 'flash'}
                                                                             size={13}
                                                                             color="white"
                                                                         />
@@ -729,11 +746,12 @@ export default function OverlayManager({
                                             style={styles.bulkButton}
                                             disabled={loadingAction?.startsWith('gardu-')}
                                             onPress={() => handleLoadGarduUlp(selectedUlp === 'ALL' ? 'LABUAN' : selectedUlp)}
+                                            activeOpacity={0.7}
                                         >
                                             {loadingAction?.startsWith('gardu-') ? (
-                                                <ActivityIndicator size="small" color="white" />
+                                                <ActivityIndicator size="small" color="#1565C0" />
                                             ) : (
-                                                <Ionicons name="location-outline" size={16} color="#38bdf8" />
+                                                <Ionicons name="location-outline" size={16} color="#1565C0" />
                                             )}
                                             <Text style={styles.bulkButtonText}>
                                                 Titik Gardu ({selectedUlp === 'ALL' ? 'LABUAN' : selectedUlp})
@@ -744,13 +762,14 @@ export default function OverlayManager({
                                             style={styles.bulkButton}
                                             disabled={loadingAction?.startsWith('pro-')}
                                             onPress={() => handleLoadProteksiUlp(selectedUlp)}
+                                            activeOpacity={0.7}
                                         >
                                             {loadingAction?.startsWith('pro-') ? (
-                                                <ActivityIndicator size="small" color="white" />
+                                                <ActivityIndicator size="small" color="#E11D48" />
                                             ) : (
-                                                <Ionicons name="shield-outline" size={16} color="#fb7185" />
+                                                <Ionicons name="shield-outline" size={16} color="#E11D48" />
                                             )}
-                                            <Text style={styles.bulkButtonText}>
+                                            <Text style={[styles.bulkButtonText, { color: '#BE123C' }]}>
                                                 Proteksi & GH (LABUAN)
                                             </Text>
                                         </TouchableOpacity>
@@ -768,7 +787,7 @@ export default function OverlayManager({
                                     style={styles.importButton}
                                     onPress={handleImport}
                                     disabled={importing}
-                                    activeOpacity={0.7}
+                                    activeOpacity={0.8}
                                 >
                                     {importing ? (
                                         <ActivityIndicator color="white" size="small" />
@@ -783,7 +802,7 @@ export default function OverlayManager({
                                 {/* Import Confirmation */}
                                 {importStep === 'confirm' && pendingOverlay && (
                                     <View style={styles.confirmBox}>
-                                        <Text style={styles.confirmTitle}>Konfirmasi Import</Text>
+                                        <Text style={styles.confirmTitle}>Konfirmasi Import File</Text>
 
                                         {/* Preview */}
                                         <View style={styles.previewBox}>
@@ -802,7 +821,7 @@ export default function OverlayManager({
                                             value={pendingName}
                                             onChangeText={setPendingName}
                                             placeholder="Nama layer"
-                                            placeholderTextColor="#64748b"
+                                            placeholderTextColor="#94A3B8"
                                         />
 
                                         {/* Type Selector */}
@@ -875,7 +894,7 @@ export default function OverlayManager({
                             </Text>
                             {overlays.length > 0 && (
                                 <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}>
-                                    <Ionicons name="trash-outline" size={13} color="#ef4444" />
+                                    <Ionicons name="trash-outline" size={13} color="#DC2626" />
                                     <Text style={styles.clearAllText}>Hapus Semua</Text>
                                 </TouchableOpacity>
                             )}
@@ -891,7 +910,7 @@ export default function OverlayManager({
                                                 <View
                                                     style={[
                                                         styles.layerColorIndicator,
-                                                        { backgroundColor: ol.color || (isJtr ? '#FF6600' : '#0284c7') },
+                                                        { backgroundColor: ol.color || (isJtr ? '#FF6600' : '#1565C0') },
                                                     ]}
                                                 />
                                                 <Text style={styles.overlayName} numberOfLines={1}>
@@ -910,7 +929,7 @@ export default function OverlayManager({
                                                     style={styles.actionIconBtn}
                                                     onPress={() => handleFocusOverlayAction(ol)}
                                                 >
-                                                    <Ionicons name="locate-outline" size={18} color="#0284c7" />
+                                                    <Ionicons name="locate-outline" size={18} color="#1565C0" />
                                                 </TouchableOpacity>
                                             )}
 
@@ -920,9 +939,9 @@ export default function OverlayManager({
                                                 onPress={() => toggleVisibility(ol.id)}
                                             >
                                                 <Ionicons
-                                                    name={ol.visible ? 'eye-outline' : 'eye-off-outline'}
+                                                    name={ol.visible ? 'eye' : 'eye-off'}
                                                     size={18}
-                                                    color={ol.visible ? '#0284c7' : '#94a3b8'}
+                                                    color={ol.visible ? '#1565C0' : '#94A3B8'}
                                                 />
                                             </TouchableOpacity>
 
@@ -931,7 +950,7 @@ export default function OverlayManager({
                                                 style={styles.actionIconBtn}
                                                 onPress={() => handleDelete(ol.id, ol.name)}
                                             >
-                                                <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                                                <Ionicons name="trash-outline" size={18} color="#DC2626" />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -947,9 +966,9 @@ export default function OverlayManager({
                                                     maximumValue={1.0}
                                                     step={0.05}
                                                     value={ol.opacity}
-                                                    minimumTrackTintColor="#0284c7"
-                                                    maximumTrackTintColor="#334155"
-                                                    thumbTintColor="#0284c7"
+                                                    minimumTrackTintColor="#1565C0"
+                                                    maximumTrackTintColor="#CBD5E1"
+                                                    thumbTintColor="#1565C0"
                                                     onValueChange={(val: number) => updateOpacity(ol.id, val)}
                                                     onSlidingComplete={(val: number) => saveOpacity(ol.id, val)}
                                                 />
@@ -961,19 +980,21 @@ export default function OverlayManager({
                             );
                         })}
 
-                        {overlays.length === 0 && importStep === 'idle' && (
+                        {overlays.length === 0 && (
                             <View style={styles.emptyState}>
-                                <Ionicons name="layers-outline" size={44} color="#475569" />
-                                <Text style={styles.emptyText}>Belum ada data eksisting dimuat</Text>
+                                <Ionicons name="layers-outline" size={38} color="#CBD5E1" />
+                                <Text style={styles.emptyText}>Belum ada layer data eksisting yang aktif.</Text>
                                 <Text style={styles.emptySubtext}>
-                                    Pilih penyulang atau cari gardu di tab Cloud GIS di atas untuk memuat jaringan langsung ke peta!
+                                    Pilih penyulang/gardu di tab Cloud GIS atau import file lokal untuk menampilkan jaringan di peta.
                                 </Text>
                             </View>
                         )}
+
+                        <View style={{ height: 20 }} />
                     </ScrollView>
 
-                    {/* Footer */}
-                    <TouchableOpacity style={styles.footerBtn} onPress={onClose}>
+                    {/* Footer Close Button */}
+                    <TouchableOpacity style={styles.footerBtn} onPress={onClose} activeOpacity={0.8}>
                         <Text style={styles.footerBtnText}>Tutup</Text>
                     </TouchableOpacity>
                 </View>
@@ -982,30 +1003,39 @@ export default function OverlayManager({
     );
 }
 
+// =============================================================================
+// STYLES (Clean PLN Light Theme)
+// =============================================================================
+
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 20,
     },
     container: {
-        backgroundColor: '#0f172a',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '92%',
-        minHeight: '60%',
-        borderWidth: 1,
-        borderColor: '#334155',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        width: '92%',
+        maxHeight: '88%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+        overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 18,
-        paddingTop: 16,
-        paddingBottom: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#1e293b',
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
     },
     headerTitleRow: {
         flexDirection: 'row',
@@ -1013,33 +1043,39 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     headerIconBadge: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        backgroundColor: '#ea580c',
+        width: 36,
+        height: 36,
+        borderRadius: 9,
+        backgroundColor: '#1565C0',
         alignItems: 'center',
         justifyContent: 'center',
     },
     title: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#f8fafc',
+        color: '#1E293B',
     },
     subtitle: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: '#64748B',
         marginTop: 1,
     },
     closeBtn: {
         padding: 4,
     },
 
-    // Tab Bar
+    // Segmented Tabs
+    tabBarContainer: {
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 8,
+        backgroundColor: '#FFFFFF',
+    },
     tabBar: {
         flexDirection: 'row',
-        backgroundColor: '#1e293b',
-        borderBottomWidth: 1,
-        borderBottomColor: '#334155',
+        backgroundColor: '#F1F5F9',
+        borderRadius: 10,
+        padding: 3,
     },
     tabButton: {
         flex: 1,
@@ -1047,49 +1083,47 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: 12,
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent',
+        paddingVertical: 8,
+        borderRadius: 8,
     },
-    tabButtonActiveCloud: {
-        borderBottomColor: '#ea580c',
-        backgroundColor: '#0f172a',
-    },
-    tabButtonActiveLocal: {
-        borderBottomColor: '#0284c7',
-        backgroundColor: '#0f172a',
+    tabButtonActive: {
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        elevation: 2,
     },
     tabText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#94a3b8',
+        color: '#64748B',
     },
-    tabTextActiveCloud: {
-        color: '#ea580c',
+    tabTextActive: {
+        color: '#1565C0',
         fontWeight: 'bold',
     },
-    tabTextActiveLocal: {
-        color: '#0284c7',
-        fontWeight: 'bold',
-    },
-    badgeRecommend: {
-        backgroundColor: '#334155',
+    badgeAuto: {
+        backgroundColor: '#E2E8F0',
         paddingHorizontal: 5,
-        paddingVertical: 1,
+        paddingVertical: 1.5,
         borderRadius: 4,
     },
-    badgeActive: {
-        backgroundColor: '#ea580c',
+    badgeAutoActive: {
+        backgroundColor: '#EA580C',
     },
-    badgeText: {
+    badgeAutoText: {
         fontSize: 9,
-        fontWeight: '800',
-        color: 'white',
+        fontWeight: 'bold',
+        color: '#64748B',
+    },
+    badgeAutoTextActive: {
+        color: '#FFFFFF',
     },
 
     content: {
         paddingHorizontal: 16,
-        paddingTop: 14,
+        paddingTop: 6,
     },
 
     // Server Status Card
@@ -1097,13 +1131,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#1e293b',
+        backgroundColor: '#F0F9FF',
         borderRadius: 10,
         paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingVertical: 9,
         borderWidth: 1,
-        borderColor: '#334155',
-        marginBottom: 12,
+        borderColor: '#BAE6FD',
+        marginBottom: 10,
     },
     statusIndicatorRow: {
         flexDirection: 'row',
@@ -1117,49 +1151,50 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     dotGreen: {
-        backgroundColor: '#10b981',
+        backgroundColor: '#10B981',
     },
     dotOrange: {
-        backgroundColor: '#ea580c',
+        backgroundColor: '#EA580C',
     },
     serverStatusText: {
-        fontSize: 11.5,
-        color: '#cbd5e1',
-        fontWeight: '500',
+        fontSize: 12,
+        color: '#0369A1',
+        fontWeight: '600',
+        flex: 1,
     },
     refreshButton: {
         padding: 5,
-        backgroundColor: '#334155',
+        backgroundColor: '#E0F2FE',
         borderRadius: 6,
     },
 
     errorBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        backgroundColor: 'rgba(239,68,68,0.15)',
+        gap: 6,
+        backgroundColor: '#FEF2F2',
         borderWidth: 1,
-        borderColor: '#ef4444',
+        borderColor: '#FCA5A5',
         borderRadius: 8,
         padding: 10,
-        marginBottom: 12,
+        marginBottom: 10,
     },
     errorText: {
         fontSize: 12,
-        color: '#fca5a5',
+        color: '#DC2626',
         flex: 1,
     },
 
     // ULP Filter
     filterSection: {
-        marginBottom: 14,
+        marginBottom: 12,
     },
     filterLabel: {
-        fontSize: 10.5,
+        fontSize: 11,
         fontWeight: '700',
-        color: '#94a3b8',
+        color: '#64748B',
         marginBottom: 6,
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
     },
     ulpScroll: {
         flexDirection: 'row',
@@ -1167,43 +1202,49 @@ const styles = StyleSheet.create({
     ulpPill: {
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 6,
-        backgroundColor: '#1e293b',
+        borderRadius: 8,
+        backgroundColor: '#F1F5F9',
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: '#E2E8F0',
         marginRight: 6,
     },
     ulpPillActive: {
-        backgroundColor: '#ea580c',
-        borderColor: '#ea580c',
+        backgroundColor: '#1565C0',
+        borderColor: '#1565C0',
     },
     ulpPillText: {
-        fontSize: 11.5,
-        color: '#94a3b8',
-        fontWeight: '500',
+        fontSize: 12,
+        color: '#475569',
+        fontWeight: '600',
     },
     ulpPillTextActive: {
-        color: 'white',
+        color: '#FFFFFF',
         fontWeight: 'bold',
     },
 
-    // Feature Cards
-    featureCard: {
-        backgroundColor: '#1e293b',
+    // Feature Card Box
+    cardBox: {
+        backgroundColor: '#FFFFFF',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: '#E2E8F0',
         padding: 12,
         marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+        elevation: 1,
     },
-    jtrCard: {
-        borderColor: 'rgba(234, 88, 12, 0.5)',
+    cardBoxJtr: {
+        borderColor: '#FED7AA',
+        backgroundColor: '#FFFBF5',
     },
     cardHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 6,
     },
     cardTitleWithIcon: {
         flexDirection: 'row',
@@ -1211,41 +1252,48 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     cardTitle: {
-        fontSize: 13,
+        fontSize: 13.5,
         fontWeight: 'bold',
-        color: '#f8fafc',
+        color: '#1E293B',
     },
     cardBadgeCount: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    cardDescText: {
+        fontSize: 11.5,
+        color: '#64748B',
+        marginBottom: 8,
+        lineHeight: 16,
     },
     colorPillOrange: {
-        backgroundColor: 'rgba(234, 88, 12, 0.2)',
+        backgroundColor: '#FFEDD5',
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,
     },
     colorPillText: {
-        fontSize: 9.5,
-        color: '#ea580c',
+        fontSize: 10,
+        color: '#EA580C',
         fontWeight: 'bold',
     },
 
     pickerWrapper: {
-        backgroundColor: '#0f172a',
+        backgroundColor: '#F8FAFC',
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: '#CBD5E1',
         marginBottom: 10,
         overflow: 'hidden',
     },
     picker: {
-        color: '#f8fafc',
-        height: 48,
+        color: '#1E293B',
+        height: 50,
     },
 
     actionBtnPrimary: {
-        backgroundColor: '#0284c7',
+        backgroundColor: '#1565C0',
         borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
@@ -1255,18 +1303,18 @@ const styles = StyleSheet.create({
     },
     actionBtnText: {
         color: 'white',
-        fontSize: 12.5,
+        fontSize: 13,
         fontWeight: 'bold',
     },
 
-    // JTR Search
+    // JTR Search Bar & Items
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#0f172a',
+        backgroundColor: '#FFFFFF',
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: '#CBD5E1',
         paddingHorizontal: 10,
         marginBottom: 8,
     },
@@ -1276,7 +1324,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         height: 38,
-        color: '#f8fafc',
+        color: '#1E293B',
         fontSize: 12.5,
     },
     clearSearchBtn: {
@@ -1284,17 +1332,16 @@ const styles = StyleSheet.create({
     },
 
     garduListContainer: {
-        maxHeight: 160,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#FFFFFF',
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#334155',
-        padding: 4,
+        borderColor: '#E2E8F0',
+        overflow: 'hidden',
     },
     garduEmptyText: {
         textAlign: 'center',
-        paddingVertical: 16,
-        color: '#64748b',
+        paddingVertical: 14,
+        color: '#94A3B8',
         fontSize: 12,
     },
     garduRow: {
@@ -1303,12 +1350,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 8,
         paddingHorizontal: 10,
-        borderRadius: 6,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(51, 65, 85, 0.4)',
+        borderBottomColor: '#F1F5F9',
     },
     garduRowActive: {
-        backgroundColor: 'rgba(234, 88, 12, 0.12)',
+        backgroundColor: '#FFF7ED',
     },
     garduRowInfo: {
         flex: 1,
@@ -1322,36 +1368,36 @@ const styles = StyleSheet.create({
     garduIdText: {
         fontSize: 12.5,
         fontWeight: 'bold',
-        color: '#f8fafc',
+        color: '#1E293B',
     },
     badgeJtr: {
-        paddingHorizontal: 4,
+        paddingHorizontal: 5,
         paddingVertical: 1,
         borderRadius: 4,
     },
     badgeJtrGreen: {
-        backgroundColor: '#065f46',
+        backgroundColor: '#DCFCE7',
     },
     badgeJtrGray: {
-        backgroundColor: '#334155',
+        backgroundColor: '#F1F5F9',
     },
     badgeJtrText: {
         fontSize: 9.5,
         fontWeight: 'bold',
     },
     textGreen: {
-        color: '#6ee7b7',
+        color: '#15803D',
     },
     textGray: {
-        color: '#94a3b8',
+        color: '#64748B',
     },
     garduFeederText: {
         fontSize: 11,
-        color: '#64748b',
+        color: '#64748B',
     },
     garduNameText: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: '#64748B',
         marginTop: 2,
     },
 
@@ -1364,14 +1410,13 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     loadJtrBtnReady: {
-        backgroundColor: '#ea580c',
+        backgroundColor: '#EA580C',
     },
     loadJtrBtnActive: {
-        backgroundColor: '#15803d',
+        backgroundColor: '#16A34A',
     },
     loadJtrBtnDisabled: {
-        backgroundColor: '#334155',
-        opacity: 0.5,
+        backgroundColor: '#E2E8F0',
     },
     loadJtrBtnText: {
         color: 'white',
@@ -1383,13 +1428,13 @@ const styles = StyleSheet.create({
     bulkRow: {
         flexDirection: 'row',
         gap: 8,
-        marginBottom: 16,
+        marginBottom: 14,
     },
     bulkButton: {
         flex: 1,
-        backgroundColor: '#1e293b',
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: '#CBD5E1',
         borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
@@ -1398,7 +1443,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
     },
     bulkButtonText: {
-        color: '#f8fafc',
+        color: '#1565C0',
         fontSize: 11.5,
         fontWeight: '600',
     },
@@ -1409,10 +1454,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#0284c7',
-        paddingVertical: 14,
+        backgroundColor: '#1565C0',
+        paddingVertical: 13,
         borderRadius: 10,
-        marginBottom: 16,
+        marginBottom: 14,
     },
     importButtonText: {
         color: 'white',
@@ -1421,97 +1466,97 @@ const styles = StyleSheet.create({
     },
 
     confirmBox: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#F8FAFC',
         borderRadius: 10,
-        padding: 14,
+        padding: 12,
         borderWidth: 1,
-        borderColor: '#0284c7',
-        marginBottom: 16,
+        borderColor: '#BAE6FD',
+        marginBottom: 14,
     },
     confirmTitle: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#38bdf8',
-        marginBottom: 10,
+        color: '#1565C0',
+        marginBottom: 8,
     },
     previewBox: {
-        backgroundColor: '#0f172a',
+        backgroundColor: '#EFF6FF',
         borderRadius: 8,
-        padding: 10,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#334155',
+        padding: 8,
+        marginBottom: 10,
     },
     previewText: {
         fontSize: 12,
-        color: '#cbd5e1',
-        lineHeight: 18,
+        color: '#1E40AF',
+        lineHeight: 17,
     },
     inputLabel: {
         fontSize: 11.5,
-        fontWeight: '600',
-        color: '#94a3b8',
+        fontWeight: '700',
+        color: '#475569',
         marginBottom: 4,
     },
     input: {
-        backgroundColor: '#0f172a',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#334155',
-        borderRadius: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        borderColor: '#CBD5E1',
+        paddingHorizontal: 10,
+        height: 38,
+        color: '#1E293B',
         fontSize: 13,
-        color: '#f8fafc',
         marginBottom: 10,
     },
     typeOptions: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 6,
-        marginBottom: 12,
+        marginBottom: 10,
     },
     typeBtn: {
-        paddingHorizontal: 10,
-        paddingVertical: 7,
+        paddingHorizontal: 9,
+        paddingVertical: 5,
         borderRadius: 6,
+        backgroundColor: '#F1F5F9',
         borderWidth: 1,
-        borderColor: '#334155',
-        backgroundColor: '#0f172a',
+        borderColor: '#CBD5E1',
     },
     typeBtnActive: {
-        backgroundColor: '#0284c7',
-        borderColor: '#0284c7',
+        backgroundColor: '#1565C0',
+        borderColor: '#1565C0',
     },
     typeBtnText: {
-        fontSize: 11.5,
-        color: '#94a3b8',
+        fontSize: 11,
+        color: '#475569',
         fontWeight: '600',
     },
     typeBtnTextActive: {
         color: 'white',
+        fontWeight: 'bold',
     },
+
     colorSection: {
-        marginBottom: 14,
+        marginBottom: 10,
     },
     colorPresets: {
         flexDirection: 'row',
         gap: 8,
-        flexWrap: 'wrap',
+        marginTop: 4,
     },
     colorDot: {
-        width: 30,
-        height: 30,
-        borderRadius: 6,
-        backgroundColor: '#334155',
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        borderWidth: 2,
+        borderColor: 'transparent',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#475569',
     },
     colorDotActive: {
-        borderColor: 'white',
-        borderWidth: 2.5,
+        borderColor: '#1565C0',
+        transform: [{ scale: 1.15 }],
     },
+
     confirmActions: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
@@ -1522,20 +1567,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 6,
-        backgroundColor: '#334155',
+        backgroundColor: '#E2E8F0',
     },
     cancelBtnText: {
-        color: '#cbd5e1',
+        color: '#475569',
         fontSize: 12,
+        fontWeight: '600',
     },
     confirmBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 6,
-        backgroundColor: '#10b981',
+        backgroundColor: '#1565C0',
     },
     confirmBtnText: {
         color: 'white',
@@ -1543,18 +1589,21 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 
-    // Active Layers Section
+    // Active Section
     activeSectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 6,
         marginBottom: 8,
+        paddingTop: 6,
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
     },
     sectionTitle: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#f59e0b',
+        color: '#475569',
         letterSpacing: 0.5,
     },
     clearAllBtn: {
@@ -1564,20 +1613,21 @@ const styles = StyleSheet.create({
     },
     clearAllText: {
         fontSize: 11,
-        color: '#ef4444',
+        color: '#DC2626',
         fontWeight: '600',
     },
 
     overlayItem: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#F8FAFC',
         borderRadius: 10,
         padding: 10,
-        marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: '#E2E8F0',
+        marginBottom: 8,
     },
     overlayItemJtr: {
-        borderColor: 'rgba(234, 88, 12, 0.4)',
+        borderColor: '#FED7AA',
+        backgroundColor: '#FFFDF9',
     },
     overlayHeader: {
         flexDirection: 'row',
@@ -1594,43 +1644,42 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     layerColorIndicator: {
-        width: 8,
-        height: 8,
-        borderRadius: 2,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
     },
     overlayName: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#f8fafc',
+        fontWeight: 'bold',
+        color: '#1E293B',
+        flex: 1,
     },
     overlayMeta: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: '#64748B',
         marginTop: 2,
     },
     overlayActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4,
     },
     actionIconBtn: {
         padding: 5,
-        backgroundColor: '#334155',
-        borderRadius: 6,
     },
 
     opacityRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 6,
+        marginTop: 8,
         paddingTop: 6,
         borderTopWidth: 1,
-        borderTopColor: '#334155',
+        borderTopColor: '#E2E8F0',
     },
     opacityLabel: {
-        fontSize: 10.5,
-        color: '#94a3b8',
-        width: 65,
+        fontSize: 11,
+        color: '#64748B',
+        width: 70,
     },
     sliderContainer: {
         flex: 1,
@@ -1640,48 +1689,43 @@ const styles = StyleSheet.create({
         height: 24,
     },
     opacityValue: {
-        fontSize: 10.5,
-        color: '#cbd5e1',
+        fontSize: 11,
+        color: '#1E293B',
+        fontWeight: 'bold',
         width: 32,
         textAlign: 'right',
     },
 
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 28,
-        backgroundColor: '#1e293b',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#334155',
-        borderStyle: 'dashed',
-        marginTop: 8,
-        marginBottom: 16,
+        paddingVertical: 24,
     },
     emptyText: {
         fontSize: 13,
-        color: '#94a3b8',
+        fontWeight: '600',
+        color: '#64748B',
         marginTop: 8,
-        fontWeight: 'bold',
     },
     emptySubtext: {
-        fontSize: 11,
-        color: '#64748b',
+        fontSize: 11.5,
+        color: '#94A3B8',
         marginTop: 4,
         textAlign: 'center',
-        paddingHorizontal: 24,
         lineHeight: 16,
+        paddingHorizontal: 20,
     },
 
+    // Footer
     footerBtn: {
-        backgroundColor: '#1e293b',
-        paddingVertical: 14,
+        backgroundColor: '#F8FAFC',
+        paddingVertical: 13,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#334155',
+        borderTopColor: '#E2E8F0',
     },
     footerBtnText: {
-        fontSize: 13,
-        fontWeight: 'bold',
-        color: '#f8fafc',
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#475569',
     },
 });

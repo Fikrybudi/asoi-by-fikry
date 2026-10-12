@@ -957,7 +957,7 @@ const generateMapHTML = (
                          (jenisPel ? '<br>Jenis: ' + jenisPel : '') + 
                          (alamat ? '<br>' + alamat : '');
 
-            const jtrBtn = cleanGarduId ? `<div style="margin-top:8px;"><button onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type:\'loadCloudJtr\',garduId:\'${cleanGarduId}\',garduName:\'${nameEsc}\'}))" style="width:100%;padding:7px 10px;background:#ea580c;color:white;border:none;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">⚡ Muat JTR Gardu Ini</button></div>` : '';
+            const jtrBtn = cleanGarduId ? `<div style="margin-top:8px;"><button type="button" class="btn-load-cloud-jtr" data-gardu="${encodeURIComponent(cleanGarduId)}" data-name="${encodeURIComponent(nameEsc)}" style="width:100%;padding:8px 10px;background:#FF6600;color:white;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;">⚡ Muat JTR Gardu Ini</button></div>` : '';
 
             js += `
               L.marker([${pt.lat}, ${pt.lng}], {
@@ -1500,6 +1500,31 @@ const generateMapHTML = (
         lat: e.latlng.lat,
         lng: e.latlng.lng
       }));
+    });
+
+    // Handle interactive button clicks inside Leaflet popups (e.g. Load Cloud JTR)
+    map.on('popupopen', function(e) {
+      try {
+        if (!e || !e.popup) return;
+        var el = typeof e.popup.getElement === 'function' ? e.popup.getElement() : null;
+        if (!el) return;
+        var btn = el.querySelector('.btn-load-cloud-jtr');
+        if (btn) {
+          btn.onclick = function(evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            var gId = decodeURIComponent(btn.getAttribute('data-gardu') || '');
+            var gName = decodeURIComponent(btn.getAttribute('data-name') || '');
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'loadCloudJtr',
+                garduId: gId,
+                garduName: gName
+              }));
+            }
+          };
+        }
+      } catch (err) {}
     });
 
     // Track zoom changes to persist across re-renders
