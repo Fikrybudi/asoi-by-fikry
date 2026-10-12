@@ -183,6 +183,19 @@ export async function saveAllOverlays(overlays: OverlayFile[]): Promise<void> {
     }
 }
 
+export async function clearAllOverlays(): Promise<void> {
+    try {
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        const dirInfo = await FileSystem.getInfoAsync(OVERLAYS_DIR);
+        if (dirInfo.exists) {
+            await FileSystem.deleteAsync(OVERLAYS_DIR, { idempotent: true });
+            await FileSystem.makeDirectoryAsync(OVERLAYS_DIR, { intermediates: true });
+        }
+    } catch (error) {
+        console.error('Error clearing all overlays:', error);
+    }
+}
+
 export const overlayStorage = {
     getAllOverlays,
     saveOverlay,
@@ -190,4 +203,5 @@ export const overlayStorage = {
     updateVisibility,
     updateOpacity,
     saveAllOverlays,
+    clearAllOverlays,
 };

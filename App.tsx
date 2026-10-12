@@ -35,6 +35,7 @@ import PersilForm, { PersilFormData } from './src/components/Forms/PersilForm';
 import OverlayManager from './src/components/Forms/OverlayManager';
 import { OverlayFile } from './src/types/overlayTypes';
 import { overlayStorage } from './src/services/overlayStorage';
+import { cloudGisService } from './src/services/cloudGisService';
 import { trafoLoadService } from './src/services/trafoLoadService';
 import { BebanTrafoItem } from './src/types';
 import {
@@ -333,6 +334,36 @@ export default function App() {
   useEffect(() => {
     overlayStorage.getAllOverlays().then(setOverlayLayers).catch(console.error);
   }, []);
+
+  const handleLoadCloudJtr = async (garduId: string, garduNama?: string) => {
+    try {
+      const overlay = await cloudGisService.fetchJtr(garduId, garduNama);
+      const existsIdx = overlayLayers.findIndex(o => o.id === overlay.id);
+      let updated: OverlayFile[];
+      if (existsIdx >= 0) {
+        updated = [...overlayLayers];
+        updated[existsIdx] = overlay;
+      } else {
+        updated = [...overlayLayers, overlay];
+      }
+      setOverlayLayers(updated);
+      await overlayStorage.saveOverlay(overlay);
+
+      const bounds = cloudGisService.calculateBounds(overlay);
+      if (bounds && mapRef.current?.fitBoundsCoords) {
+        mapRef.current.fitBoundsCoords(bounds);
+      }
+      Alert.alert('✅ JTR Dimuat', `JTR Gardu ${garduId} berhasil ditampilkan di peta.`);
+    } catch (err: any) {
+      Alert.alert('Gagal Memuat JTR', err.message);
+    }
+  };
+
+  const handleFocusOverlay = (bounds: [[number, number], [number, number]]) => {
+    if (mapRef.current?.fitBoundsCoords) {
+      mapRef.current.fitBoundsCoords(bounds);
+    }
+  };
 
   // Superadmin push notification subscription & catchup
   useEffect(() => {
@@ -2197,6 +2228,7 @@ export default function App() {
           persilList={currentSurvey?.persilList || []}
           onPersilPress={handlePersilPress}
           overlayLayers={overlayLayers}
+          onLoadCloudJtr={handleLoadCloudJtr}
         />
       </View>
 
@@ -2734,6 +2766,7 @@ export default function App() {
         onClose={() => setShowOverlayManager(false)}
         overlays={overlayLayers}
         onOverlaysChange={setOverlayLayers}
+        onFocusOverlay={handleFocusOverlay}
       />
 
       {/* About Modal */}

@@ -46,11 +46,8 @@ interface SurveyMapProps {
   onPersilPress?: (persil: PersilPelanggan) => void;
   overlayLayers?: OverlayFile[];
   onZoomChange?: (zoom: number) => void;
+  onLoadCloudJtr?: (garduId: string, garduNama?: string) => void;
 }
-
-
-
-
 
 // =============================================================================
 // MAP COMPONENT
@@ -59,6 +56,8 @@ interface SurveyMapProps {
 export interface SurveyMapRef {
   captureMap: () => Promise<string | null>;
   fitToBounds: () => void;
+  fitBoundsCoords?: (bounds: [[number, number], [number, number]]) => void;
+  centerOn?: (coord: Coordinate, zoom?: number) => void;
   captureOptimalMap: () => Promise<string | null>;
   /** Capture peta pada bounds tertentu (untuk multi-page PDF) */
   captureSegment: (
@@ -100,6 +99,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   onPersilPress,
   overlayLayers = [],
   onZoomChange,
+  onLoadCloudJtr,
 }, ref) => {
   const webviewRef = useRef<WebView>(null);
   const containerRef = useRef<View>(null);
@@ -403,6 +403,24 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       }
     },
 
+    fitBoundsCoords: (bounds: [[number, number], [number, number]]) => {
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          map.fitBounds(${JSON.stringify(bounds)}, { padding: [35, 35], maxZoom: 18 });
+          true;
+        `);
+      }
+    },
+
+    centerOn: (coord: Coordinate, zoom = 18) => {
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          map.setView([${coord.latitude}, ${coord.longitude}], ${zoom}, { animate: true });
+          true;
+        `);
+      }
+    },
+
   }));
 
   useEffect(() => {
@@ -498,6 +516,10 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
           console.error('WebView capture error:', data.error);
           captureResolverRef.current(null);
           captureResolverRef.current = null;
+        }
+      } else if (data.type === 'loadCloudJtr') {
+        if (onLoadCloudJtr && data.garduId) {
+          onLoadCloudJtr(data.garduId, data.garduName);
         }
       } else if (data.type === 'mapCenterChange') {
         // Persist map view position when user pans/zooms

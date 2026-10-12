@@ -835,23 +835,27 @@ const generateMapHTML = (
 
         ol.data.polylines.forEach((pl) => {
           if (ol.hiddenFeeders && ol.hiddenFeeders.includes(pl.name)) return;
+          const isJTR = ol.type === 'jtr' || /jtr|sutr|sktr/i.test(pl.name) || /jtr|sutr|sktr/i.test(ol.name);
           const feederIdx = uniqueFeeders.indexOf(pl.name || 'Unknown');
-          const color = ol.color || feederColors[feederIdx % feederColors.length];
+          const defaultColor = isJTR ? '#FF6600' : feederColors[feederIdx % feederColors.length];
+          const color = ol.color || defaultColor;
           const coords = pl.coords.map(c => `[${c.lat}, ${c.lng}]`).join(',');
           const nameEsc = escapeForJsString(pl.name);
+          const weight = isJTR ? 3.2 : 2.6;
+          const labelType = isJTR ? 'JTR Eksisting (Tegangan Rendah)' : 'JTM Eksisting (Tegangan Menengah)';
           js += `
             L.polyline([${coords}], {
               color: '${color}',
-              weight: 2.6,
+              weight: ${weight},
               opacity: ${opacity},
               interactive: true,
               className: 'overlay-jtm overlay-layer overlay-${ol.id}'
-            }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i>${olNameEsc}</i>');
+            }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:${color};font-weight:bold;">${labelType}</i><br><i>${olNameEsc}</i>');
           `;
         });
       }
 
-      // --- Points (Gardu / Proteksi / Custom) ---
+      // --- Points (Gardu / Proteksi / Tiang TR / Custom) ---
       if (ol.data.points.length > 0) {
         // If overlay has both polylines AND points (mixed file like gardu+JTM KML),
         // treat remaining points as gardu-style markers automatically
@@ -874,18 +878,30 @@ const generateMapHTML = (
                                 pt.name.toLowerCase().includes('rambat') ||
                                 pt.name.toLowerCase().includes('jambu');
 
-          // Determine if this is a valid Gardu point (classification containing GD, type GD, or matching Gardu code format)
+          // Determine if this is a valid Gardu point
           const isGarduPoint = (effectivePointType === 'gardu' || ol.type === 'gardu') && 
                                !isObservation && 
                                (pt.properties['CLASSIFICATION']?.includes('GD') || 
                                 pt.properties['TYPE_GARDU'] === 'GD' || 
+                                pt.properties['tipe'] === 'GARDU' || 
+                                pt.properties['jenis'] === 'GARDU_DISTRIBUSI' || 
                                 pt.name.match(/^[A-Za-z]{2,4}\d{3}[A-Za-z]?$/));
 
-          // Determine if this is a Proteksi point (by type, name, or properties)
+          // Determine if this is a Proteksi point
           const isProteksiPoint = ol.type === 'proteksi' || 
+                                  pt.properties['tipe'] === 'PROTEKSI' || 
+                                  pt.properties['jenis'] === 'PROTEKSI' || 
                                   /lbs|gh|pmr|sso|recloser|fuse|cutout|fco|proteksi/i.test(pt.name) ||
                                   /lbs|gh|pmr|sso|recloser|fuse|cutout|fco|proteksi/i.test(pt.properties['JENIS'] || pt.properties['jenis'] || '') ||
                                   /lbs|gh|pmr|sso|recloser|fuse|cutout|fco|proteksi/i.test(pt.properties['TYPE'] || pt.properties['type'] || '');
+
+          // Determine if this is a JTR Tiang point
+          const isJtrPoint = !isObservation && !isGarduPoint && !isProteksiPoint && (
+            ol.type === 'jtr' ||
+            /tiang.*tr|jtr|sutr|sktr|pole.*tr|^tr[\s\-_0-9]/i.test(pt.name) ||
+            /tr|sutr|sktr/i.test(pt.properties['JENIS'] || pt.properties['jenis'] || '') ||
+            /tr|sutr|sktr/i.test(pt.properties['TYPE'] || pt.properties['type'] || '')
+          );
 
           const ptFeeder = pt.properties['feeder'] || pt.properties['FEEDER'] || pt.properties['PENYULANG'] || pt.properties['penyulang'] || '';
 
@@ -899,7 +915,10 @@ const generateMapHTML = (
           if (isProteksiPoint) {
             if (ol.hiddenTypes && (ol.hiddenTypes.includes('proteksi') || (ptFeeder && ol.hiddenTypes.includes('proteksi_' + ptFeeder)))) return;
           }
-          if (!isGarduPoint && !isProteksiPoint && !isObservation) {
+          if (isJtrPoint) {
+            if (ol.hiddenTypes && (ol.hiddenTypes.includes('jtr') || ol.hiddenTypes.includes('custom') || (ptFeeder && ol.hiddenTypes.includes('jtr_' + ptFeeder)))) return;
+          }
+          if (!isGarduPoint && !isProteksiPoint && !isJtrPoint && !isObservation) {
             if (ol.hiddenTypes && (ol.hiddenTypes.includes('custom') || (ptFeeder && ol.hiddenTypes.includes('custom_' + ptFeeder)))) return;
           }
 
@@ -920,10 +939,25 @@ const generateMapHTML = (
 
           } else if (isGarduPoint) {
             // ── GARDU: Google Maps style blue square marker ──
-            const desc = escapeForJsString(pt.properties['DESCRIPTION'] || pt.properties['ex_description']);
+            const desc = escapeForJsString(pt.properties['DESCRIPTION'] || pt.properties['description'] || pt.properties['ex_description']);
             const alamat = escapeForJsString(pt.properties['ALAMAT'] || pt.properties['alamat']);
-            const jenisPel = escapeForJsString(pt.properties['JENIS_PEL']);
-            popupExtra = (desc ? '<br>Kode: ' + desc : '') + (jenisPel ? '<br>Jenis: ' + jenisPel : '') + (alamat ? '<br>' + alamat : '');
+            const jenisPel = escapeForJsString(pt.properties['JENIS_PEL'] || pt.properties['subclass']);
+            const penyulang = escapeForJsString(pt.properties['PENYULANG'] || pt.properties['penyulang']);
+            const ulp = escapeForJsString(pt.properties['ULP'] || pt.properties['ulp']);
+            const cleanGarduId = escapeForJsString(
+              pt.properties['kode_gis'] ||
+              pt.properties['gardu'] ||
+              (desc && desc.startsWith('GD ') ? desc.replace(/^GD\s*/i, '').trim() : '') ||
+              pt.name.replace(/^GD\s*/i, '').trim()
+            );
+
+            popupExtra = (desc ? '<br>Kode: ' + desc : '') + 
+                         (penyulang ? '<br>Penyulang: ' + penyulang : '') + 
+                         (ulp ? '<br>ULP: ' + ulp : '') + 
+                         (jenisPel ? '<br>Jenis: ' + jenisPel : '') + 
+                         (alamat ? '<br>' + alamat : '');
+
+            const jtrBtn = cleanGarduId ? `<div style="margin-top:8px;"><button onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type:\'loadCloudJtr\',garduId:\'${cleanGarduId}\',garduName:\'${nameEsc}\'}))" style="width:100%;padding:7px 10px;background:#ea580c;color:white;border:none;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">⚡ Muat JTR Gardu Ini</button></div>` : '';
 
             js += `
               L.marker([${pt.lat}, ${pt.lng}], {
@@ -934,7 +968,7 @@ const generateMapHTML = (
                   iconAnchor: [9, 9]
                 }),
                 interactive: true
-              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}<br><i style="color:#999">${olNameEsc}</i>');
+              }).addTo(map).bindPopup('<b>${nameEsc}</b>${popupExtra}${jtrBtn}<br><i style="color:#999">${olNameEsc}</i>');
 
               // Gardu name label
               L.marker([${pt.lat}, ${pt.lng}], {
@@ -989,6 +1023,31 @@ const generateMapHTML = (
                   html: '<div style="color:${markerColor};font-size:10px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white,0 0 3px white;opacity:${opacity};">${labelText}</div>',
                   iconSize: null,
                   iconAnchor: [-12, 6]
+                }),
+                interactive: false
+              }).addTo(map);
+            `;
+
+          } else if (isJtrPoint) {
+            // ── TIANG TR EKSISTING: Purple circle marker with white border ──
+            js += `
+              L.circleMarker([${pt.lat}, ${pt.lng}], {
+                radius: 4.5,
+                fillColor: '#7C3AED',
+                color: 'white',
+                weight: 1.8,
+                fillOpacity: ${opacity},
+                opacity: ${opacity},
+                className: 'overlay-tiang-tr overlay-layer overlay-${ol.id}',
+                interactive: true
+              }).addTo(map).bindPopup('<b>${nameEsc}</b><br><i style="color:#7C3AED;font-weight:bold;">Tiang TR Eksisting</i><br><i style="color:#999">${olNameEsc}</i>');
+
+              L.marker([${pt.lat}, ${pt.lng}], {
+                icon: L.divIcon({
+                  className: 'overlay-tiang-tr-label overlay-layer overlay-${ol.id}',
+                  html: '<div style="color:#7C3AED;font-size:8.5px;font-weight:bold;white-space:nowrap;text-shadow:1px 1px 1px white,-1px -1px 1px white,1px -1px 1px white,-1px 1px 1px white,0 0 3px white;opacity:${opacity};">${nameEsc}</div>',
+                  iconSize: null,
+                  iconAnchor: [-10, 5]
                 }),
                 interactive: false
               }).addTo(map);
@@ -1051,6 +1110,7 @@ const generateMapHTML = (
     .tiang-icon, .gardu-icon, .persil-label, .segment-label { background: transparent !important; border: none !important; box-shadow: none !important; }
     .overlay-gardu, .overlay-gardu-label,
     .overlay-proteksi, .overlay-proteksi-label,
+    .overlay-tiang-tr-label,
     .overlay-custom { background: transparent !important; border: none !important; box-shadow: none !important; }
     .leaflet-control-attribution { display: none; }
     
@@ -1224,6 +1284,8 @@ const generateMapHTML = (
       <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00BCD4" stroke-width="3" stroke-dasharray="6,3"/></svg>SKUTM</div>
       <div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#00E676" stroke-width="3"/></svg>SUTR</div>
       ${overlayLayers.some(o => o.visible && o.type === 'jtm') ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="url(#rainbowGrad)" stroke-width="3.5"/></svg>JTM Eksisting</div>' : ''}
+      ${overlayLayers.some(o => o.visible && (o.type === 'jtr' || /jtr/i.test(o.name))) ? '<div class="legend-item"><svg width="24" height="6" style="margin-right:6px;"><line x1="0" y1="3" x2="24" y2="3" stroke="#FF6600" stroke-width="3.5"/></svg>JTR Eksisting</div>' : ''}
+      ${overlayLayers.some(o => o.visible && (o.type === 'jtr' || o.data?.points?.some(p => /tr/i.test(p.properties['jenis'] || '')))) ? '<div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/></svg>Tiang TR Eksisting</div>' : ''}
       <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#757575" stroke="#424242" stroke-width="1.5"/></svg>Tiang Existing</div>
       <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#1565C0" stroke="#0D47A1" stroke-width="1.5"/></svg>Tiang Baru TM</div>
       <div class="legend-item"><svg width="18" height="12" style="margin-right:6px;"><circle cx="9" cy="6" r="4.5" fill="#00E676" stroke="#00A844" stroke-width="1.5"/></svg>Tiang Baru TR</div>

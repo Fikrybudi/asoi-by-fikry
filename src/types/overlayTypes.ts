@@ -20,7 +20,7 @@ export interface OverlayFile {
     hiddenTypes?: string[];         // 'gardu' | 'proteksi' | 'custom' toggled OFF
 }
 
-export type OverlayDataType = 'jtm' | 'gardu' | 'proteksi' | 'custom';
+export type OverlayDataType = 'jtm' | 'jtr' | 'gardu' | 'proteksi' | 'custom';
 
 /**
  * Parsed geographic data from a file

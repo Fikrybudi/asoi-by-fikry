@@ -1,10 +1,13 @@
 // =============================================================================
 // PLN SURVEY APP - Overlay Manager Component
 // =============================================================================
-// Modal UI for importing CSV/KML/KMZ files and managing overlay layers.
+// Supports:
+// 1. Cloud GIS On-Demand (JTM per Penyulang, JTR per Gardu, Gardu & Proteksi per ULP)
+//    hosted on Cloudflare CDN / aaPanel static hosting.
+// 2. Local File Import (CSV, KML, and KMZ files).
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     StyleSheet,
     View,
@@ -19,31 +22,39 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import Slider from '@react-native-community/slider';
+import { Picker } from '@react-native-picker/picker';
 import { OverlayFile, OverlayDataType } from '../../types/overlayTypes';
 import { parseOverlayFile, detectOverlayType } from '../../services/overlayParser';
 import { overlayStorage } from '../../services/overlayStorage';
+import {
+    cloudGisService,
+    CloudGisCatalog,
+    CloudGardu,
+    DEFAULT_CLOUD_GIS_URL,
+} from '../../services/cloudGisService';
 
-// Simple UUID generator (avoid importing uuid just for this)
 function generateId(): string {
     return 'ovl_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
 }
 
 const TYPE_LABELS: Record<OverlayDataType, string> = {
     jtm: '⚡ JTM (Jaringan)',
-    gardu: '🔌 Gardu',
-    proteksi: '🛡️ Proteksi',
+    jtr: '🔌 JTR (Tegangan Rendah)',
+    gardu: '🏠 Gardu Distribusi',
+    proteksi: '🛡️ Proteksi & GH',
     custom: '📍 Custom',
 };
 
 const TYPE_OPTIONS: { value: OverlayDataType; label: string }[] = [
     { value: 'jtm', label: '⚡ JTM (Jaringan/Polyline)' },
-    { value: 'gardu', label: '🔌 Gardu (Titik)' },
+    { value: 'jtr', label: '🔌 JTR (Jaringan & Tiang TR)' },
+    { value: 'gardu', label: '🏠 Gardu (Titik)' },
     { value: 'proteksi', label: '🛡️ Proteksi (Titik)' },
     { value: 'custom', label: '📍 Custom' },
 ];
 
 const COLOR_PRESETS = [
-    'multi', '#FFC107', '#FF9800', '#F44336', '#E91E63',
+    'multi', '#FF6600', '#FF9800', '#F44336', '#E91E63',
     '#9C27B0', '#2196F3', '#4CAF50', '#00BCD4',
 ];
 
@@ -52,6 +63,7 @@ interface OverlayManagerProps {
     onClose: () => void;
     overlays: OverlayFile[];
     onOverlaysChange: (overlays: OverlayFile[]) => void;
+    onFocusOverlay?: (bounds: [[number, number], [number, number]]) => void;
 }
 
 export default function OverlayManager({
@@ -59,17 +71,233 @@ export default function OverlayManager({
     onClose,
     overlays,
     onOverlaysChange,
+    onFocusOverlay,
 }: OverlayManagerProps) {
+    // Tab Navigation
+    const [activeTab, setActiveTab] = useState<'cloud' | 'local'>('cloud');
+
+    // Local Import Flow
     const [importing, setImporting] = useState(false);
     const [importStep, setImportStep] = useState<'idle' | 'confirm'>('idle');
-
-    // Import confirmation state
     const [pendingOverlay, setPendingOverlay] = useState<OverlayFile | null>(null);
     const [pendingName, setPendingName] = useState('');
-    const [pendingType, setPendingType] = useState<OverlayDataType>('custom');
+    const [pendingType, setPendingType] = useState<OverlayDataType>('jtr');
     const [pendingColor, setPendingColor] = useState('multi');
 
-    // ── Import Flow ──────────────────────────────────────────────────────
+    // Cloud GIS Flow
+    const [catalog, setCatalog] = useState<CloudGisCatalog | null>(null);
+    const [loadingCatalog, setLoadingCatalog] = useState(false);
+    const [catalogError, setCatalogError] = useState<string | null>(null);
+    const [selectedUlp, setSelectedUlp] = useState<string>('ALL');
+    const [selectedPenyulangId, setSelectedPenyulangId] = useState<string>('');
+    const [garduSearch, setGarduSearch] = useState<string>('');
+    const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+    // Auto-load catalog on modal open
+    useEffect(() => {
+        if (visible && !catalog && !loadingCatalog) {
+            loadCatalog();
+        }
+    }, [visible]);
+
+    const loadCatalog = async (forceRefresh = false) => {
+        setLoadingCatalog(true);
+        setCatalogError(null);
+        try {
+            const data = await cloudGisService.getCatalog(forceRefresh);
+            setCatalog(data);
+            if (data.penyulang.length > 0 && !selectedPenyulangId) {
+                setSelectedPenyulangId(data.penyulang[0].id);
+            }
+        } catch (err: any) {
+            setCatalogError(err.message || 'Gagal memuat katalog dari Cloud');
+        } finally {
+            setLoadingCatalog(false);
+        }
+    };
+
+    // Filtered Penyulang list based on ULP
+    const filteredPenyulang = useMemo(() => {
+        if (!catalog) return [];
+        if (selectedUlp === 'ALL') return catalog.penyulang;
+        return catalog.penyulang.filter((p) => p.ulp.toUpperCase() === selectedUlp.toUpperCase());
+    }, [catalog, selectedUlp]);
+
+    // Keep selected penyulang valid
+    useEffect(() => {
+        if (filteredPenyulang.length > 0) {
+            const exists = filteredPenyulang.some((p) => p.id === selectedPenyulangId);
+            if (!exists) {
+                setSelectedPenyulangId(filteredPenyulang[0].id);
+            }
+        } else {
+            setSelectedPenyulangId('');
+        }
+    }, [filteredPenyulang, selectedPenyulangId]);
+
+    // Filtered Gardu list for search
+    const filteredGardu = useMemo(() => {
+        if (!catalog) return [];
+        let list = catalog.gardu;
+        if (selectedUlp !== 'ALL') {
+            list = list.filter((g) => g.ulp.toUpperCase() === selectedUlp.toUpperCase());
+        }
+        const q = garduSearch.trim().toLowerCase();
+        if (!q) {
+            return list.slice(0, 15);
+        }
+        return list
+            .filter(
+                (g) =>
+                    g.id.toLowerCase().includes(q) ||
+                    g.nama.toLowerCase().includes(q) ||
+                    g.penyulang.toLowerCase().includes(q)
+            )
+            .slice(0, 40);
+    }, [catalog, selectedUlp, garduSearch]);
+
+    // ── Cloud GIS Actions ────────────────────────────────────────────────
+
+    const handleLoadJtm = async () => {
+        if (!catalog || !selectedPenyulangId) return;
+        const pObj = catalog.penyulang.find((x) => x.id === selectedPenyulangId);
+        if (!pObj) return;
+
+        setLoadingAction(`jtm-${pObj.id}`);
+        try {
+            const overlay = await cloudGisService.fetchJtm(pObj.file, pObj.nama);
+
+            const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
+            let updated: OverlayFile[];
+            if (existsIdx >= 0) {
+                updated = [...overlays];
+                updated[existsIdx] = overlay;
+            } else {
+                updated = [...overlays, overlay];
+            }
+
+            onOverlaysChange(updated);
+            await overlayStorage.saveOverlay(overlay);
+
+            const bounds = cloudGisService.calculateBounds(overlay);
+            if (bounds && onFocusOverlay) {
+                onFocusOverlay(bounds);
+            }
+
+            Alert.alert('✅ JTM Dimuat', `${overlay.name} (${overlay.data.polylines.length} segmen) berhasil ditampilkan di peta.`);
+        } catch (err: any) {
+            Alert.alert('Gagal Memuat JTM', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleLoadJtr = async (gardu: CloudGardu) => {
+        setLoadingAction(`jtr-${gardu.id}`);
+        try {
+            const overlay = await cloudGisService.fetchJtr(gardu.id, gardu.nama);
+
+            const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
+            let updated: OverlayFile[];
+            if (existsIdx >= 0) {
+                updated = [...overlays];
+                updated[existsIdx] = overlay;
+            } else {
+                updated = [...overlays, overlay];
+            }
+
+            onOverlaysChange(updated);
+            await overlayStorage.saveOverlay(overlay);
+
+            const bounds = cloudGisService.calculateBounds(overlay);
+            if (bounds && onFocusOverlay) {
+                onFocusOverlay(bounds);
+            }
+
+            Alert.alert(
+                '✅ JTR Dimuat',
+                `JTR Gardu ${gardu.id} berhasil dimuat!\n${overlay.data.polylines.length} segmen kabel (Oren), ${overlay.data.points.length} tiang TR (Ungu).`
+            );
+        } catch (err: any) {
+            Alert.alert('Gagal Memuat JTR', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleLoadGarduUlp = async (ulp: string) => {
+        const targetUlp = ulp === 'ALL' ? 'LABUAN' : ulp;
+        setLoadingAction(`gardu-${targetUlp}`);
+        try {
+            const overlay = await cloudGisService.fetchGardu(targetUlp);
+
+            const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
+            let updated: OverlayFile[];
+            if (existsIdx >= 0) {
+                updated = [...overlays];
+                updated[existsIdx] = overlay;
+            } else {
+                updated = [...overlays, overlay];
+            }
+
+            onOverlaysChange(updated);
+            await overlayStorage.saveOverlay(overlay);
+
+            const bounds = cloudGisService.calculateBounds(overlay);
+            if (bounds && onFocusOverlay) {
+                onFocusOverlay(bounds);
+            }
+
+            Alert.alert('✅ Titik Gardu Dimuat', `${overlay.name} (${overlay.data.points.length} gardu) berhasil ditampilkan di peta.`);
+        } catch (err: any) {
+            Alert.alert('Gagal Memuat Gardu', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleLoadProteksiUlp = async (ulp: string) => {
+        const targetUlp = ulp === 'ALL' ? 'LABUAN' : ulp;
+        setLoadingAction(`pro-${targetUlp}`);
+        try {
+            const overlay = await cloudGisService.fetchProteksi(targetUlp);
+
+            const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
+            let updated: OverlayFile[];
+            if (existsIdx >= 0) {
+                updated = [...overlays];
+                updated[existsIdx] = overlay;
+            } else {
+                updated = [...overlays, overlay];
+            }
+
+            onOverlaysChange(updated);
+            await overlayStorage.saveOverlay(overlay);
+
+            const bounds = cloudGisService.calculateBounds(overlay);
+            if (bounds && onFocusOverlay) {
+                onFocusOverlay(bounds);
+            }
+
+            Alert.alert('✅ Proteksi Dimuat', `${overlay.name} (${overlay.data.points.length} titik proteksi) berhasil ditampilkan.`);
+        } catch (err: any) {
+            Alert.alert('Gagal Memuat Proteksi', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleFocusOverlayAction = (ol: OverlayFile) => {
+        const bounds = cloudGisService.calculateBounds(ol);
+        if (bounds && onFocusOverlay) {
+            onFocusOverlay(bounds);
+            onClose();
+        } else {
+            Alert.alert('Info', 'Tidak dapat menghitung batas layer untuk zooming.');
+        }
+    };
+
+    // ── Local File Import Flow ───────────────────────────────────────────
 
     const handleImport = async () => {
         try {
@@ -81,7 +309,7 @@ export default function OverlayManager({
                     'application/vnd.google-earth.kmz',
                     'application/octet-stream',
                     'text/plain',
-                    '*/*', // Fallback for Android
+                    '*/*',
                 ],
                 copyToCacheDirectory: true,
             });
@@ -92,15 +320,12 @@ export default function OverlayManager({
             const fileName = asset.name || 'unknown.csv';
             const ext = fileName.split('.').pop()?.toLowerCase() || '';
 
-            // Validate extension
             if (!['csv', 'kml', 'kmz', 'txt'].includes(ext)) {
                 Alert.alert('Format Tidak Didukung', `File .${ext} tidak didukung.\nGunakan file .csv, .kml, atau .kmz`);
                 return;
             }
 
             setImporting(true);
-
-            // Parse file
             const geoData = await parseOverlayFile(asset.uri, fileName);
             const detectedType = detectOverlayType(geoData);
 
@@ -111,14 +336,13 @@ export default function OverlayManager({
                 return;
             }
 
-            // Create pending overlay
             const overlay: OverlayFile = {
                 id: generateId(),
-                name: fileName.replace(/\.[^.]+$/, ''), // Strip extension
+                name: fileName.replace(/\.[^.]+$/, ''),
                 type: detectedType,
                 visible: true,
-                opacity: 0.7,
-                color: undefined, // JTM layers default to multi-color (undefined)
+                opacity: 0.85,
+                color: detectedType === 'jtr' ? '#FF6600' : undefined,
                 data: geoData,
                 importedAt: new Date().toISOString(),
             };
@@ -126,7 +350,7 @@ export default function OverlayManager({
             setPendingOverlay(overlay);
             setPendingName(overlay.name);
             setPendingType(detectedType);
-            setPendingColor('multi');
+            setPendingColor(detectedType === 'jtr' ? '#FF6600' : 'multi');
             setImportStep('confirm');
             setImporting(false);
         } catch (error: any) {
@@ -142,14 +366,20 @@ export default function OverlayManager({
             ...pendingOverlay,
             name: pendingName.trim() || pendingOverlay.name,
             type: pendingType,
-            color: pendingType === 'jtm' ? (pendingColor === 'multi' ? undefined : pendingColor) : undefined,
+            color: (pendingType === 'jtm' || pendingType === 'jtr')
+                ? (pendingColor === 'multi' ? (pendingType === 'jtr' ? '#FF6600' : undefined) : pendingColor)
+                : undefined,
         };
 
         const updated = [...overlays, finalOverlay];
         onOverlaysChange(updated);
         await overlayStorage.saveOverlay(finalOverlay);
 
-        // Reset
+        const bounds = cloudGisService.calculateBounds(finalOverlay);
+        if (bounds && onFocusOverlay) {
+            onFocusOverlay(bounds);
+        }
+
         setPendingOverlay(null);
         setImportStep('idle');
 
@@ -164,23 +394,18 @@ export default function OverlayManager({
         setImportStep('idle');
     };
 
-    // ── Overlay Management ───────────────────────────────────────────────
+    // ── Layer Management ─────────────────────────────────────────────────
 
     const toggleVisibility = async (id: string) => {
-        const updated = overlays.map(o =>
-            o.id === id ? { ...o, visible: !o.visible } : o
-        );
+        const updated = overlays.map(o => (o.id === id ? { ...o, visible: !o.visible } : o));
         onOverlaysChange(updated);
         const overlay = updated.find(o => o.id === id);
         if (overlay) await overlayStorage.updateVisibility(id, overlay.visible);
     };
 
     const updateOpacity = async (id: string, opacity: number) => {
-        const updated = overlays.map(o =>
-            o.id === id ? { ...o, opacity } : o
-        );
+        const updated = overlays.map(o => (o.id === id ? { ...o, opacity } : o));
         onOverlaysChange(updated);
-        // Debounced save — only save on slide complete (handled by onSlidingComplete)
     };
 
     const saveOpacity = async (id: string, opacity: number) => {
@@ -206,7 +431,23 @@ export default function OverlayManager({
         );
     };
 
-    // ── Render ────────────────────────────────────────────────────────────
+    const handleClearAll = () => {
+        Alert.alert(
+            'Bersihkan Semua Layer',
+            `Yakin ingin menghapus semua ${overlays.length} layer data eksisting dari peta?`,
+            [
+                { text: 'Batal', style: 'cancel' },
+                {
+                    text: 'Hapus Semua',
+                    style: 'destructive',
+                    onPress: async () => {
+                        onOverlaysChange([]);
+                        await overlayStorage.clearAllOverlays();
+                    },
+                },
+            ]
+        );
+    };
 
     return (
         <Modal
@@ -219,212 +460,519 @@ export default function OverlayManager({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.title}>📂 Data Eksisting</Text>
+                        <View style={styles.headerTitleRow}>
+                            <View style={styles.headerIconBadge}>
+                                <Ionicons name="globe-outline" size={18} color="white" />
+                            </View>
+                            <View>
+                                <Text style={styles.title}>Data Jaringan Eksisting</Text>
+                                <Text style={styles.subtitle}>Cloud GIS On-Demand & File Import</Text>
+                            </View>
+                        </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={24} color="#666" />
+                            <Ionicons name="close" size={24} color="#94a3b8" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Tab Bar */}
+                    <View style={styles.tabBar}>
+                        <TouchableOpacity
+                            style={[styles.tabButton, activeTab === 'cloud' && styles.tabButtonActiveCloud]}
+                            onPress={() => setActiveTab('cloud')}
+                        >
+                            <Ionicons
+                                name="cloud-download-outline"
+                                size={16}
+                                color={activeTab === 'cloud' ? '#ea580c' : '#94a3b8'}
+                            />
+                            <Text style={[styles.tabText, activeTab === 'cloud' && styles.tabTextActiveCloud]}>
+                                Cloud GIS
+                            </Text>
+                            <View style={[styles.badgeRecommend, activeTab === 'cloud' ? styles.badgeActive : null]}>
+                                <Text style={styles.badgeText}>AUTO</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.tabButton, activeTab === 'local' && styles.tabButtonActiveLocal]}
+                            onPress={() => setActiveTab('local')}
+                        >
+                            <Ionicons
+                                name="document-text-outline"
+                                size={16}
+                                color={activeTab === 'local' ? '#0284c7' : '#94a3b8'}
+                            />
+                            <Text style={[styles.tabText, activeTab === 'local' && styles.tabTextActiveLocal]}>
+                                File Lokal
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                        {/* Import Button */}
-                        <TouchableOpacity
-                            style={styles.importButton}
-                            onPress={handleImport}
-                            disabled={importing}
-                            activeOpacity={0.7}
-                        >
-                            {importing ? (
-                                <ActivityIndicator color="white" size="small" />
-                            ) : (
-                                <Ionicons name="cloud-upload-outline" size={20} color="white" />
-                            )}
-                            <Text style={styles.importButtonText}>
-                                {importing ? 'Memproses...' : 'Import File (CSV / KML / KMZ)'}
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Import Confirmation */}
-                        {importStep === 'confirm' && pendingOverlay && (
-                            <View style={styles.confirmBox}>
-                                <Text style={styles.confirmTitle}>Konfirmasi Import</Text>
-
-                                {/* Preview */}
-                                <View style={styles.previewBox}>
-                                    <Text style={styles.previewText}>
-                                        📊 Ditemukan: {pendingOverlay.data.points.length} titik, {pendingOverlay.data.polylines.length} jalur
-                                    </Text>
-                                    <Text style={styles.previewText}>
-                                        🔍 Tipe terdeteksi: {TYPE_LABELS[pendingType]}
-                                    </Text>
+                        {/* ========================================================= */}
+                        {/* TAB 1: CLOUD GIS */}
+                        {/* ========================================================= */}
+                        {activeTab === 'cloud' && (
+                            <View>
+                                {/* Server status */}
+                                <View style={styles.serverStatusCard}>
+                                    <View style={styles.statusIndicatorRow}>
+                                        <View style={[styles.statusDot, catalog ? styles.dotGreen : styles.dotOrange]} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.serverStatusText}>
+                                                {loadingCatalog ? (
+                                                    'Menghubungkan ke Cloud Server...'
+                                                ) : catalog ? (
+                                                    `Server Online: ${catalog.gardu.length.toLocaleString()} Gardu · ${catalog.penyulang.length} Penyulang`
+                                                ) : (
+                                                    'Gagal terhubung ke Cloud GIS'
+                                                )}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.refreshButton}
+                                        onPress={() => loadCatalog(true)}
+                                        disabled={loadingCatalog}
+                                    >
+                                        {loadingCatalog ? (
+                                            <ActivityIndicator size="small" color="#cbd5e1" />
+                                        ) : (
+                                            <Ionicons name="refresh-outline" size={16} color="#cbd5e1" />
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
 
-                                {/* Name */}
-                                <Text style={styles.fieldLabel}>Nama Layer</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={pendingName}
-                                    onChangeText={setPendingName}
-                                    placeholder="Nama layer"
-                                />
+                                {catalogError && (
+                                    <View style={styles.errorBox}>
+                                        <Ionicons name="alert-circle-outline" size={18} color="#ef4444" />
+                                        <Text style={styles.errorText}>{catalogError}</Text>
+                                    </View>
+                                )}
 
-                                {/* Type Selection */}
-                                <Text style={styles.fieldLabel}>Tipe Data</Text>
-                                <View style={styles.typeRow}>
-                                    {TYPE_OPTIONS.map(opt => (
+                                {/* ULP Filter Pills */}
+                                {catalog && (
+                                    <View style={styles.filterSection}>
+                                        <Text style={styles.filterLabel}>WILAYAH ULP:</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ulpScroll}>
+                                            <TouchableOpacity
+                                                style={[styles.ulpPill, selectedUlp === 'ALL' && styles.ulpPillActive]}
+                                                onPress={() => setSelectedUlp('ALL')}
+                                            >
+                                                <Text style={[styles.ulpPillText, selectedUlp === 'ALL' && styles.ulpPillTextActive]}>
+                                                    Semua ({catalog.gardu.length})
+                                                </Text>
+                                            </TouchableOpacity>
+                                            {catalog.ulp.map((u) => {
+                                                const count = catalog.gardu.filter((g) => g.ulp.toUpperCase() === u.toUpperCase()).length;
+                                                const isSel = selectedUlp.toUpperCase() === u.toUpperCase();
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={u}
+                                                        style={[styles.ulpPill, isSel && styles.ulpPillActive]}
+                                                        onPress={() => setSelectedUlp(u)}
+                                                    >
+                                                        <Text style={[styles.ulpPillText, isSel && styles.ulpPillTextActive]}>
+                                                            {u} ({count})
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </View>
+                                )}
+
+                                {/* CARD 1: JTM 20 kV */}
+                                {catalog && (
+                                    <View style={styles.featureCard}>
+                                        <View style={styles.cardHeaderRow}>
+                                            <View style={styles.cardTitleWithIcon}>
+                                                <Ionicons name="flash-outline" size={16} color="#0284c7" />
+                                                <Text style={styles.cardTitle}>JTM 20 kV (Per Penyulang)</Text>
+                                            </View>
+                                            <Text style={styles.cardBadgeCount}>{filteredPenyulang.length} penyulang</Text>
+                                        </View>
+
+                                        <View style={styles.pickerWrapper}>
+                                            <Picker
+                                                selectedValue={selectedPenyulangId}
+                                                onValueChange={(itemValue) => setSelectedPenyulangId(itemValue)}
+                                                style={styles.picker}
+                                                dropdownIconColor="#cbd5e1"
+                                            >
+                                                {filteredPenyulang.map((p) => {
+                                                    const isLoaded = overlays.some((o) => o.id === `cloud_jtm_${p.file.replace('.geojson', '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
+                                                    return (
+                                                        <Picker.Item
+                                                            key={p.id}
+                                                            label={`${p.nama} (${p.ulp})${isLoaded ? ' ✓ [Aktif]' : ''}`}
+                                                            value={p.id}
+                                                            color="#f8fafc"
+                                                        />
+                                                    );
+                                                })}
+                                            </Picker>
+                                        </View>
+
                                         <TouchableOpacity
-                                            key={opt.value}
-                                            style={[
-                                                styles.typeChip,
-                                                pendingType === opt.value && styles.typeChipActive,
-                                            ]}
-                                            onPress={() => setPendingType(opt.value)}
+                                            style={styles.actionBtnPrimary}
+                                            onPress={handleLoadJtm}
+                                            disabled={!selectedPenyulangId || loadingAction?.startsWith('jtm-')}
                                         >
-                                            <Text style={[
-                                                styles.typeChipText,
-                                                pendingType === opt.value && styles.typeChipTextActive,
-                                            ]}>
-                                                {opt.label}
+                                            {loadingAction?.startsWith('jtm-') ? (
+                                                <ActivityIndicator size="small" color="white" />
+                                            ) : (
+                                                <Ionicons name="eye-outline" size={16} color="white" />
+                                            )}
+                                            <Text style={styles.actionBtnText}>
+                                                {loadingAction?.startsWith('jtm-') ? 'Memuat JTM...' : 'Tampilkan JTM'}
                                             </Text>
                                         </TouchableOpacity>
-                                    ))}
-                                </View>
+                                    </View>
+                                )}
 
-                                {/* Color (for polylines) */}
-                                {pendingType === 'jtm' && (
-                                    <>
-                                        <Text style={styles.fieldLabel}>Warna Jalur</Text>
-                                        <View style={styles.colorRow}>
-                                            {COLOR_PRESETS.map(c => {
-                                                if (c === 'multi') {
+                                {/* CARD 2: JTR PER GARDU */}
+                                {catalog && (
+                                    <View style={[styles.featureCard, styles.jtrCard]}>
+                                        <View style={styles.cardHeaderRow}>
+                                            <View style={styles.cardTitleWithIcon}>
+                                                <Ionicons name="git-network-outline" size={16} color="#ea580c" />
+                                                <Text style={[styles.cardTitle, { color: '#ea580c' }]}>
+                                                    JTR & Tiang TR (Per Gardu)
+                                                </Text>
+                                            </View>
+                                            <View style={styles.colorPillOrange}>
+                                                <Text style={styles.colorPillText}>Oren Menyala</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Search Input */}
+                                        <View style={styles.searchBar}>
+                                            <Ionicons name="search-outline" size={16} color="#64748b" style={styles.searchIcon} />
+                                            <TextInput
+                                                style={styles.searchInput}
+                                                placeholder="Cari Gardu (contoh: TGP240, AAP, TELUK)..."
+                                                placeholderTextColor="#64748b"
+                                                value={garduSearch}
+                                                onChangeText={setGarduSearch}
+                                            />
+                                            {garduSearch.length > 0 && (
+                                                <TouchableOpacity onPress={() => setGarduSearch('')} style={styles.clearSearchBtn}>
+                                                    <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
+                                        {/* Gardu Results */}
+                                        <View style={styles.garduListContainer}>
+                                            {filteredGardu.length === 0 ? (
+                                                <Text style={styles.garduEmptyText}>Tidak ditemukan gardu "{garduSearch}"</Text>
+                                            ) : (
+                                                filteredGardu.map((g) => {
+                                                    const isLoaded = overlays.some((o) => o.id === `cloud_jtr_${g.id.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
+                                                    const isLoading = loadingAction === `jtr-${g.id}`;
                                                     return (
+                                                        <View
+                                                            key={g.id}
+                                                            style={[styles.garduRow, isLoaded && styles.garduRowActive]}
+                                                        >
+                                                            <View style={styles.garduRowInfo}>
+                                                                <View style={styles.garduHeaderLine}>
+                                                                    <Text style={styles.garduIdText}>{g.id}</Text>
+                                                                    <View style={[styles.badgeJtr, g.ada_jtr ? styles.badgeJtrGreen : styles.badgeJtrGray]}>
+                                                                        <Text style={[styles.badgeJtrText, g.ada_jtr ? styles.textGreen : styles.textGray]}>
+                                                                            {g.ada_jtr ? 'Ada JTR' : 'Belum Ada'}
+                                                                        </Text>
+                                                                    </View>
+                                                                    <Text style={styles.garduFeederText}>{g.penyulang}</Text>
+                                                                </View>
+                                                                <Text style={styles.garduNameText} numberOfLines={1}>
+                                                                    {g.nama}
+                                                                </Text>
+                                                            </View>
+
+                                                            <TouchableOpacity
+                                                                style={[
+                                                                    styles.loadJtrBtn,
+                                                                    isLoaded ? styles.loadJtrBtnActive : !g.ada_jtr ? styles.loadJtrBtnDisabled : styles.loadJtrBtnReady,
+                                                                ]}
+                                                                disabled={!g.ada_jtr || isLoading}
+                                                                onPress={() => handleLoadJtr(g)}
+                                                            >
+                                                                {isLoading ? (
+                                                                    <ActivityIndicator size="small" color="white" />
+                                                                ) : (
+                                                                    <>
+                                                                        <Ionicons
+                                                                            name={isLoaded ? 'checkmark-outline' : 'flash-outline'}
+                                                                            size={13}
+                                                                            color="white"
+                                                                        />
+                                                                        <Text style={styles.loadJtrBtnText}>
+                                                                            {isLoaded ? 'Aktif' : 'Muat JTR'}
+                                                                        </Text>
+                                                                    </>
+                                                                )}
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    );
+                                                })
+                                            )}
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* CARD 3: TITIK GARDU & PROTEKSI ULP */}
+                                {catalog && (
+                                    <View style={styles.bulkRow}>
+                                        <TouchableOpacity
+                                            style={styles.bulkButton}
+                                            disabled={loadingAction?.startsWith('gardu-')}
+                                            onPress={() => handleLoadGarduUlp(selectedUlp === 'ALL' ? 'LABUAN' : selectedUlp)}
+                                        >
+                                            {loadingAction?.startsWith('gardu-') ? (
+                                                <ActivityIndicator size="small" color="white" />
+                                            ) : (
+                                                <Ionicons name="location-outline" size={16} color="#38bdf8" />
+                                            )}
+                                            <Text style={styles.bulkButtonText}>
+                                                Titik Gardu ({selectedUlp === 'ALL' ? 'LABUAN' : selectedUlp})
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={styles.bulkButton}
+                                            disabled={loadingAction?.startsWith('pro-')}
+                                            onPress={() => handleLoadProteksiUlp(selectedUlp)}
+                                        >
+                                            {loadingAction?.startsWith('pro-') ? (
+                                                <ActivityIndicator size="small" color="white" />
+                                            ) : (
+                                                <Ionicons name="shield-outline" size={16} color="#fb7185" />
+                                            )}
+                                            <Text style={styles.bulkButtonText}>
+                                                Proteksi & GH (LABUAN)
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* ========================================================= */}
+                        {/* TAB 2: LOCAL FILE IMPORT */}
+                        {/* ========================================================= */}
+                        {activeTab === 'local' && (
+                            <View>
+                                <TouchableOpacity
+                                    style={styles.importButton}
+                                    onPress={handleImport}
+                                    disabled={importing}
+                                    activeOpacity={0.7}
+                                >
+                                    {importing ? (
+                                        <ActivityIndicator color="white" size="small" />
+                                    ) : (
+                                        <Ionicons name="cloud-upload-outline" size={20} color="white" />
+                                    )}
+                                    <Text style={styles.importButtonText}>
+                                        {importing ? 'Memproses File...' : 'Pilih File (CSV / KML / KMZ)'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Import Confirmation */}
+                                {importStep === 'confirm' && pendingOverlay && (
+                                    <View style={styles.confirmBox}>
+                                        <Text style={styles.confirmTitle}>Konfirmasi Import</Text>
+
+                                        {/* Preview */}
+                                        <View style={styles.previewBox}>
+                                            <Text style={styles.previewText}>
+                                                📊 Ditemukan: {pendingOverlay.data.points.length} titik, {pendingOverlay.data.polylines.length} jalur
+                                            </Text>
+                                            <Text style={styles.previewText}>
+                                                🔍 Tipe terdeteksi: {TYPE_LABELS[pendingType]}
+                                            </Text>
+                                        </View>
+
+                                        {/* Layer Name */}
+                                        <Text style={styles.inputLabel}>Nama Layer</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            value={pendingName}
+                                            onChangeText={setPendingName}
+                                            placeholder="Nama layer"
+                                            placeholderTextColor="#64748b"
+                                        />
+
+                                        {/* Type Selector */}
+                                        <Text style={styles.inputLabel}>Tipe Data</Text>
+                                        <View style={styles.typeOptions}>
+                                            {TYPE_OPTIONS.map((opt) => (
+                                                <TouchableOpacity
+                                                    key={opt.value}
+                                                    style={[
+                                                        styles.typeBtn,
+                                                        pendingType === opt.value && styles.typeBtnActive,
+                                                    ]}
+                                                    onPress={() => setPendingType(opt.value)}
+                                                >
+                                                    <Text
+                                                        style={[
+                                                            styles.typeBtnText,
+                                                            pendingType === opt.value && styles.typeBtnTextActive,
+                                                        ]}
+                                                    >
+                                                        {opt.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+
+                                        {/* Color Selector */}
+                                        {(pendingType === 'jtm' || pendingType === 'jtr') && (
+                                            <View style={styles.colorSection}>
+                                                <Text style={styles.inputLabel}>Warna Garis</Text>
+                                                <View style={styles.colorPresets}>
+                                                    {COLOR_PRESETS.map((c) => (
                                                         <TouchableOpacity
                                                             key={c}
                                                             style={[
-                                                                styles.colorSwatch,
-                                                                styles.multiColorSwatch,
-                                                                pendingColor === 'multi' && styles.colorSwatchActive,
+                                                                styles.colorDot,
+                                                                c !== 'multi' && { backgroundColor: c },
+                                                                pendingColor === c && styles.colorDotActive,
                                                             ]}
-                                                            onPress={() => setPendingColor('multi')}
+                                                            onPress={() => setPendingColor(c)}
                                                         >
-                                                            <Text style={styles.multiColorSwatchText}>🌈</Text>
+                                                            {c === 'multi' && <Text style={{ fontSize: 13 }}>🌈</Text>}
                                                         </TouchableOpacity>
-                                                    );
-                                                }
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={c}
-                                                        style={[
-                                                            styles.colorSwatch,
-                                                            { backgroundColor: c },
-                                                            pendingColor === c && styles.colorSwatchActive,
-                                                        ]}
-                                                        onPress={() => setPendingColor(c)}
-                                                    />
-                                                );
-                                            })}
-                                        </View>
-                                    </>
-                                )}
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
 
-                                {/* Confirm / Cancel */}
-                                <View style={styles.confirmActions}>
-                                    <TouchableOpacity
-                                        style={styles.cancelBtn}
-                                        onPress={handleCancelImport}
-                                    >
-                                        <Text style={styles.cancelBtnText}>Batal</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.confirmBtn}
-                                        onPress={handleConfirmImport}
-                                    >
-                                        <Ionicons name="checkmark" size={18} color="white" />
-                                        <Text style={styles.confirmBtnText}>Import</Text>
-                                    </TouchableOpacity>
-                                </View>
+                                        {/* Action Buttons */}
+                                        <View style={styles.confirmActions}>
+                                            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelImport}>
+                                                <Text style={styles.cancelBtnText}>Batal</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmImport}>
+                                                <Ionicons name="checkmark" size={16} color="white" />
+                                                <Text style={styles.confirmBtnText}>Simpan & Tampilkan</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
                             </View>
                         )}
 
-                        {/* Overlay List */}
-                        {overlays.length > 0 && (
+                        {/* ========================================================= */}
+                        {/* UNIFIED ACTIVE OVERLAY LIST */}
+                        {/* ========================================================= */}
+                        <View style={styles.activeSectionHeader}>
                             <Text style={styles.sectionTitle}>
-                                Layer Aktif ({overlays.length})
+                                LAYER AKTIF ({overlays.length})
                             </Text>
-                        )}
+                            {overlays.length > 0 && (
+                                <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}>
+                                    <Ionicons name="trash-outline" size={13} color="#ef4444" />
+                                    <Text style={styles.clearAllText}>Hapus Semua</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
-                        {overlays.map(ol => (
-                            <View key={ol.id} style={styles.overlayItem}>
-                                <View style={styles.overlayHeader}>
-                                    <View style={styles.overlayInfo}>
-                                        <Text style={styles.overlayName} numberOfLines={1}>
-                                            {ol.name}
-                                        </Text>
-                                        <Text style={styles.overlayMeta}>
-                                            {TYPE_LABELS[ol.type]} • {ol.data.points.length} titik, {ol.data.polylines.length} jalur
-                                        </Text>
-                                    </View>
-
-                                    <View style={styles.overlayActions}>
-                                        <TouchableOpacity
-                                            onPress={() => toggleVisibility(ol.id)}
-                                            style={styles.visibilityBtn}
-                                        >
-                                            <Ionicons
-                                                name={ol.visible ? 'eye' : 'eye-off'}
-                                                size={20}
-                                                color={ol.visible ? '#1565C0' : '#999'}
-                                            />
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            onPress={() => handleDelete(ol.id, ol.name)}
-                                            style={styles.deleteBtn}
-                                        >
-                                            <Ionicons name="trash-outline" size={18} color="#F44336" />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-
-                                {/* Opacity Slider */}
-                                {ol.visible && (
-                                    <View style={styles.opacityRow}>
-                                        <Text style={styles.opacityLabel}>Opacity</Text>
-                                        <View style={styles.sliderContainer}>
-                                            <Slider
-                                                style={styles.slider}
-                                                minimumValue={0.1}
-                                                maximumValue={1}
-                                                value={ol.opacity}
-                                                onValueChange={(v: number) => updateOpacity(ol.id, v)}
-                                                onSlidingComplete={(v: number) => saveOpacity(ol.id, v)}
-                                                minimumTrackTintColor="#1565C0"
-                                                maximumTrackTintColor="#ddd"
-                                                thumbTintColor="#1565C0"
-                                            />
+                        {overlays.map((ol) => {
+                            const isJtr = ol.type === 'jtr';
+                            return (
+                                <View key={ol.id} style={[styles.overlayItem, isJtr && styles.overlayItemJtr]}>
+                                    <View style={styles.overlayHeader}>
+                                        <View style={styles.overlayInfo}>
+                                            <View style={styles.overlayTitleRow}>
+                                                <View
+                                                    style={[
+                                                        styles.layerColorIndicator,
+                                                        { backgroundColor: ol.color || (isJtr ? '#FF6600' : '#0284c7') },
+                                                    ]}
+                                                />
+                                                <Text style={styles.overlayName} numberOfLines={1}>
+                                                    {ol.name}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.overlayMeta}>
+                                                {TYPE_LABELS[ol.type]} • {ol.data?.points?.length || 0} titik, {ol.data?.polylines?.length || 0} jalur
+                                            </Text>
                                         </View>
-                                        <Text style={styles.opacityValue}>{Math.round(ol.opacity * 100)}%</Text>
+
+                                        <View style={styles.overlayActions}>
+                                            {/* Zoom / Focus */}
+                                            {onFocusOverlay && (
+                                                <TouchableOpacity
+                                                    style={styles.actionIconBtn}
+                                                    onPress={() => handleFocusOverlayAction(ol)}
+                                                >
+                                                    <Ionicons name="locate-outline" size={18} color="#0284c7" />
+                                                </TouchableOpacity>
+                                            )}
+
+                                            {/* Toggle Visibility */}
+                                            <TouchableOpacity
+                                                style={styles.actionIconBtn}
+                                                onPress={() => toggleVisibility(ol.id)}
+                                            >
+                                                <Ionicons
+                                                    name={ol.visible ? 'eye-outline' : 'eye-off-outline'}
+                                                    size={18}
+                                                    color={ol.visible ? '#0284c7' : '#94a3b8'}
+                                                />
+                                            </TouchableOpacity>
+
+                                            {/* Delete */}
+                                            <TouchableOpacity
+                                                style={styles.actionIconBtn}
+                                                onPress={() => handleDelete(ol.id, ol.name)}
+                                            >
+                                                <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                )}
-                            </View>
-                        ))}
+
+                                    {/* Opacity Slider */}
+                                    {ol.visible && (
+                                        <View style={styles.opacityRow}>
+                                            <Text style={styles.opacityLabel}>Transparansi</Text>
+                                            <View style={styles.sliderContainer}>
+                                                <Slider
+                                                    style={styles.slider}
+                                                    minimumValue={0.1}
+                                                    maximumValue={1.0}
+                                                    step={0.05}
+                                                    value={ol.opacity}
+                                                    minimumTrackTintColor="#0284c7"
+                                                    maximumTrackTintColor="#334155"
+                                                    thumbTintColor="#0284c7"
+                                                    onValueChange={(val: number) => updateOpacity(ol.id, val)}
+                                                    onSlidingComplete={(val: number) => saveOpacity(ol.id, val)}
+                                                />
+                                            </View>
+                                            <Text style={styles.opacityValue}>{Math.round(ol.opacity * 100)}%</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        })}
 
                         {overlays.length === 0 && importStep === 'idle' && (
                             <View style={styles.emptyState}>
-                                <Ionicons name="layers-outline" size={48} color="#ccc" />
-                                <Text style={styles.emptyText}>
-                                    Belum ada data eksisting diimport.
-                                </Text>
+                                <Ionicons name="layers-outline" size={44} color="#475569" />
+                                <Text style={styles.emptyText}>Belum ada data eksisting dimuat</Text>
                                 <Text style={styles.emptySubtext}>
-                                    Tap tombol di atas untuk import file CSV, KML, atau KMZ berisi data jaringan PLN eksisting.
+                                    Pilih penyulang atau cari gardu di tab Cloud GIS di atas untuk memuat jaringan langsung ke peta!
                                 </Text>
                             </View>
                         )}
-
-                        {/* Bottom spacing */}
-                        <View style={{ height: 30 }} />
                     </ScrollView>
 
-                    {/* Close */}
+                    {/* Footer */}
                     <TouchableOpacity style={styles.footerBtn} onPress={onClose}>
                         <Text style={styles.footerBtnText}>Tutup</Text>
                     </TouchableOpacity>
@@ -434,196 +982,602 @@ export default function OverlayManager({
     );
 }
 
-// =============================================================================
-// STYLES
-// =============================================================================
-
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        justifyContent: 'flex-end',
     },
     container: {
-        backgroundColor: 'white',
-        borderRadius: 16,
-        width: '92%',
-        maxHeight: '90%',
-        overflow: 'hidden',
+        backgroundColor: '#0f172a',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '92%',
+        minHeight: '60%',
+        borderWidth: 1,
+        borderColor: '#334155',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 18,
+        paddingTop: 16,
+        paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: '#1e293b',
+    },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    headerIconBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: '#ea580c',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     title: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#f8fafc',
+    },
+    subtitle: {
+        fontSize: 11,
+        color: '#94a3b8',
+        marginTop: 1,
     },
     closeBtn: {
         padding: 4,
     },
-    content: {
-        padding: 16,
-        maxHeight: 500,
-    },
 
-    // Import Button
-    importButton: {
-        backgroundColor: '#1565C0',
+    // Tab Bar
+    tabBar: {
+        flexDirection: 'row',
+        backgroundColor: '#1e293b',
+        borderBottomWidth: 1,
+        borderBottomColor: '#334155',
+    },
+    tabButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    tabButtonActiveCloud: {
+        borderBottomColor: '#ea580c',
+        backgroundColor: '#0f172a',
+    },
+    tabButtonActiveLocal: {
+        borderBottomColor: '#0284c7',
+        backgroundColor: '#0f172a',
+    },
+    tabText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#94a3b8',
+    },
+    tabTextActiveCloud: {
+        color: '#ea580c',
+        fontWeight: 'bold',
+    },
+    tabTextActiveLocal: {
+        color: '#0284c7',
+        fontWeight: 'bold',
+    },
+    badgeRecommend: {
+        backgroundColor: '#334155',
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        borderRadius: 4,
+    },
+    badgeActive: {
+        backgroundColor: '#ea580c',
+    },
+    badgeText: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: 'white',
+    },
+
+    content: {
+        paddingHorizontal: 16,
+        paddingTop: 14,
+    },
+
+    // Server Status Card
+    serverStatusCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#1e293b',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderWidth: 1,
+        borderColor: '#334155',
+        marginBottom: 12,
+    },
+    statusIndicatorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    dotGreen: {
+        backgroundColor: '#10b981',
+    },
+    dotOrange: {
+        backgroundColor: '#ea580c',
+    },
+    serverStatusText: {
+        fontSize: 11.5,
+        color: '#cbd5e1',
+        fontWeight: '500',
+    },
+    refreshButton: {
+        padding: 5,
+        backgroundColor: '#334155',
+        borderRadius: 6,
+    },
+
+    errorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: 'rgba(239,68,68,0.15)',
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 12,
+    },
+    errorText: {
+        fontSize: 12,
+        color: '#fca5a5',
+        flex: 1,
+    },
+
+    // ULP Filter
+    filterSection: {
+        marginBottom: 14,
+    },
+    filterLabel: {
+        fontSize: 10.5,
+        fontWeight: '700',
+        color: '#94a3b8',
+        marginBottom: 6,
+        letterSpacing: 0.5,
+    },
+    ulpScroll: {
+        flexDirection: 'row',
+    },
+    ulpPill: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+        backgroundColor: '#1e293b',
+        borderWidth: 1,
+        borderColor: '#334155',
+        marginRight: 6,
+    },
+    ulpPillActive: {
+        backgroundColor: '#ea580c',
+        borderColor: '#ea580c',
+    },
+    ulpPillText: {
+        fontSize: 11.5,
+        color: '#94a3b8',
+        fontWeight: '500',
+    },
+    ulpPillTextActive: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+
+    // Feature Cards
+    featureCard: {
+        backgroundColor: '#1e293b',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#334155',
+        padding: 12,
+        marginBottom: 12,
+    },
+    jtrCard: {
+        borderColor: 'rgba(234, 88, 12, 0.5)',
+    },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    cardTitleWithIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    cardTitle: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#f8fafc',
+    },
+    cardBadgeCount: {
+        fontSize: 11,
+        color: '#94a3b8',
+    },
+    colorPillOrange: {
+        backgroundColor: 'rgba(234, 88, 12, 0.2)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    colorPillText: {
+        fontSize: 9.5,
+        color: '#ea580c',
+        fontWeight: 'bold',
+    },
+
+    pickerWrapper: {
+        backgroundColor: '#0f172a',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#334155',
+        marginBottom: 10,
+        overflow: 'hidden',
+    },
+    picker: {
+        color: '#f8fafc',
+        height: 48,
+    },
+
+    actionBtnPrimary: {
+        backgroundColor: '#0284c7',
+        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+    },
+    actionBtnText: {
+        color: 'white',
+        fontSize: 12.5,
+        fontWeight: 'bold',
+    },
+
+    // JTR Search
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#334155',
+        paddingHorizontal: 10,
+        marginBottom: 8,
+    },
+    searchIcon: {
+        marginRight: 6,
+    },
+    searchInput: {
+        flex: 1,
+        height: 38,
+        color: '#f8fafc',
+        fontSize: 12.5,
+    },
+    clearSearchBtn: {
+        padding: 4,
+    },
+
+    garduListContainer: {
+        maxHeight: 160,
+        backgroundColor: '#0f172a',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#334155',
+        padding: 4,
+    },
+    garduEmptyText: {
+        textAlign: 'center',
+        paddingVertical: 16,
+        color: '#64748b',
+        fontSize: 12,
+    },
+    garduRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(51, 65, 85, 0.4)',
+    },
+    garduRowActive: {
+        backgroundColor: 'rgba(234, 88, 12, 0.12)',
+    },
+    garduRowInfo: {
+        flex: 1,
+        marginRight: 8,
+    },
+    garduHeaderLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    garduIdText: {
+        fontSize: 12.5,
+        fontWeight: 'bold',
+        color: '#f8fafc',
+    },
+    badgeJtr: {
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 4,
+    },
+    badgeJtrGreen: {
+        backgroundColor: '#065f46',
+    },
+    badgeJtrGray: {
+        backgroundColor: '#334155',
+    },
+    badgeJtrText: {
+        fontSize: 9.5,
+        fontWeight: 'bold',
+    },
+    textGreen: {
+        color: '#6ee7b7',
+    },
+    textGray: {
+        color: '#94a3b8',
+    },
+    garduFeederText: {
+        fontSize: 11,
+        color: '#64748b',
+    },
+    garduNameText: {
+        fontSize: 11,
+        color: '#94a3b8',
+        marginTop: 2,
+    },
+
+    loadJtrBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    loadJtrBtnReady: {
+        backgroundColor: '#ea580c',
+    },
+    loadJtrBtnActive: {
+        backgroundColor: '#15803d',
+    },
+    loadJtrBtnDisabled: {
+        backgroundColor: '#334155',
+        opacity: 0.5,
+    },
+    loadJtrBtnText: {
+        color: 'white',
+        fontSize: 11,
+        fontWeight: 'bold',
+    },
+
+    // Bulk buttons
+    bulkRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 16,
+    },
+    bulkButton: {
+        flex: 1,
+        backgroundColor: '#1e293b',
+        borderWidth: 1,
+        borderColor: '#334155',
+        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+    },
+    bulkButtonText: {
+        color: '#f8fafc',
+        fontSize: 11.5,
+        fontWeight: '600',
+    },
+
+    // Local Import Styles
+    importButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#0284c7',
         paddingVertical: 14,
         borderRadius: 10,
-        gap: 8,
+        marginBottom: 16,
     },
     importButtonText: {
         color: 'white',
-        fontSize: 15,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: 'bold',
     },
 
-    // Confirm Box
     confirmBox: {
-        marginTop: 16,
+        backgroundColor: '#1e293b',
+        borderRadius: 10,
         padding: 14,
-        backgroundColor: '#F5F5F5',
-        borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: '#0284c7',
+        marginBottom: 16,
     },
     confirmTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#38bdf8',
         marginBottom: 10,
     },
     previewBox: {
-        backgroundColor: '#E3F2FD',
-        padding: 10,
+        backgroundColor: '#0f172a',
         borderRadius: 8,
+        padding: 10,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#334155',
     },
     previewText: {
-        fontSize: 13,
-        color: '#1565C0',
-        marginBottom: 2,
+        fontSize: 12,
+        color: '#cbd5e1',
+        lineHeight: 18,
     },
-    fieldLabel: {
-        fontSize: 13,
+    inputLabel: {
+        fontSize: 11.5,
         fontWeight: '600',
-        color: '#555',
+        color: '#94a3b8',
         marginBottom: 4,
-        marginTop: 8,
     },
     input: {
+        backgroundColor: '#0f172a',
         borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 10,
-        fontSize: 14,
-        backgroundColor: 'white',
+        borderColor: '#334155',
+        borderRadius: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        fontSize: 13,
+        color: '#f8fafc',
+        marginBottom: 10,
     },
-    typeRow: {
+    typeOptions: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 6,
-        marginTop: 4,
+        marginBottom: 12,
     },
-    typeChip: {
+    typeBtn: {
         paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 16,
-        backgroundColor: '#E0E0E0',
+        paddingVertical: 7,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#334155',
+        backgroundColor: '#0f172a',
     },
-    typeChipActive: {
-        backgroundColor: '#1565C0',
+    typeBtnActive: {
+        backgroundColor: '#0284c7',
+        borderColor: '#0284c7',
     },
-    typeChipText: {
-        fontSize: 12,
-        color: '#555',
-    },
-    typeChipTextActive: {
-        color: 'white',
+    typeBtnText: {
+        fontSize: 11.5,
+        color: '#94a3b8',
         fontWeight: '600',
     },
-    colorRow: {
+    typeBtnTextActive: {
+        color: 'white',
+    },
+    colorSection: {
+        marginBottom: 14,
+    },
+    colorPresets: {
         flexDirection: 'row',
         gap: 8,
-        marginTop: 6,
+        flexWrap: 'wrap',
     },
-    colorSwatch: {
+    colorDot: {
         width: 30,
         height: 30,
-        borderRadius: 15,
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    multiColorSwatch: {
-        backgroundColor: '#f0f0f0',
+        borderRadius: 6,
+        backgroundColor: '#334155',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: '#475569',
     },
-    multiColorSwatchText: {
-        fontSize: 14,
-    },
-    colorSwatchActive: {
-        borderColor: '#333',
-        borderWidth: 3,
+    colorDotActive: {
+        borderColor: 'white',
+        borderWidth: 2.5,
     },
     confirmActions: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        gap: 10,
-        marginTop: 14,
+        gap: 8,
+        marginTop: 6,
     },
     cancelBtn: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 8,
-        backgroundColor: '#E0E0E0',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 6,
+        backgroundColor: '#334155',
     },
     cancelBtnText: {
-        color: '#555',
-        fontWeight: '600',
+        color: '#cbd5e1',
+        fontSize: 12,
     },
     confirmBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 8,
-        backgroundColor: '#4CAF50',
+        paddingVertical: 8,
+        borderRadius: 6,
+        backgroundColor: '#10b981',
     },
     confirmBtnText: {
         color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+
+    // Active Layers Section
+    activeSectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 8,
+    },
+    sectionTitle: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#f59e0b',
+        letterSpacing: 0.5,
+    },
+    clearAllBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    clearAllText: {
+        fontSize: 11,
+        color: '#ef4444',
         fontWeight: '600',
     },
 
-    // Overlay List
-    sectionTitle: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        color: '#333',
-        marginTop: 20,
-        marginBottom: 10,
-    },
     overlayItem: {
-        backgroundColor: '#FAFAFA',
+        backgroundColor: '#1e293b',
         borderRadius: 10,
-        padding: 12,
-        marginBottom: 10,
+        padding: 10,
+        marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: '#334155',
+    },
+    overlayItemJtr: {
+        borderColor: 'rgba(234, 88, 12, 0.4)',
     },
     overlayHeader: {
         flexDirection: 'row',
@@ -632,89 +1586,102 @@ const styles = StyleSheet.create({
     },
     overlayInfo: {
         flex: 1,
-        marginRight: 8,
+        marginRight: 6,
+    },
+    overlayTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    layerColorIndicator: {
+        width: 8,
+        height: 8,
+        borderRadius: 2,
     },
     overlayName: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#333',
+        color: '#f8fafc',
     },
     overlayMeta: {
-        fontSize: 12,
-        color: '#888',
+        fontSize: 11,
+        color: '#94a3b8',
         marginTop: 2,
     },
     overlayActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
     },
-    visibilityBtn: {
-        padding: 6,
-    },
-    deleteBtn: {
-        padding: 6,
+    actionIconBtn: {
+        padding: 5,
+        backgroundColor: '#334155',
+        borderRadius: 6,
     },
 
-    // Opacity Slider
     opacityRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 8,
+        marginTop: 6,
+        paddingTop: 6,
         borderTopWidth: 1,
-        borderTopColor: '#EEE',
+        borderTopColor: '#334155',
     },
     opacityLabel: {
-        fontSize: 12,
-        color: '#888',
-        width: 50,
+        fontSize: 10.5,
+        color: '#94a3b8',
+        width: 65,
     },
     sliderContainer: {
         flex: 1,
         marginHorizontal: 4,
     },
     slider: {
-        height: 30,
+        height: 24,
     },
     opacityValue: {
-        fontSize: 12,
-        color: '#555',
-        fontWeight: '600',
-        width: 35,
+        fontSize: 10.5,
+        color: '#cbd5e1',
+        width: 32,
         textAlign: 'right',
     },
 
-    // Empty State
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 40,
+        paddingVertical: 28,
+        backgroundColor: '#1e293b',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#334155',
+        borderStyle: 'dashed',
+        marginTop: 8,
+        marginBottom: 16,
     },
     emptyText: {
-        fontSize: 15,
-        color: '#999',
-        marginTop: 12,
-        fontWeight: '600',
+        fontSize: 13,
+        color: '#94a3b8',
+        marginTop: 8,
+        fontWeight: 'bold',
     },
     emptySubtext: {
-        fontSize: 13,
-        color: '#bbb',
-        marginTop: 6,
+        fontSize: 11,
+        color: '#64748b',
+        marginTop: 4,
         textAlign: 'center',
-        lineHeight: 18,
+        paddingHorizontal: 24,
+        lineHeight: 16,
     },
 
-    // Footer
     footerBtn: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#1e293b',
         paddingVertical: 14,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: '#334155',
     },
     footerBtnText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#666',
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#f8fafc',
     },
 });
