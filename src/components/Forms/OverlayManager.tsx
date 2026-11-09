@@ -26,6 +26,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import Slider from '@react-native-community/slider';
 import { Picker } from '@react-native-picker/picker';
+import { Coordinate } from '../../types';
+import { calculateDistance } from '../../utils/geoUtils';
 import { OverlayFile, OverlayDataType } from '../../types/overlayTypes';
 import { parseOverlayFile, detectOverlayType } from '../../services/overlayParser';
 import { overlayStorage } from '../../services/overlayStorage';
@@ -33,6 +35,7 @@ import {
     cloudGisService,
     CloudGisCatalog,
     CloudGardu,
+    CloudPenyulang,
 } from '../../services/cloudGisService';
 
 function generateId(): string {
@@ -66,6 +69,7 @@ interface OverlayManagerProps {
     overlays: OverlayFile[];
     onOverlaysChange: (overlays: OverlayFile[]) => void;
     onFocusOverlay?: (bounds: [[number, number], [number, number]]) => void;
+    currentLocation?: Coordinate | null;
 }
 
 export default function OverlayManager({
@@ -74,6 +78,7 @@ export default function OverlayManager({
     overlays,
     onOverlaysChange,
     onFocusOverlay,
+    currentLocation,
 }: OverlayManagerProps) {
     // Tab Navigation
     const [activeTab, setActiveTab] = useState<'cloud' | 'local'>('cloud');
@@ -94,6 +99,7 @@ export default function OverlayManager({
     const [selectedPenyulangId, setSelectedPenyulangId] = useState<string>('');
     const [garduSearch, setGarduSearch] = useState<string>('');
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
+    const autoLocatedRef = React.useRef(false);
 
     // Auto-load catalog on modal open
     useEffect(() => {
@@ -118,6 +124,59 @@ export default function OverlayManager({
         }
     };
 
+    // Safe master gardu list
+    const allGarduList = useMemo(() => {
+        return catalog?.gardu && Array.isArray(catalog.gardu) ? catalog.gardu : [];
+    }, [catalog]);
+
+    const totalGarduCount = useMemo(() => {
+        if (catalog?.statistik?.n_gardu) return catalog.statistik.n_gardu;
+        return allGarduList.length;
+    }, [catalog, allGarduList]);
+
+    const getGarduCountForUlp = (ulpName: string) => {
+        return allGarduList.filter((g) => g.ulp.toUpperCase() === ulpName.toUpperCase()).length;
+    };
+
+    const formatDistance = (meters?: number): string => {
+        if (meters === undefined || meters === null) return '';
+        if (meters < 1000) {
+            return `${Math.round(meters)} m`;
+        }
+        return `${(meters / 1000).toFixed(1)} km`;
+    };
+
+    // Auto-select nearest Penyulang & ULP when modal opens if currentLocation available
+    useEffect(() => {
+        if (!visible) {
+            autoLocatedRef.current = false;
+            return;
+        }
+        if (autoLocatedRef.current || !currentLocation || !catalog || allGarduList.length === 0) return;
+
+        let minDist = Infinity;
+        let closest: CloudGardu | null = null;
+        for (const g of allGarduList) {
+            if (g.lat && g.lng) {
+                const d = calculateDistance(currentLocation, { latitude: g.lat, longitude: g.lng });
+                if (d < minDist) {
+                    minDist = d;
+                    closest = g;
+                }
+            }
+        }
+        if (closest && minDist < 35000) {
+            setSelectedUlp(closest.ulp);
+            const matchingP = catalog.penyulang.find(
+                (p) => p.id === closest!.penyulang || p.nama.toLowerCase() === closest!.penyulang.toLowerCase()
+            );
+            if (matchingP) {
+                setSelectedPenyulangId(matchingP.id);
+            }
+            autoLocatedRef.current = true;
+        }
+    }, [visible, currentLocation, catalog, allGarduList]);
+
     // Filtered Penyulang list based on ULP
     const filteredPenyulang = useMemo(() => {
         if (!catalog) return [];
@@ -137,26 +196,57 @@ export default function OverlayManager({
         }
     }, [filteredPenyulang, selectedPenyulangId]);
 
-    // Filtered Gardu list for search
+    // Filtered Gardu list for search (Distance-ranked)
     const filteredGardu = useMemo(() => {
-        if (!catalog) return [];
-        let list = catalog.gardu;
+        if (!catalog || allGarduList.length === 0) return [];
+        let list = allGarduList;
         if (selectedUlp !== 'ALL') {
             list = list.filter((g) => g.ulp.toUpperCase() === selectedUlp.toUpperCase());
         }
+
+        // Calculate distance if currentLocation is available
+        const withDist = list.map((g) => {
+            let dist: number | undefined = undefined;
+            if (currentLocation && g.lat && g.lng) {
+                dist = calculateDistance(
+                    currentLocation,
+                    { latitude: g.lat, longitude: g.lng }
+                );
+            }
+            return { ...g, distance: dist };
+        });
+
         const q = garduSearch.trim().toLowerCase();
         if (!q) {
-            return list.slice(0, 10);
+            if (currentLocation) {
+                withDist.sort((a, b) => {
+                    if (a.distance !== undefined && b.distance !== undefined) {
+                        return a.distance - b.distance;
+                    }
+                    return 0;
+                });
+            }
+            return withDist.slice(0, 15);
         }
-        return list
-            .filter(
-                (g) =>
-                    g.id.toLowerCase().includes(q) ||
-                    g.nama.toLowerCase().includes(q) ||
-                    g.penyulang.toLowerCase().includes(q)
-            )
-            .slice(0, 25);
-    }, [catalog, selectedUlp, garduSearch]);
+
+        const matches = withDist.filter(
+            (g) =>
+                g.id.toLowerCase().includes(q) ||
+                g.nama.toLowerCase().includes(q) ||
+                g.penyulang.toLowerCase().includes(q)
+        );
+
+        if (currentLocation) {
+            matches.sort((a, b) => {
+                if (a.distance !== undefined && b.distance !== undefined) {
+                    return a.distance - b.distance;
+                }
+                return 0;
+            });
+        }
+
+        return matches.slice(0, 30);
+    }, [catalog, allGarduList, selectedUlp, garduSearch, currentLocation]);
 
     // ── Cloud GIS Actions ────────────────────────────────────────────────
 
@@ -167,7 +257,8 @@ export default function OverlayManager({
 
         setLoadingAction(`jtm-${pObj.id}`);
         try {
-            const overlay = await cloudGisService.fetchJtm(pObj.file, pObj.nama);
+            const jtmFile = pObj.jtm || pObj.file || `${pObj.id}.geojson`;
+            const overlay = await cloudGisService.fetchJtm(jtmFile, pObj.nama);
 
             const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
             let updated: OverlayFile[];
@@ -189,6 +280,115 @@ export default function OverlayManager({
             Alert.alert('✅ JTM Dimuat', `${overlay.name} (${overlay.data.polylines.length} segmen) berhasil ditampilkan di peta.`);
         } catch (err: any) {
             Alert.alert('Gagal Memuat JTM', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleLoadGarduPenyulang = async () => {
+        if (!catalog || !selectedPenyulangId) return;
+        const pObj = catalog.penyulang.find((x) => x.id === selectedPenyulangId);
+        if (!pObj) return;
+
+        const targetFile = pObj.gardu || `${pObj.id}.geojson`;
+        setLoadingAction(`gardu-p-${pObj.id}`);
+        try {
+            const overlay = await cloudGisService.fetchGarduPenyulang(targetFile, pObj.nama);
+
+            const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
+            let updated = existsIdx >= 0 ? [...overlays] : [...overlays, overlay];
+            if (existsIdx >= 0) updated[existsIdx] = overlay;
+
+            onOverlaysChange(updated);
+            await overlayStorage.saveOverlay(overlay);
+
+            const bounds = cloudGisService.calculateBounds(overlay);
+            if (bounds && onFocusOverlay) {
+                onFocusOverlay(bounds);
+            }
+
+            Alert.alert('✅ Gardu Dimuat', `${overlay.name} (${overlay.data.points.length} gardu) berhasil ditampilkan di peta.`);
+        } catch (err: any) {
+            Alert.alert('Gagal Memuat Gardu', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleLoadProteksiPenyulang = async () => {
+        if (!catalog || !selectedPenyulangId) return;
+        const pObj = catalog.penyulang.find((x) => x.id === selectedPenyulangId);
+        if (!pObj) return;
+
+        const targetFile = pObj.proteksi || `${pObj.id}.geojson`;
+        setLoadingAction(`pro-p-${pObj.id}`);
+        try {
+            const overlay = await cloudGisService.fetchProteksiPenyulang(targetFile, pObj.nama);
+
+            const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
+            let updated = existsIdx >= 0 ? [...overlays] : [...overlays, overlay];
+            if (existsIdx >= 0) updated[existsIdx] = overlay;
+
+            onOverlaysChange(updated);
+            await overlayStorage.saveOverlay(overlay);
+
+            const bounds = cloudGisService.calculateBounds(overlay);
+            if (bounds && onFocusOverlay) {
+                onFocusOverlay(bounds);
+            }
+
+            Alert.alert('✅ Proteksi Dimuat', `${overlay.name} (${overlay.data.points.length} alat proteksi) berhasil ditampilkan.`);
+        } catch (err: any) {
+            Alert.alert('Gagal Memuat Proteksi', err.message);
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleLoadAllPenyulang = async () => {
+        if (!catalog || !selectedPenyulangId) return;
+        const pObj = catalog.penyulang.find((x) => x.id === selectedPenyulangId);
+        if (!pObj) return;
+
+        setLoadingAction(`all-p-${pObj.id}`);
+        try {
+            const results: OverlayFile[] = [];
+            const jtmFile = pObj.jtm || pObj.file || `${pObj.id}.geojson`;
+            results.push(await cloudGisService.fetchJtm(jtmFile, pObj.nama));
+
+            if (pObj.gardu) {
+                try {
+                    results.push(await cloudGisService.fetchGarduPenyulang(pObj.gardu, pObj.nama));
+                } catch (e) {
+                    console.warn('Gardu penyulang not found:', e);
+                }
+            }
+            if (pObj.proteksi) {
+                try {
+                    results.push(await cloudGisService.fetchProteksiPenyulang(pObj.proteksi, pObj.nama));
+                } catch (e) {
+                    console.warn('Proteksi penyulang not found:', e);
+                }
+            }
+
+            let updated = [...overlays];
+            for (const ol of results) {
+                const idx = updated.findIndex((o) => o.id === ol.id);
+                if (idx >= 0) updated[idx] = ol;
+                else updated.push(ol);
+                await overlayStorage.saveOverlay(ol);
+            }
+
+            onOverlaysChange(updated);
+
+            if (results.length > 0 && onFocusOverlay) {
+                const bounds = cloudGisService.calculateBounds(results[0]);
+                if (bounds) onFocusOverlay(bounds);
+            }
+
+            Alert.alert('✅ Muat Semua Sukses', `${results.length} layer untuk Penyulang ${pObj.nama} berhasil dimuat!`);
+        } catch (err: any) {
+            Alert.alert('Gagal Muat Semua', err.message);
         } finally {
             setLoadingAction(null);
         }
@@ -231,7 +431,7 @@ export default function OverlayManager({
         const targetUlp = ulp === 'ALL' ? 'LABUAN' : ulp;
         setLoadingAction(`gardu-${targetUlp}`);
         try {
-            const overlay = await cloudGisService.fetchGardu(targetUlp);
+            const overlay = await cloudGisService.fetchGardu(targetUlp, catalog);
 
             const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
             let updated: OverlayFile[];
@@ -262,7 +462,7 @@ export default function OverlayManager({
         const targetUlp = ulp === 'ALL' ? 'LABUAN' : ulp;
         setLoadingAction(`pro-${targetUlp}`);
         try {
-            const overlay = await cloudGisService.fetchProteksi(targetUlp);
+            const overlay = await cloudGisService.fetchProteksi(targetUlp, catalog);
 
             const existsIdx = overlays.findIndex((o) => o.id === overlay.id);
             let updated: OverlayFile[];
@@ -535,7 +735,7 @@ export default function OverlayManager({
                                             {loadingCatalog ? (
                                                 'Menghubungkan ke Cloud Server...'
                                             ) : catalog ? (
-                                                `Online: ${catalog.gardu.length.toLocaleString()} Gardu · ${catalog.penyulang.length} Penyulang`
+                                                `Online: ${totalGarduCount.toLocaleString()} Gardu · ${catalog.penyulang.length} Penyulang`
                                             ) : (
                                                 'Gagal terhubung ke Cloud GIS'
                                             )}
@@ -572,11 +772,11 @@ export default function OverlayManager({
                                                 onPress={() => setSelectedUlp('ALL')}
                                             >
                                                 <Text style={[styles.ulpPillText, selectedUlp === 'ALL' && styles.ulpPillTextActive]}>
-                                                    Semua ({catalog.gardu.length})
+                                                    Semua ({totalGarduCount.toLocaleString()})
                                                 </Text>
                                             </TouchableOpacity>
                                             {catalog.ulp.map((u) => {
-                                                const count = catalog.gardu.filter((g) => g.ulp.toUpperCase() === u.toUpperCase()).length;
+                                                const count = getGarduCountForUlp(u);
                                                 const isSel = selectedUlp.toUpperCase() === u.toUpperCase();
                                                 return (
                                                     <TouchableOpacity
@@ -613,7 +813,13 @@ export default function OverlayManager({
                                                 dropdownIconColor="#1565C0"
                                             >
                                                 {filteredPenyulang.map((p) => {
-                                                    const isLoaded = overlays.some((o) => o.id === `cloud_jtm_${p.file.replace('.geojson', '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
+                                                    const jtmFile = p.jtm || p.file || `${p.id}.geojson`;
+                                                    const jtmKey = jtmFile.replace('.geojson', '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                                    const isLoaded = overlays.some(
+                                                        (o) =>
+                                                            o.id === `cloud_jtm_${p.id.toLowerCase().replace(/[^a-z0-9]/g, '_')}` ||
+                                                            o.id === `cloud_jtm_${jtmKey}`
+                                                    );
                                                     return (
                                                         <Picker.Item
                                                             key={p.id}
@@ -641,6 +847,51 @@ export default function OverlayManager({
                                                 {loadingAction?.startsWith('jtm-') ? 'Memuat JTM...' : 'Tampilkan JTM di Peta'}
                                             </Text>
                                         </TouchableOpacity>
+
+                                        {/* Quick penyulang actions (Gardu, Proteksi, Muat Semua) */}
+                                        <View style={styles.penyulangSubButtonsRow}>
+                                            <TouchableOpacity
+                                                style={styles.smallActionBtn}
+                                                onPress={handleLoadGarduPenyulang}
+                                                disabled={!selectedPenyulangId || loadingAction?.startsWith('gardu-p-')}
+                                                activeOpacity={0.7}
+                                            >
+                                                {loadingAction?.startsWith('gardu-p-') ? (
+                                                    <ActivityIndicator size="small" color="#1565C0" />
+                                                ) : (
+                                                    <Ionicons name="location" size={13} color="#1565C0" />
+                                                )}
+                                                <Text style={styles.smallActionBtnText}>Gardu</Text>
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                style={styles.smallActionBtn}
+                                                onPress={handleLoadProteksiPenyulang}
+                                                disabled={!selectedPenyulangId || loadingAction?.startsWith('pro-p-')}
+                                                activeOpacity={0.7}
+                                            >
+                                                {loadingAction?.startsWith('pro-p-') ? (
+                                                    <ActivityIndicator size="small" color="#BE123C" />
+                                                ) : (
+                                                    <Ionicons name="shield" size={13} color="#BE123C" />
+                                                )}
+                                                <Text style={[styles.smallActionBtnText, { color: '#BE123C' }]}>Proteksi</Text>
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                style={[styles.smallActionBtn, styles.smallActionBtnAll]}
+                                                onPress={handleLoadAllPenyulang}
+                                                disabled={!selectedPenyulangId || loadingAction?.startsWith('all-p-')}
+                                                activeOpacity={0.7}
+                                            >
+                                                {loadingAction?.startsWith('all-p-') ? (
+                                                    <ActivityIndicator size="small" color="white" />
+                                                ) : (
+                                                    <Ionicons name="layers" size={13} color="white" />
+                                                )}
+                                                <Text style={[styles.smallActionBtnText, { color: 'white' }]}>Muat 3 Layer</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 )}
 
@@ -654,8 +905,15 @@ export default function OverlayManager({
                                                     JTR & Tiang TR (Per Gardu)
                                                 </Text>
                                             </View>
-                                            <View style={styles.colorPillOrange}>
-                                                <Text style={styles.colorPillText}>Oren & Ungu</Text>
+                                            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                                                {currentLocation && (
+                                                    <View style={styles.badgeTerdekat}>
+                                                        <Text style={styles.badgeTerdekatText}>⭐ Terdekat</Text>
+                                                    </View>
+                                                )}
+                                                <View style={styles.colorPillOrange}>
+                                                    <Text style={styles.colorPillText}>Oren & Ungu</Text>
+                                                </View>
                                             </View>
                                         </View>
                                         <Text style={styles.cardDescText}>
@@ -682,7 +940,19 @@ export default function OverlayManager({
                                         {/* Gardu Results (Smooth Non-Conflicting List) */}
                                         <View style={styles.garduListContainer}>
                                             {filteredGardu.length === 0 ? (
-                                                <Text style={styles.garduEmptyText}>Tidak ditemukan gardu "{garduSearch}"</Text>
+                                                <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                                                    <Text style={styles.garduEmptyText}>
+                                                        Tidak ditemukan gardu "{garduSearch}" {selectedUlp !== 'ALL' ? `di ULP ${selectedUlp}` : ''}
+                                                    </Text>
+                                                    {selectedUlp !== 'ALL' && (
+                                                        <TouchableOpacity
+                                                            onPress={() => setSelectedUlp('ALL')}
+                                                            style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#E2E8F0', borderRadius: 6 }}
+                                                        >
+                                                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#1E293B' }}>Cari di Semua ULP</Text>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
                                             ) : (
                                                 filteredGardu.map((g) => {
                                                     const isLoaded = overlays.some((o) => o.id === `cloud_jtr_${g.id.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
@@ -700,6 +970,14 @@ export default function OverlayManager({
                                                                             {g.ada_jtr ? 'Ada JTR' : 'Belum Ada'}
                                                                         </Text>
                                                                     </View>
+                                                                    {g.distance !== undefined && (
+                                                                        <View style={styles.badgeDistance}>
+                                                                            <Ionicons name="navigate-outline" size={10} color="#1D4ED8" />
+                                                                            <Text style={styles.badgeDistanceText}>
+                                                                                {formatDistance(g.distance)}
+                                                                            </Text>
+                                                                        </View>
+                                                                    )}
                                                                     <Text style={styles.garduFeederText}>{g.penyulang}</Text>
                                                                 </View>
                                                                 <Text style={styles.garduNameText} numberOfLines={1}>
@@ -761,7 +1039,7 @@ export default function OverlayManager({
                                         <TouchableOpacity
                                             style={styles.bulkButton}
                                             disabled={loadingAction?.startsWith('pro-')}
-                                            onPress={() => handleLoadProteksiUlp(selectedUlp)}
+                                            onPress={() => handleLoadProteksiUlp(selectedUlp === 'ALL' ? 'LABUAN' : selectedUlp)}
                                             activeOpacity={0.7}
                                         >
                                             {loadingAction?.startsWith('pro-') ? (
@@ -770,7 +1048,7 @@ export default function OverlayManager({
                                                 <Ionicons name="shield-outline" size={16} color="#E11D48" />
                                             )}
                                             <Text style={[styles.bulkButtonText, { color: '#BE123C' }]}>
-                                                Proteksi & GH (LABUAN)
+                                                Proteksi & GH ({selectedUlp === 'ALL' ? 'LABUAN' : selectedUlp})
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
@@ -1306,6 +1584,33 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: 'bold',
     },
+    penyulangSubButtonsRow: {
+        flexDirection: 'row',
+        gap: 6,
+        marginTop: 8,
+    },
+    smallActionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 7,
+        borderRadius: 6,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+    },
+    smallActionBtnAll: {
+        flex: 1.3,
+        backgroundColor: '#0284C7',
+        borderColor: '#0284C7',
+    },
+    smallActionBtnText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#1565C0',
+    },
 
     // JTR Search Bar & Items
     searchBar: {
@@ -1384,6 +1689,35 @@ const styles = StyleSheet.create({
     badgeJtrText: {
         fontSize: 9.5,
         fontWeight: 'bold',
+    },
+    badgeDistance: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    badgeDistanceText: {
+        fontSize: 9.5,
+        fontWeight: 'bold',
+        color: '#1D4ED8',
+    },
+    badgeTerdekat: {
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    badgeTerdekatText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#B45309',
     },
     textGreen: {
         color: '#15803D',

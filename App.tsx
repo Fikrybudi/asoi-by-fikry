@@ -2771,6 +2771,12 @@ export default function App() {
         overlays={overlayLayers}
         onOverlaysChange={setOverlayLayers}
         onFocusOverlay={handleFocusOverlay}
+        currentLocation={
+          centerCoordinate ||
+          currentSurvey?.tiangList?.[0]?.koordinat ||
+          currentSurvey?.garduList?.[0]?.koordinat ||
+          null
+        }
       />
 
       {/* About Modal */}

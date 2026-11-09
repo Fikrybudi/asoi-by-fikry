@@ -8,6 +8,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OverlayFile, OverlayGeoData, OverlayPoint, OverlayPolyline, OverlayDataType } from '../types/overlayTypes';
+import allGarduIndex from '../data/allGarduIndex.json';
 
 export const DEFAULT_CLOUD_GIS_URL = 'https://masiv.yantekpintar.my.id/data-existing';
 const STORAGE_URL_KEY = '@cloud_gis_base_url';
@@ -15,8 +16,19 @@ const STORAGE_URL_KEY = '@cloud_gis_base_url';
 export interface CloudPenyulang {
   id: string;
   nama: string;
-  file: string;
   ulp: string;
+  file?: string;
+  jtm?: string | null;
+  gardu?: string | null;
+  proteksi?: string | null;
+  n_jtm?: number;
+  kb_jtm?: number;
+  n_gardu?: number;
+  kb_gardu?: number;
+  n_proteksi?: number;
+  kb_proteksi?: number;
+  express?: boolean;
+  bbox?: [number, number, number, number];
 }
 
 export interface CloudGardu {
@@ -25,27 +37,32 @@ export interface CloudGardu {
   penyulang: string;
   lat: number;
   lng: number;
-  kode_gis: string;
+  kode_gis?: string;
   ulp: string;
-  ada_jtr: boolean;
+  ada_jtr?: boolean;
+  distance?: number;
 }
 
 export interface CloudGisCatalog {
   penyulang: CloudPenyulang[];
-  gardu: CloudGardu[];
+  gardu?: CloudGardu[];
   ulp: string[];
-  layer: {
-    jtm: string;
-    jtr: string;
-    gardu: string;
-    proteksi: string;
+  layer?: {
+    jtm?: string;
+    jtr?: string;
+    gardu?: string;
+    proteksi?: string;
   };
   statistik?: {
     n_penyulang: number;
+    n_segmen_jtm?: number;
     n_gardu: number;
-    n_garis_jtr: number;
-    n_tiang_tr: number;
+    n_proteksi?: number;
+    n_garis_jtr?: number;
+    n_tiang_tr?: number;
   };
+  penyulang_per_ulp?: Record<string, string[]>;
+  sumber?: string;
 }
 
 let cachedCatalog: CloudGisCatalog | null = null;
@@ -124,6 +141,9 @@ export const cloudGisService = {
         throw new Error(`Gagal memuat katalog Cloud GIS (HTTP ${res.status})`);
       }
       const data: CloudGisCatalog = await res.json();
+      if (!Array.isArray(data.gardu) || data.gardu.length === 0) {
+        data.gardu = allGarduIndex as CloudGardu[];
+      }
       cachedCatalog = data;
       return data;
     })();
@@ -261,11 +281,25 @@ export const cloudGisService = {
   },
 
   /**
+   * Helper to resolve relative file path for Cloud GIS
+   */
+  resolveFileName(raw: string, fallbackFolder: string): string {
+    let s = (raw || '').trim().replace(/^\/+/, '');
+    if (s.startsWith(`${fallbackFolder}/`)) {
+      s = s.substring(fallbackFolder.length + 1);
+    }
+    if (!s.endsWith('.geojson')) {
+      s = `${s}.geojson`;
+    }
+    return s;
+  },
+
+  /**
    * Fetch JTM GeoJSON for a specific Penyulang
    */
-  async fetchJtm(penyulangFile: string, penyulangNama: string): Promise<OverlayFile> {
+  async fetchJtm(penyulangFileOrId: string, penyulangNama: string): Promise<OverlayFile> {
     const baseUrl = await this.getBaseUrl();
-    const fileName = penyulangFile.endsWith('.geojson') ? penyulangFile : `${penyulangFile}.geojson`;
+    const fileName = this.resolveFileName(penyulangFileOrId, 'jtm');
     const url = `${baseUrl}/jtm/${encodeURIComponent(fileName)}`;
 
     const res = await fetch(url);
@@ -282,43 +316,163 @@ export const cloudGisService = {
   },
 
   /**
-   * Fetch Gardu distribution points for a specific ULP
+   * Fetch Gardu distribution points for a specific Penyulang
    */
-  async fetchGardu(ulpName: string): Promise<OverlayFile> {
+  async fetchGarduPenyulang(garduFileOrId: string, penyulangNama: string): Promise<OverlayFile> {
     const baseUrl = await this.getBaseUrl();
-    const cleanUlp = ulpName.trim().toUpperCase();
-    const url = `${baseUrl}/gardu/${encodeURIComponent(cleanUlp)}.geojson`;
+    const fileName = this.resolveFileName(garduFileOrId, 'gardu');
+    const url = `${baseUrl}/gardu/${encodeURIComponent(fileName)}`;
 
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`Data Gardu ULP ${cleanUlp} tidak ditemukan di Cloud (HTTP ${res.status}).`);
+      throw new Error(`Data Gardu ${penyulangNama} tidak ditemukan di Cloud (HTTP ${res.status}).`);
     }
 
     const geoJson = await res.json();
-    const id = `cloud_gardu_${cleanUlp.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    const name = `Gardu Distribusi ULP ${cleanUlp}`;
+    const cleanId = fileName.replace('.geojson', '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const id = `cloud_gardu_${cleanId}`;
+    const name = `Gardu ${penyulangNama}`;
 
     return this.parseGeoJsonToOverlay(geoJson, id, name, 'gardu');
   },
 
   /**
+   * Fetch Proteksi / GH / Posko points for a specific Penyulang
+   */
+  async fetchProteksiPenyulang(proteksiFileOrId: string, penyulangNama: string): Promise<OverlayFile> {
+    const baseUrl = await this.getBaseUrl();
+    const fileName = this.resolveFileName(proteksiFileOrId, 'proteksi');
+    const url = `${baseUrl}/proteksi/${encodeURIComponent(fileName)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Data Proteksi ${penyulangNama} tidak ditemukan di Cloud (HTTP ${res.status}).`);
+    }
+
+    const geoJson = await res.json();
+    const cleanId = fileName.replace('.geojson', '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const id = `cloud_pro_${cleanId}`;
+    const name = `Proteksi ${penyulangNama}`;
+
+    return this.parseGeoJsonToOverlay(geoJson, id, name, 'proteksi');
+  },
+
+  /**
+   * Fetch Gardu distribution points for a specific ULP
+   */
+  async fetchGardu(ulpName: string, catalog?: CloudGisCatalog | null): Promise<OverlayFile> {
+    const baseUrl = await this.getBaseUrl();
+    const cleanUlp = ulpName.trim().toUpperCase();
+    const url = `${baseUrl}/gardu/${encodeURIComponent(cleanUlp)}.geojson`;
+
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const geoJson = await res.json();
+        const id = `cloud_gardu_${cleanUlp.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        const name = `Gardu Distribusi ULP ${cleanUlp}`;
+        return this.parseGeoJsonToOverlay(geoJson, id, name, 'gardu');
+      }
+    } catch (e) {}
+
+    // Fallback: Aggregate per-penyulang gardu in this ULP
+    if (catalog && catalog.penyulang) {
+      const targetPenyulang = catalog.penyulang.filter(
+        (p) => p.ulp.toUpperCase() === cleanUlp && p.gardu
+      );
+
+      if (targetPenyulang.length > 0) {
+        const allFeatures: any[] = [];
+        await Promise.all(
+          targetPenyulang.map(async (p) => {
+            try {
+              const fileName = this.resolveFileName(p.gardu || p.id, 'gardu');
+              const res = await fetch(`${baseUrl}/gardu/${encodeURIComponent(fileName)}`);
+              if (res.ok) {
+                const gj = await res.json();
+                if (Array.isArray(gj?.features)) {
+                  allFeatures.push(...gj.features);
+                }
+              }
+            } catch (err) {
+              console.warn(`Failed loading gardu for penyulang ${p.nama}:`, err);
+            }
+          })
+        );
+
+        if (allFeatures.length > 0) {
+          const combinedGeoJson = {
+            type: 'FeatureCollection',
+            name: `Gardu Distribusi ULP ${cleanUlp}`,
+            features: allFeatures,
+          };
+          const id = `cloud_gardu_${cleanUlp.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+          const name = `Gardu Distribusi ULP ${cleanUlp}`;
+          return this.parseGeoJsonToOverlay(combinedGeoJson, id, name, 'gardu');
+        }
+      }
+    }
+
+    throw new Error(`Data Gardu ULP ${cleanUlp} tidak ditemukan di Cloud.`);
+  },
+
+  /**
    * Fetch Proteksi / GH points for a specific ULP
    */
-  async fetchProteksi(ulpName: string): Promise<OverlayFile> {
+  async fetchProteksi(ulpName: string, catalog?: CloudGisCatalog | null): Promise<OverlayFile> {
     const baseUrl = await this.getBaseUrl();
     const cleanUlp = ulpName.trim().toUpperCase();
     const url = `${baseUrl}/proteksi/${encodeURIComponent(cleanUlp)}.geojson`;
 
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`Data Proteksi ULP ${cleanUlp} tidak ditemukan di Cloud (HTTP ${res.status}).`);
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const geoJson = await res.json();
+        const id = `cloud_pro_${cleanUlp.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        const name = `Proteksi & GH ULP ${cleanUlp}`;
+        return this.parseGeoJsonToOverlay(geoJson, id, name, 'proteksi');
+      }
+    } catch (e) {}
+
+    // Fallback: Aggregate per-penyulang proteksi in this ULP
+    if (catalog && catalog.penyulang) {
+      const targetPenyulang = catalog.penyulang.filter(
+        (p) => p.ulp.toUpperCase() === cleanUlp && p.proteksi
+      );
+
+      if (targetPenyulang.length > 0) {
+        const allFeatures: any[] = [];
+        await Promise.all(
+          targetPenyulang.map(async (p) => {
+            try {
+              const fileName = this.resolveFileName(p.proteksi || p.id, 'proteksi');
+              const res = await fetch(`${baseUrl}/proteksi/${encodeURIComponent(fileName)}`);
+              if (res.ok) {
+                const gj = await res.json();
+                if (Array.isArray(gj?.features)) {
+                  allFeatures.push(...gj.features);
+                }
+              }
+            } catch (err) {
+              console.warn(`Failed loading proteksi for penyulang ${p.nama}:`, err);
+            }
+          })
+        );
+
+        if (allFeatures.length > 0) {
+          const combinedGeoJson = {
+            type: 'FeatureCollection',
+            name: `Proteksi & GH ULP ${cleanUlp}`,
+            features: allFeatures,
+          };
+          const id = `cloud_pro_${cleanUlp.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+          const name = `Proteksi & GH ULP ${cleanUlp}`;
+          return this.parseGeoJsonToOverlay(combinedGeoJson, id, name, 'proteksi');
+        }
+      }
     }
 
-    const geoJson = await res.json();
-    const id = `cloud_pro_${cleanUlp.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    const name = `Proteksi & GH ULP ${cleanUlp}`;
-
-    return this.parseGeoJsonToOverlay(geoJson, id, name, 'proteksi');
+    throw new Error(`Data Proteksi ULP ${cleanUlp} tidak ditemukan di Cloud.`);
   },
 
   /**
