@@ -108,6 +108,7 @@ export default function App() {
 
   // Active map zoom tracked live from SurveyMap WebView
   const [currentZoom, setCurrentZoom] = useState<number>(18);
+  const currentZoomRef = useRef<number>(18);
 
   // Modal Export PDF & Kop PLN Metadata State
   const [showExportPdfModal, setShowExportPdfModal] = useState(false);
@@ -2222,7 +2223,10 @@ export default function App() {
           }
           visibleLayers={layerVisibility}
           onCenterChange={setCenterCoordinate}
-          onZoomChange={setCurrentZoom}
+          onZoomChange={(zoom) => {
+            currentZoomRef.current = zoom;
+            setCurrentZoom(prev => (Math.abs(prev - zoom) >= 0.5 ? Math.round(zoom * 2) / 2 : prev));
+          }}
           selectedTiangIds={underbuildTiangIds}
           onTiangLabelShift={handleTiangLabelShift}
           persilList={currentSurvey?.persilList || []}

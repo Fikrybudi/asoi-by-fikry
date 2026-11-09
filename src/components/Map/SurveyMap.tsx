@@ -117,6 +117,12 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   const captureResolverRef = useRef<((value: string | null) => void) | null>(null); // For Android WebView capture
   const [jalurModalVisible, setJalurModalVisible] = useState(false); // Jalur list modal
 
+  // Persistent tracking of last known center & zoom to prevent reset on HTML regeneration
+  const lastViewRef = useRef<{ center: Coordinate | null; zoom: number }>({
+    center: null,
+    zoom: 18,
+  });
+
   // Expose captureMap method via ref
   useImperativeHandle(ref, () => ({
     captureMap: async () => {
@@ -180,6 +186,11 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         [minLat - latPadding, minLng - lngPadding],
         [maxLat + latPadding, maxLng + lngPadding]
       ];
+
+      lastViewRef.current.center = {
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLng + maxLng) / 2,
+      };
 
       webviewRef.current.injectJavaScript(`
         map.fitBounds(${JSON.stringify(bounds)});
@@ -256,6 +267,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
           exportStyle.innerHTML = \`
             .legend { display: none !important; }
             .crosshair { display: none !important; }
+            .fixed-center-pin { display: none !important; }
             .leaflet-control-zoom { display: none !important; }
           \`;
           document.head.appendChild(exportStyle);
@@ -377,6 +389,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
           exportStyle.innerHTML = \`
             .legend { display: none !important; }
             .crosshair { display: none !important; }
+            .fixed-center-pin { display: none !important; }
             .leaflet-control-zoom { display: none !important; }
           \`;
           map.fitBounds(${JSON.stringify(bounds)}, { animate: false, padding: [10, 10] });
@@ -404,6 +417,10 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     },
 
     fitBoundsCoords: (bounds: [[number, number], [number, number]]) => {
+      lastViewRef.current.center = {
+        latitude: (bounds[0][0] + bounds[1][0]) / 2,
+        longitude: (bounds[0][1] + bounds[1][1]) / 2,
+      };
       if (webviewRef.current) {
         webviewRef.current.injectJavaScript(`
           map.fitBounds(${JSON.stringify(bounds)}, { padding: [35, 35], maxZoom: 18 });
@@ -413,6 +430,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     },
 
     centerOn: (coord: Coordinate, zoom = 18) => {
+      lastViewRef.current.center = coord;
+      lastViewRef.current.zoom = zoom;
       if (webviewRef.current) {
         webviewRef.current.injectJavaScript(`
           map.setView([${coord.latitude}, ${coord.longitude}], ${zoom}, { animate: true });
@@ -431,10 +450,14 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
           const location = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.High,
           });
-          setUserLocation({
+          const loc = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
-          });
+          };
+          setUserLocation(loc);
+          if (!lastViewRef.current.center) {
+            lastViewRef.current.center = loc;
+          }
         } catch (error) {
           console.log('Location error:', error);
         }
@@ -472,11 +495,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         }
       } else if (data.type === 'centerUpdate') {
         const newCenter = { latitude: data.lat, longitude: data.lng };
-        setCenterCoordinate(newCenter);
-        if (onCenterChange) onCenterChange(newCenter);
-
-      } else if (data.type === 'centerUpdate') {
-        const newCenter = { latitude: data.lat, longitude: data.lng };
+        lastViewRef.current.center = newCenter;
         setCenterCoordinate(newCenter);
         if (onCenterChange) onCenterChange(newCenter);
       } else if (data.type === 'tiangLabelShift') {
@@ -497,8 +516,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         const persil = persilList.find(p => p.id === data.id);
         if (persil && onPersilPress) onPersilPress(persil);
       } else if (data.type === 'zoomChange') {
-        setCurrentZoom(data.zoom);
-        if (onZoomChange) onZoomChange(data.zoom);
+        const newZoom = Number(data.zoom) || 18;
+        lastViewRef.current.zoom = newZoom;
+        if (onZoomChange) onZoomChange(newZoom);
       } else if (data.type === 'baseMapChange') {
         setActiveBaseMap(data.baseMap);
       } else if (data.type === 'legendToggle') {
@@ -523,7 +543,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         }
       } else if (data.type === 'mapCenterChange') {
         // Persist map view position when user pans/zooms
-        setMapViewCenter({ latitude: data.lat, longitude: data.lng });
+        const newCenter = { latitude: data.lat, longitude: data.lng };
+        lastViewRef.current.center = newCenter;
       }
     } catch (error) {
       console.log('Message parse error:', error);
@@ -563,6 +584,10 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       [maxLat + latPadding, maxLng + lngPadding]
     ];
 
+    lastViewRef.current.center = {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+    };
 
     webviewRef.current.injectJavaScript(`
       map.fitBounds(${JSON.stringify(bounds)}, { animate: true });
@@ -583,6 +608,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         longitude: location.coords.longitude,
       };
       setUserLocation(newLocation);
+      lastViewRef.current.center = newLocation;
+      lastViewRef.current.zoom = 18;
 
       webviewRef.current.injectJavaScript(`
         map.setView([${newLocation.latitude}, ${newLocation.longitude}], 18, { animate: true });
@@ -593,12 +620,16 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     }
   };
 
-  // Determine map center priority: mapViewCenter (user's viewed position) > centerCoordinate (add mode) > userLocation (GPS)
-  const mapCenter = mapViewCenter || centerCoordinate || userLocation;
+  // Determine map center priority:
+  // 1. lastViewRef.current.center (user's exact active position tracked live)
+  // 2. lastTiangCoord (if user just placed a tiang or in branch mode)
+  // 3. mapViewCenter / centerCoordinate
+  // 4. userLocation (GPS fallback)
+  const mapCenter = lastViewRef.current.center || lastTiangCoord || mapViewCenter || centerCoordinate || userLocation;
+  const mapZoomLevel = lastViewRef.current.zoom || currentZoom || 18;
 
-  // Memoize HTML to prevent reloading on every pan/zoom
-  // We exclude mapCenter and currentZoom from dependencies to avoid reloads on movement
-  // We'll handle movement updates via useEffect and injectJavaScript
+  // Memoize HTML to prevent reloading on pan/zoom
+  // When structural survey data updates (e.g. tiang added), it rebuilds with mapCenter & mapZoomLevel preserved!
   const html = React.useMemo(() => {
     return generateMapHTML(
       mapCenter,
@@ -613,7 +644,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       lastTiangCoord,
       visibleLayers,
       selectedTiangIds,
-      currentZoom,
+      mapZoomLevel,
       persilList,
       overlayLayers,
       activeBaseMap,
@@ -637,37 +668,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     isLegendCollapsed
   ]);
 
-  // Effect to handle Map Center updates without reloading HTML
-  useEffect(() => {
-    if (webviewRef.current && mapCenter) {
-      // Only update if significantly different to avoid jitter loop
-      // But for now, let's rely on Leaflet's smart setView which animates
-      // We pass animate: false to reduce jitter if it's just a small correction
-
-      // However, if the user is dragging, this effect fires.
-      // We should ideally NOT setView if the user is interacting.
-      // But we don't know if user is interacting easily here.
-
-      // A simple heuristic: if the update comes from App state, it might be from 'moveend'.
-      // If 'moveend' just happened, we are already at that center.
-      // Leaflet setView to current center is a no-op usually.
-
-      webviewRef.current.injectJavaScript(`
-        if (map) {
-          var current = map.getCenter();
-          var dist = Math.sqrt(Math.pow(current.lat - ${mapCenter.latitude}, 2) + Math.pow(current.lng - ${mapCenter.longitude}, 2));
-           // Only move if distance is significant (> 0.000001 deg is approx 10cm)
-           // OR if we are specifically in a mode that demands it
-           if (dist > 0.00001) {
-             map.setView([${mapCenter.latitude}, ${mapCenter.longitude}], ${currentZoom || 'map.getZoom()'}, { animate: false });
-           }
-        }
-        true;
-      `);
-    }
-  }, [mapCenter, currentZoom]);
-
-  // Memoize WebView source object reference to prevent reloading webview when non-HTML state updates (e.g. currentZoom)
+  // Memoize WebView source object reference to prevent reloading webview when non-HTML state updates
   const mapSource = React.useMemo(() => ({ html }), [html]);
 
   return (
@@ -678,7 +679,9 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
         source={mapSource}
         style={styles.map}
         onMessage={handleMessage}
-        scrollEnabled={true}
+        scrollEnabled={false}
+        overScrollMode="never"
+        bounces={false}
       />
 
 

@@ -774,29 +774,21 @@ const generateMapHTML = (
       }
     }
     
-    map.on('move', updateDistanceLine);
+    var distRafId = null;
+    function scheduleDistanceUpdate() {
+      if (distRafId) return;
+      distRafId = requestAnimationFrame(function() {
+        updateDistanceLine();
+        distRafId = null;
+      });
+    }
+    map.on('move', scheduleDistanceUpdate);
+    map.on('moveend zoomend', updateDistanceLine);
     updateDistanceLine();
   ` : '';
 
   const draggablePinScript = isAddMode ? `
-    // Center crosshair marker
-    var centerMarker = L.marker(map.getCenter(), {
-      icon: L.divIcon({
-        className: 'center-pin',
-        html: '<div class="pin-container"><div class="pin-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30"><path d="M12 0C7.6 0 4 3.6 4 8c0 5.4 8 16 8 16s8-10.6 8-16c0-4.4-3.6-8-8-8zm0 11c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z" fill="#E53935"/></svg></div><div class="pin-shadow"></div></div>',
-        iconSize: [40, 50],
-        iconAnchor: [20, 50]
-      }),
-      interactive: false
-    }).addTo(map);
-
     ${lastTiangScript}
-
-    // Update center marker on map move
-    map.on('move', function() {
-      centerMarker.setLatLng(map.getCenter());
-      // updateCoordinateDisplay(); // Removed to prevent jitter/excessive renders
-    });
 
     map.on('moveend', function() {
       updateCoordinateDisplay();
@@ -1228,6 +1220,33 @@ const generateMapHTML = (
     }
     
     ${isAddMode ? `
+    .fixed-center-pin {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      z-index: 2001;
+      width: 40px;
+      height: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .pin-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pin-shadow {
+      width: 14px;
+      height: 5px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 50%;
+      margin-top: 1px;
+    }
     .crosshair {
       position: fixed;
       top: 50%;
@@ -1260,7 +1279,19 @@ const generateMapHTML = (
 </head>
 <body>
   <div id="map"></div>
-  ${isAddMode ? '<div class="crosshair"></div>' : ''}
+  ${isAddMode ? `
+  <div class="fixed-center-pin">
+    <div class="pin-container">
+      <div class="pin-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30">
+          <path d="M12 0C7.6 0 4 3.6 4 8c0 5.4 8 16 8 16s8-10.6 8-16c0-4.4-3.6-8-8-8zm0 11c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z" fill="#E53935"/>
+        </svg>
+      </div>
+      <div class="pin-shadow"></div>
+    </div>
+  </div>
+  <div class="crosshair"></div>
+  ` : ''}
   <svg style="width:0;height:0;position:absolute;">
     <defs>
       <linearGradient id="rainbowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -1428,7 +1459,7 @@ const generateMapHTML = (
       } catch(e) {}
     }
 
-    map.on('zoom move zoomend moveend viewreset', updateScaleRatio);
+    map.on('zoom zoomend viewreset', updateScaleRatio);
     updateScaleRatio();
 
     // Notify React Native when user switches base layer in map
@@ -1630,6 +1661,7 @@ const generateMapHTML = (
         setDisplay('.legend', '');
         setDisplay('.leaflet-control-zoom', '');
         setDisplay('.crosshair', '');
+        setDisplay('.fixed-center-pin', '');
         setDisplay('.leaflet-control-layers', '');
         isCapturing = false;
       }
@@ -1638,6 +1670,7 @@ const generateMapHTML = (
       setDisplay('.legend', 'none');
       setDisplay('.leaflet-control-zoom', 'none');
       setDisplay('.crosshair', 'none');
+      setDisplay('.fixed-center-pin', 'none');
       setDisplay('.leaflet-control-layers', 'none');
       
       // Safety timeout to reset isCapturing if html2canvas locks up
