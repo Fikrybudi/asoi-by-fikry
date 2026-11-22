@@ -56,9 +56,13 @@ interface TiangRow {
     parent_tiang_id?: string;
     branch_direction?: string;
     branch_path?: string;
+    status?: string;
     created_at: string;
     updated_at: string;
 }
+
+// Cache whether the 'status' column exists in Supabase 'tiang' table
+let canWriteTiangStatusColumn: boolean | null = null;
 
 interface GarduRow {
     id: string;
@@ -264,10 +268,15 @@ export const supabaseSurveyService = {
     async syncTiangList(surveyId: string, tiangList: Tiang[]): Promise<void> {
         for (const tiang of tiangList) {
             try {
+                const tiangStatus: 'existing' | 'planned' = tiang.status || (tiang.nomorUrut === 0 ? 'existing' : 'planned');
+                const isExisting = tiangStatus === 'existing';
+                const rawCatatan = (tiang.catatan || '').replace(/\s*\[STATUS:(existing|planned)\]\s*/gi, '').trim();
+                const catatanWithStatus = rawCatatan ? `${rawCatatan} [STATUS:${tiangStatus}]` : `[STATUS:${tiangStatus}]`;
+
                 const tiangRow: Partial<TiangRow> = {
                     id: tiang.id,
                     survey_id: surveyId,
-                    nomor_urut: tiang.nomorUrut || 1,
+                    nomor_urut: isExisting ? 0 : (tiang.nomorUrut !== undefined && tiang.nomorUrut !== null ? tiang.nomorUrut : 1),
                     latitude: tiang.koordinat?.latitude || 0,
                     longitude: tiang.koordinat?.longitude || 0,
                     jenis_tiang: tiang.jenisTiang || 'Beton',
@@ -277,7 +286,7 @@ export const supabaseSurveyService = {
                     konstruksi: tiang.konstruksi || '',
                     perlengkapan: tiang.perlengkapan || [],
                     foto: tiang.foto || [],
-                    catatan: tiang.catatan || '',
+                    catatan: catatanWithStatus,
                     label_position: tiang.labelPosition,
                     penguat: tiang.penguat,
                     grounding: tiang.grounding,
@@ -285,12 +294,32 @@ export const supabaseSurveyService = {
                     parent_tiang_id: tiang.parentTiangId,
                     branch_direction: tiang.branchDirection,
                     branch_path: tiang.branchPath,
+                    status: tiangStatus,
                     updated_at: new Date().toISOString(),
                 };
 
-                const { error: tiangErr } = await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
-                if (tiangErr) {
-                    console.error(`Error syncing tiang ${tiang.id} (${tiang.kodeTiang || tiang.nomorUrut}):`, tiangErr);
+                if (canWriteTiangStatusColumn === false) {
+                    delete tiangRow.status;
+                    const { error: tiangErr } = await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+                    if (tiangErr) {
+                        console.error(`Error syncing tiang ${tiang.id} (${tiang.kodeTiang || tiang.nomorUrut}):`, tiangErr);
+                    }
+                } else {
+                    const { error: tiangErr } = await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+                    if (tiangErr) {
+                        if (tiangErr.code === '42703' || tiangErr.message?.includes('status')) {
+                            canWriteTiangStatusColumn = false;
+                            delete tiangRow.status;
+                            const { error: retryErr } = await supabase.from('tiang').upsert(tiangRow, { onConflict: 'id' });
+                            if (retryErr) {
+                                console.error(`Error syncing tiang ${tiang.id} on retry:`, retryErr);
+                            }
+                        } else {
+                            console.error(`Error syncing tiang ${tiang.id} (${tiang.kodeTiang || tiang.nomorUrut}):`, tiangErr);
+                        }
+                    } else {
+                        canWriteTiangStatusColumn = true;
+                    }
                 }
             } catch (err) {
                 console.error(`Error syncing tiang ${tiang.id}:`, err);
@@ -425,29 +454,47 @@ export const supabaseSurveyService = {
         }
         if (!data) return [];
 
-        return data.map((t: TiangRow) => ({
-            id: t.id,
-            nomorUrut: t.nomor_urut,
-            koordinat: { latitude: t.latitude, longitude: t.longitude },
-            jenisTiang: t.jenis_tiang as 'Beton' | 'Besi/Baja' | 'Kayu',
-            tinggiTiang: t.tinggi_tiang,
-            kekuatanTiang: t.kekuatan_tiang,
-            jenisJaringan: t.jenis_jaringan as 'SUTM' | 'SUTR' | 'SKUTM',
-            konstruksi: t.konstruksi,
-            perlengkapan: t.perlengkapan || [],
-            foto: t.foto,
-            catatan: t.catatan,
-            labelPosition: (t.label_position !== null && t.label_position !== undefined) ? t.label_position : undefined,
-            penguat: t.penguat as any,
-            grounding: t.grounding,
-            kodeTiang: t.kode_tiang,
-            parentTiangId: t.parent_tiang_id,
-            branchDirection: t.branch_direction as any,
-            branchPath: t.branch_path,
-            createdAt: new Date(t.created_at),
-            updatedAt: new Date(t.updated_at),
-            isSynced: true,
-        }));
+        return data.map((t: TiangRow) => {
+            let resolvedStatus: 'existing' | 'planned' = 'planned';
+            if (t.status === 'existing' || t.status === 'planned') {
+                resolvedStatus = t.status as 'existing' | 'planned';
+            } else if (t.catatan && /\[STATUS:existing\]/i.test(t.catatan)) {
+                resolvedStatus = 'existing';
+            } else if (t.catatan && /\[STATUS:planned\]/i.test(t.catatan)) {
+                resolvedStatus = 'planned';
+            } else if (t.nomor_urut === 0) {
+                resolvedStatus = 'existing';
+            }
+
+            const cleanCatatan = t.catatan
+                ? t.catatan.replace(/\s*\[STATUS:(existing|planned)\]\s*/gi, '').trim() || undefined
+                : undefined;
+
+            return {
+                id: t.id,
+                nomorUrut: resolvedStatus === 'existing' ? 0 : t.nomor_urut,
+                koordinat: { latitude: t.latitude, longitude: t.longitude },
+                jenisTiang: t.jenis_tiang as 'Beton' | 'Besi/Baja' | 'Kayu',
+                tinggiTiang: t.tinggi_tiang,
+                kekuatanTiang: t.kekuatan_tiang,
+                jenisJaringan: t.jenis_jaringan as 'SUTM' | 'SUTR' | 'SKUTM',
+                konstruksi: t.konstruksi,
+                perlengkapan: t.perlengkapan || [],
+                foto: t.foto,
+                catatan: cleanCatatan,
+                labelPosition: (t.label_position !== null && t.label_position !== undefined) ? t.label_position : undefined,
+                penguat: t.penguat as any,
+                grounding: t.grounding,
+                kodeTiang: t.kode_tiang,
+                parentTiangId: t.parent_tiang_id,
+                branchDirection: t.branch_direction as any,
+                branchPath: t.branch_path,
+                status: resolvedStatus,
+                createdAt: new Date(t.created_at),
+                updatedAt: new Date(t.updated_at),
+                isSynced: true,
+            };
+        });
     },
 
     async fetchGarduBySurvey(surveyId: string): Promise<Gardu[]> {

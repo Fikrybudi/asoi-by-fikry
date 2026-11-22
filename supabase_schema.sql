@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS tiang (
     parent_tiang_id TEXT,
     branch_direction TEXT,
     branch_path TEXT,
+    status TEXT DEFAULT 'planned',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -63,6 +64,7 @@ ALTER TABLE tiang ADD COLUMN IF NOT EXISTS kode_tiang TEXT;
 ALTER TABLE tiang ADD COLUMN IF NOT EXISTS parent_tiang_id TEXT;
 ALTER TABLE tiang ADD COLUMN IF NOT EXISTS branch_direction TEXT;
 ALTER TABLE tiang ADD COLUMN IF NOT EXISTS branch_path TEXT;
+ALTER TABLE tiang ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'planned';
 
 -- Index for faster survey lookups
 CREATE INDEX IF NOT EXISTS idx_tiang_survey_id ON tiang(survey_id);
