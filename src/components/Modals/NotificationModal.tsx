@@ -62,14 +62,14 @@ export function NotificationModal({
             <View style={styles.header}>
               <View style={styles.headerTitleRow}>
                 <View style={styles.iconCircle}>
-                  <Ionicons name="notifications" size={20} color="#0284C7" />
+                  <Ionicons name="notifications" size={20} color="#FFFFFF" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.title}>Aktivitas Survey Cloud</Text>
                   <Text style={styles.subtitle}>Notifikasi Realtime Khusus Superadmin</Text>
                 </View>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                  <Ionicons name="close" size={22} color="#64748B" />
+                  <Ionicons name="close" size={22} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
 
@@ -87,13 +87,13 @@ export function NotificationModal({
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {unreadCount > 0 && (
                     <TouchableOpacity style={styles.readAllBtn} onPress={onMarkAllRead}>
-                      <Ionicons name="checkmark-done" size={14} color="#0284C7" style={{ marginRight: 4 }} />
+                      <Ionicons name="checkmark-done" size={14} color="#1D4ED8" style={{ marginRight: 4 }} />
                       <Text style={styles.readAllText}>Tandai Dibaca</Text>
                     </TouchableOpacity>
                   )}
                   {notifications.length > 0 && (
                     <TouchableOpacity style={styles.clearBtn} onPress={onClearAll}>
-                      <Ionicons name="trash-outline" size={14} color="#EF4444" style={{ marginRight: 4 }} />
+                      <Ionicons name="trash-outline" size={14} color="#DC2626" style={{ marginRight: 4 }} />
                       <Text style={styles.clearText}>Bersihkan</Text>
                     </TouchableOpacity>
                   )}
@@ -189,28 +189,33 @@ export function NotificationModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(2, 6, 23, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'flex-end',
   },
   container: {
     maxHeight: '90%',
   },
   modalContent: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#CBD5E1',
     maxHeight: '100%',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 8,
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    backgroundColor: '#131D33',
+    borderBottomColor: '#0A3880',
+    backgroundColor: '#0D47A1',
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -221,21 +226,21 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: 'rgba(2, 132, 199, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: 'rgba(2, 132, 199, 0.35)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
   },
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 11.5,
-    color: '#94A3B8',
+    color: '#E0E7FF',
     marginTop: 2,
   },
   closeBtn: {
@@ -253,7 +258,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   unreadBadge: {
-    backgroundColor: '#EA580C',
+    backgroundColor: '#FF9800',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
@@ -264,7 +269,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   countText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 12,
   },
   readAllBtn: {
@@ -272,13 +277,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: 'rgba(2, 132, 199, 0.12)',
+    backgroundColor: '#EFF6FF',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(2, 132, 199, 0.3)',
+    borderColor: '#BFDBFE',
   },
   readAllText: {
-    color: '#38BDF8',
+    color: '#1D4ED8',
     fontSize: 11.5,
     fontWeight: '600',
   },
@@ -287,18 +292,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: '#FEF2F2',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: '#FECACA',
   },
   clearText: {
-    color: '#F87171',
+    color: '#DC2626',
     fontSize: 11.5,
     fontWeight: '600',
   },
   list: {
     maxHeight: 480,
+    backgroundColor: '#F8FAFC',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -309,7 +315,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: '#334155',
     marginTop: 10,
     marginBottom: 6,
   },
@@ -324,14 +330,19 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardUnread: {
-    backgroundColor: 'rgba(2, 132, 199, 0.08)',
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
   },
   cardRead: {
-    backgroundColor: '#1E293B',
-    borderColor: '#334155',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -351,24 +362,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   jenisBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   jenisBadgeText: {
-    color: '#E2E8F0',
+    color: '#334155',
     fontSize: 10,
     fontWeight: '700',
   },
   timeText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 11,
   },
   surveyName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#0F172A',
     marginBottom: 6,
   },
   metaRow: {
@@ -384,7 +395,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11.5,
-    color: '#94A3B8',
+    color: '#475569',
   },
   cardActionRow: {
     flexDirection: 'row',
@@ -393,7 +404,7 @@ const styles = StyleSheet.create({
   openBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0284C7',
+    backgroundColor: '#0D47A1',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,

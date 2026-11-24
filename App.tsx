@@ -2362,20 +2362,20 @@ export default function App() {
             style={{
               position: 'absolute',
               left: 14,
-              bottom: isPinModeActive ? 150 : 86,
+              bottom: isPinModeActive ? 120 : 68,
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#1E293B',
+              backgroundColor: '#FFFFFF',
               borderRadius: 22,
               paddingHorizontal: 4,
               paddingVertical: 4,
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.3,
-              shadowRadius: 5,
-              elevation: 6,
-              borderWidth: 1,
-              borderColor: '#334155',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 5,
+              borderWidth: 1.5,
+              borderColor: '#CBD5E1',
               zIndex: 1001,
             }}
           >
@@ -2387,7 +2387,7 @@ export default function App() {
                 borderRadius: 17,
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: undoStack.length > 0 ? '#EA580C' : 'transparent',
+                backgroundColor: undoStack.length > 0 ? '#FF9800' : 'transparent',
                 opacity: undoStack.length > 0 ? 1 : 0.4,
               }}
               onPress={handleUndo}
@@ -2401,7 +2401,7 @@ export default function App() {
                     position: 'absolute',
                     top: -3,
                     right: -3,
-                    backgroundColor: '#DC2626',
+                    backgroundColor: '#EF4444',
                     borderRadius: 7,
                     minWidth: 14,
                     height: 14,
@@ -2409,7 +2409,7 @@ export default function App() {
                     justifyContent: 'center',
                     paddingHorizontal: 2,
                     borderWidth: 1.5,
-                    borderColor: '#1E293B',
+                    borderColor: '#FFFFFF',
                   }}
                 >
                   <Text style={{ color: '#FFFFFF', fontSize: 8.5, fontWeight: 'bold' }}>
@@ -2420,7 +2420,7 @@ export default function App() {
             </TouchableOpacity>
 
             {/* Separator Divider */}
-            <View style={{ width: 1, height: 16, backgroundColor: '#334155', marginHorizontal: 3 }} />
+            <View style={{ width: 1, height: 16, backgroundColor: '#E2E8F0', marginHorizontal: 3 }} />
 
             {/* Redo Symbol Button */}
             <TouchableOpacity
@@ -2430,7 +2430,7 @@ export default function App() {
                 borderRadius: 17,
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: redoStack.length > 0 ? '#0284C7' : 'transparent',
+                backgroundColor: redoStack.length > 0 ? '#0D47A1' : 'transparent',
                 opacity: redoStack.length > 0 ? 1 : 0.4,
               }}
               onPress={handleRedo}
@@ -2444,7 +2444,7 @@ export default function App() {
                     position: 'absolute',
                     top: -3,
                     right: -3,
-                    backgroundColor: '#0284C7',
+                    backgroundColor: '#0D47A1',
                     borderRadius: 7,
                     minWidth: 14,
                     height: 14,
@@ -2452,7 +2452,7 @@ export default function App() {
                     justifyContent: 'center',
                     paddingHorizontal: 2,
                     borderWidth: 1.5,
-                    borderColor: '#1E293B',
+                    borderColor: '#FFFFFF',
                   }}
                 >
                   <Text style={{ color: '#FFFFFF', fontSize: 8.5, fontWeight: 'bold' }}>
@@ -3510,43 +3510,45 @@ const styles = StyleSheet.create({
   anchorPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#10B981',
     borderRadius: 24,
     paddingVertical: 5,
     paddingHorizontal: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
     gap: 6,
   },
   anchorTextPrefix: {
-    color: '#34D399',
+    color: '#059669',
     fontSize: 12.5,
     fontWeight: 'bold',
   },
   anchorTextValue: {
-    color: '#F8FAFC',
+    color: '#0F172A',
     fontSize: 13,
     fontWeight: 'bold',
     marginRight: 6,
   },
   anchorDetachBtn: {
-    backgroundColor: '#334155',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 12,
   },
   anchorDetachBtnText: {
-    color: '#F1F5F9',
+    color: '#475569',
     fontSize: 10.5,
     fontWeight: '600',
   },
   anchorDecoupledText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 11.5,
     fontWeight: '600',
     marginRight: 6,
