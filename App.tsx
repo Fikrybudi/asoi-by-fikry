@@ -2362,7 +2362,7 @@ export default function App() {
             style={{
               position: 'absolute',
               left: 14,
-              bottom: isPinModeActive ? 120 : 68,
+              bottom: isPinModeActive ? 135 : 80,
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: '#FFFFFF',

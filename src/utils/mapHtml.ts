@@ -1159,7 +1159,7 @@ const generateMapHTML = (
     
     .legend {
       position: fixed;
-      bottom: 80px;
+      bottom: 128px;
       left: 10px;
       background: rgba(255,255,255,0.95);
       padding: 8px 12px;
