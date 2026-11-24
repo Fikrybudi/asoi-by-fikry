@@ -2270,41 +2270,41 @@ export default function App() {
           onLoadCloudJtr={handleLoadCloudJtr}
           anchorTiangId={effectiveLastTiang?.id}
         />
-      </View>
 
-      {/* Floating Anchor Banner for Add Tiang Mode */}
-      {toolMode === 'add-tiang' && !uiHidden && (
-        <View style={styles.anchorPillContainer} pointerEvents="box-none">
-          <View style={[styles.anchorPill, !effectiveLastTiang && { borderColor: '#64748B' }]}>
-            {effectiveLastTiang ? (
-              <>
-                <Text style={styles.anchorTextPrefix}>🎯 Acuan: </Text>
-                <Text style={styles.anchorTextValue}>
-                  {effectiveLastTiang.status === 'existing'
-                    ? (effectiveLastTiang.kodeTiang ? effectiveLastTiang.kodeTiang.replace(/^T[.\-_]?/i, '') : 'Eksisting')
-                    : (effectiveLastTiang.kodeTiang ? effectiveLastTiang.kodeTiang.replace(/^T[.\-_]?/i, '') : effectiveLastTiang.nomorUrut)}
-                </Text>
-                <TouchableOpacity
-                  style={styles.anchorDetachBtn}
-                  onPress={() => setActiveAnchorTiangId(null)}
-                >
-                  <Text style={styles.anchorDetachBtnText}>🚫 Jalur Baru (Lepas)</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.anchorDecoupledText}>🌱 Mode: Jalur Baru / Lepas</Text>
-                <TouchableOpacity
-                  style={[styles.anchorDetachBtn, { backgroundColor: '#0284C7' }]}
-                  onPress={() => setActiveAnchorTiangId(undefined)}
-                >
-                  <Text style={styles.anchorDetachBtnText}>↺ Reset</Text>
-                </TouchableOpacity>
-              </>
-            )}
+        {/* Floating Anchor Banner for Add Tiang Mode (Positioned inside mapContainer below header) */}
+        {toolMode === 'add-tiang' && !uiHidden && (
+          <View style={styles.anchorPillContainer} pointerEvents="box-none">
+            <View style={[styles.anchorPill, !effectiveLastTiang && { borderColor: '#64748B' }]}>
+              {effectiveLastTiang ? (
+                <>
+                  <Text style={styles.anchorTextPrefix}>🎯 Acuan: </Text>
+                  <Text style={styles.anchorTextValue}>
+                    {effectiveLastTiang.status === 'existing'
+                      ? (effectiveLastTiang.kodeTiang ? effectiveLastTiang.kodeTiang.replace(/^T[.\-_]?/i, '') : 'Eksisting')
+                      : (effectiveLastTiang.kodeTiang ? effectiveLastTiang.kodeTiang.replace(/^T[.\-_]?/i, '') : effectiveLastTiang.nomorUrut)}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.anchorDetachBtn}
+                    onPress={() => setActiveAnchorTiangId(null)}
+                  >
+                    <Text style={styles.anchorDetachBtnText}>🚫 Jalur Baru (Lepas)</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.anchorDecoupledText}>🌱 Mode: Jalur Baru / Lepas</Text>
+                  <TouchableOpacity
+                    style={[styles.anchorDetachBtn, { backgroundColor: '#0284C7' }]}
+                    onPress={() => setActiveAnchorTiangId(undefined)}
+                  >
+                    <Text style={styles.anchorDetachBtnText}>↺ Reset</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* Floating Action Button for Pin Placement */}
       {(toolMode === 'add-tiang' || toolMode === 'add-gardu') && centerCoordinate !== null && !uiHidden && (
@@ -3501,7 +3501,7 @@ const styles = StyleSheet.create({
   // Floating Anchor Banner
   anchorPillContainer: {
     position: 'absolute',
-    top: 75,
+    top: 14,
     left: 0,
     right: 0,
     alignItems: 'center',

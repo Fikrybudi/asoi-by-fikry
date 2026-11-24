@@ -65,6 +65,44 @@ export interface CloudGisCatalog {
   sumber?: string;
 }
 
+function buildOfflineCatalog(): CloudGisCatalog {
+  const garduList = (allGarduIndex || []) as CloudGardu[];
+  const ulpSet = new Set<string>();
+  const penyulangMap = new Map<string, CloudPenyulang>();
+
+  for (const g of garduList) {
+    if (g.ulp) ulpSet.add(g.ulp.toUpperCase());
+    if (g.penyulang) {
+      const pKey = `${g.ulp || ''}_${g.penyulang}`.toUpperCase();
+      if (!penyulangMap.has(pKey)) {
+        penyulangMap.set(pKey, {
+          id: g.penyulang,
+          nama: g.penyulang,
+          ulp: (g.ulp || 'LAINNYA').toUpperCase(),
+          n_gardu: 1,
+        });
+      } else {
+        const item = penyulangMap.get(pKey)!;
+        item.n_gardu = (item.n_gardu || 0) + 1;
+      }
+    }
+  }
+
+  const ulpList = Array.from(ulpSet).sort();
+  const penyulangList = Array.from(penyulangMap.values()).sort((a, b) => a.nama.localeCompare(b.nama));
+
+  return {
+    penyulang: penyulangList,
+    gardu: garduList,
+    ulp: ulpList,
+    statistik: {
+      n_penyulang: penyulangList.length,
+      n_gardu: garduList.length,
+    },
+    sumber: 'Offline Bundled Index',
+  };
+}
+
 let cachedCatalog: CloudGisCatalog | null = null;
 let catalogFetchPromise: Promise<CloudGisCatalog> | null = null;
 let memoryBaseUrl: string = DEFAULT_CLOUD_GIS_URL;
@@ -123,7 +161,7 @@ export const cloudGisService = {
   },
 
   /**
-   * Fetch Master Catalog (catalog_index.json)
+   * Fetch Master Catalog (catalog_index.json) with offline bundled fallback
    */
   async getCatalog(forceRefresh = false): Promise<CloudGisCatalog> {
     if (!forceRefresh && cachedCatalog) {
@@ -136,16 +174,33 @@ export const cloudGisService = {
 
     const baseUrl = await this.getBaseUrl();
     catalogFetchPromise = (async () => {
-      const res = await fetch(`${baseUrl}/catalog_index.json?_t=${Date.now()}`);
-      if (!res.ok) {
-        throw new Error(`Gagal memuat katalog Cloud GIS (HTTP ${res.status})`);
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`${baseUrl}/catalog_index.json?_t=${Date.now()}`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          console.warn(`[CloudGIS] Server returned HTTP ${res.status}. Falling back to bundled index.`);
+          const fallback = buildOfflineCatalog();
+          cachedCatalog = fallback;
+          return fallback;
+        }
+
+        const data: CloudGisCatalog = await res.json();
+        if (!Array.isArray(data.gardu) || data.gardu.length === 0) {
+          data.gardu = allGarduIndex as CloudGardu[];
+        }
+        cachedCatalog = data;
+        return data;
+      } catch (err) {
+        console.warn('[CloudGIS] Server fetch failed. Falling back to bundled index:', err);
+        const fallback = buildOfflineCatalog();
+        cachedCatalog = fallback;
+        return fallback;
       }
-      const data: CloudGisCatalog = await res.json();
-      if (!Array.isArray(data.gardu) || data.gardu.length === 0) {
-        data.gardu = allGarduIndex as CloudGardu[];
-      }
-      cachedCatalog = data;
-      return data;
     })();
 
     try {
@@ -269,6 +324,9 @@ export const cloudGisService = {
 
     const res = await fetch(url);
     if (!res.ok) {
+      if (res.status === 530) {
+        throw new Error(`Server Cloud GIS offline (Cloudflare 530 Tunnel error). Pastikan server/tunnel hosting aktif.`);
+      }
       throw new Error(`Data JTR untuk gardu ${cleanId} tidak ditemukan di Cloud (HTTP ${res.status}).`);
     }
 
@@ -304,6 +362,9 @@ export const cloudGisService = {
 
     const res = await fetch(url);
     if (!res.ok) {
+      if (res.status === 530) {
+        throw new Error(`Server Cloud GIS offline (Cloudflare 530 Tunnel error). Pastikan server/tunnel hosting aktif.`);
+      }
       throw new Error(`Data JTM ${penyulangNama} tidak ditemukan di Cloud (HTTP ${res.status}).`);
     }
 
