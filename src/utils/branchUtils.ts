@@ -5,14 +5,18 @@
 import { Tiang } from '../types';
 
 /**
- * Gets the primary display code for a tiang (e.g. "T1", "T1R01", "T1R02L01").
- * Falls back to "T{nomorUrut}" if kodeTiang is not set.
+ * Gets the primary display code for a tiang (e.g. "1", "2", "1R01" or "Eks").
+ * Strips leading "T." or "T" and falls back to nomorUrut or "-".
+ * Existing poles do not display sequential numbers.
  */
 export function getTiangDisplayCode(tiang: Tiang): string {
-  if (tiang.kodeTiang && tiang.kodeTiang.trim().length > 0) {
-    return tiang.kodeTiang.trim();
+  if (tiang.status === 'existing') {
+    return tiang.kodeTiang ? tiang.kodeTiang.trim().replace(/^T[.\-_]?/i, '') : 'Eks';
   }
-  return `T${tiang.nomorUrut}`;
+  if (tiang.kodeTiang && tiang.kodeTiang.trim().length > 0) {
+    return tiang.kodeTiang.trim().replace(/^T[.\-_]?/i, '');
+  }
+  return tiang.nomorUrut ? `${tiang.nomorUrut}` : '-';
 }
 
 /**

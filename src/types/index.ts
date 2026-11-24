@@ -249,6 +249,8 @@ export interface Survey {
     jembatanKabelList?: JembatanKabel[];
     persilList?: PersilPelanggan[];
 
+    // Pekerjaan tambahan manual (non-paket)
+    customWorkItems?: CustomWorkItem[];
 
     // Rencana teknik summary
     rencanaTeknik?: RencanaTeknik;
@@ -308,4 +310,16 @@ export interface SurveyShare {
     sharedByUserId: string;
     sharedWithEmail: string;
     createdAt: Date;
+}
+
+// =============================================================================
+// CUSTOM WORK ITEM (PEKERJAAN TAMBAHAN / NON-PAKET)
+// =============================================================================
+
+export interface CustomWorkItem {
+    id: string;
+    uraian: string;
+    volume: number;
+    satuan: string;
+    keterangan?: string;
 }

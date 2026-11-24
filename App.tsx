@@ -96,6 +96,9 @@ export default function App() {
   const [activeBranchDirection, setActiveBranchDirection] = useState<'R' | 'L' | null>(null);
   const [lastBranchTiangId, setLastBranchTiangId] = useState<string | null>(null);
 
+  // Anchor Tiang Acuan state (undefined = default last tiang; null = decoupled/jalur baru; string = selected tiang id)
+  const [activeAnchorTiangId, setActiveAnchorTiangId] = useState<string | null | undefined>(undefined);
+
   // Custom Tiang Action Modal state
   const [selectedTiangForAction, setSelectedTiangForAction] = useState<Tiang | null>(null);
 
@@ -1067,10 +1070,19 @@ export default function App() {
           branchPath: branchInfo.branchPath,
         };
       } else if (!tiangDataToSave.kodeTiang) {
-        tiangDataToSave = {
-          ...tiangDataToSave,
-          kodeTiang: `T${previousTiangCount + 1}`,
-        };
+        if (tiangDataToSave.status === 'existing') {
+          tiangDataToSave = {
+            ...tiangDataToSave,
+            kodeTiang: '',
+          };
+        } else {
+          // Numbering purely sequential without 'T' prefix
+          const plannedCount = currentSurvey.tiangList.filter(t => t.status !== 'existing').length;
+          tiangDataToSave = {
+            ...tiangDataToSave,
+            kodeTiang: `${plannedCount + 1}`,
+          };
+        }
       }
 
       const newTiang = await tiangService.add(currentSurvey.id, tiangDataToSave);
@@ -1090,11 +1102,16 @@ export default function App() {
           setLastBranchTiangId(newTiang.id);
         }
 
-        // Determine connecting previous tiang (branch mode vs main line)
+        // Set the newly created tiang as the anchor for subsequent poles
+        setActiveAnchorTiangId(newTiang.id);
+
+        // Determine connecting previous tiang (branch mode vs anchor tiang vs main line)
         let prevTiang: Tiang | null = null;
         if (activeBranchParentId) {
           const prevId = lastBranchTiangId || activeBranchParentId;
           prevTiang = currentSurvey.tiangList.find(t => t.id === prevId) || null;
+        } else if (activeAnchorTiangId !== undefined) {
+          prevTiang = activeAnchorTiangId ? (currentSurvey.tiangList.find(t => t.id === activeAnchorTiangId) || null) : null;
         } else if (previousTiangCount >= 1) {
           prevTiang = currentSurvey.tiangList[previousTiangCount - 1];
         }
@@ -1361,6 +1378,17 @@ export default function App() {
   // ==========================================================================
 
   const handleTiangPress = (tiang: Tiang) => {
+    // In Add Tiang mode, tapping a tiang directly selects it as the anchor
+    if (toolMode === 'add-tiang') {
+      setActiveAnchorTiangId(tiang.id);
+      const displayCode = getTiangDisplayCode(tiang);
+      Alert.alert(
+        '🎯 Tiang Acuan Dipilih',
+        `Acuan garis bantu dan sambungan dipindah ke Tiang ${displayCode}.`
+      );
+      return;
+    }
+
     // Main Renderbuild mode, add/remove tiang from underbuild list
     if (toolMode === 'underbuild-sutr') {
       if (underbuildTiangIds.includes(tiang.id)) {
@@ -1924,9 +1952,14 @@ export default function App() {
   // RENDER HELPERS
   // ==========================================================================
 
-  // Calculate effective last tiang for distance line & pill (supports branch mode)
+  // Calculate effective last / anchor tiang for distance line & pill (supports anchor & branch mode)
   const effectiveLastTiang = (() => {
     if (!currentSurvey?.tiangList || currentSurvey.tiangList.length === 0) return undefined;
+    if (activeAnchorTiangId === null) return undefined; // Decoupled / Jalur Baru
+    if (activeAnchorTiangId) {
+      const anchorFound = currentSurvey.tiangList.find(t => t.id === activeAnchorTiangId);
+      if (anchorFound) return anchorFound;
+    }
     if (activeBranchParentId) {
       const prevId = lastBranchTiangId || activeBranchParentId;
       const found = currentSurvey.tiangList.find(t => t.id === prevId);
@@ -1934,7 +1967,9 @@ export default function App() {
       const parentFound = currentSurvey.tiangList.find(t => t.id === activeBranchParentId);
       if (parentFound) return parentFound;
     }
-    return currentSurvey.tiangList[currentSurvey.tiangList.length - 1];
+    // Default fallback: last non-existing tiang, or last tiang
+    return currentSurvey.tiangList.slice().reverse().find(t => t.status !== 'existing') ||
+      currentSurvey.tiangList[currentSurvey.tiangList.length - 1];
   })();
 
   // Calculate distance pill content for Add Tiang mode
@@ -2233,8 +2268,43 @@ export default function App() {
           onPersilPress={handlePersilPress}
           overlayLayers={overlayLayers}
           onLoadCloudJtr={handleLoadCloudJtr}
+          anchorTiangId={effectiveLastTiang?.id}
         />
       </View>
+
+      {/* Floating Anchor Banner for Add Tiang Mode */}
+      {toolMode === 'add-tiang' && !uiHidden && (
+        <View style={styles.anchorPillContainer} pointerEvents="box-none">
+          <View style={[styles.anchorPill, !effectiveLastTiang && { borderColor: '#64748B' }]}>
+            {effectiveLastTiang ? (
+              <>
+                <Text style={styles.anchorTextPrefix}>🎯 Acuan: </Text>
+                <Text style={styles.anchorTextValue}>
+                  {effectiveLastTiang.status === 'existing'
+                    ? (effectiveLastTiang.kodeTiang ? effectiveLastTiang.kodeTiang.replace(/^T[.\-_]?/i, '') : 'Eksisting')
+                    : (effectiveLastTiang.kodeTiang ? effectiveLastTiang.kodeTiang.replace(/^T[.\-_]?/i, '') : effectiveLastTiang.nomorUrut)}
+                </Text>
+                <TouchableOpacity
+                  style={styles.anchorDetachBtn}
+                  onPress={() => setActiveAnchorTiangId(null)}
+                >
+                  <Text style={styles.anchorDetachBtnText}>🚫 Jalur Baru (Lepas)</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.anchorDecoupledText}>🌱 Mode: Jalur Baru / Lepas</Text>
+                <TouchableOpacity
+                  style={[styles.anchorDetachBtn, { backgroundColor: '#0284C7' }]}
+                  onPress={() => setActiveAnchorTiangId(undefined)}
+                >
+                  <Text style={styles.anchorDetachBtnText}>↺ Reset</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* Floating Action Button for Pin Placement */}
       {(toolMode === 'add-tiang' || toolMode === 'add-gardu') && centerCoordinate !== null && !uiHidden && (
@@ -2554,6 +2624,10 @@ export default function App() {
           onNewSurvey={handleNewSurvey}
           onExportPDFGambar={handleExportPdf}
           overlayLayers={overlayLayers}
+          onUpdateSurvey={(updated) => {
+            setCurrentSurvey(updated);
+            surveyService.saveDirect(updated).catch(console.error);
+          }}
         />
       )}
 
@@ -2791,8 +2865,20 @@ export default function App() {
         visible={selectedTiangForAction !== null}
         tiang={selectedTiangForAction}
         onClose={() => setSelectedTiangForAction(null)}
+        onSelectAnchor={() => {
+          if (selectedTiangForAction) {
+            setActiveAnchorTiangId(selectedTiangForAction.id);
+            setToolMode('add-tiang');
+            const code = getTiangDisplayCode(selectedTiangForAction);
+            Alert.alert(
+              '🎯 Tiang Acuan Dipilih',
+              `Tiang ${code} sekarang menjadi acuan penarikan berikutnya.`
+            );
+          }
+        }}
         onSelectBranch={(direction) => {
           if (selectedTiangForAction) {
+            setActiveAnchorTiangId(selectedTiangForAction.id);
             setActiveBranchParentId(selectedTiangForAction.id);
             setActiveBranchDirection(direction);
             setLastBranchTiangId(selectedTiangForAction.id);
@@ -3411,6 +3497,59 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  // Floating Anchor Banner
+  anchorPillContainer: {
+    position: 'absolute',
+    top: 75,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  anchorPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    borderRadius: 24,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 6,
+    gap: 6,
+  },
+  anchorTextPrefix: {
+    color: '#34D399',
+    fontSize: 12.5,
+    fontWeight: 'bold',
+  },
+  anchorTextValue: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginRight: 6,
+  },
+  anchorDetachBtn: {
+    backgroundColor: '#334155',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  anchorDetachBtnText: {
+    color: '#F1F5F9',
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  anchorDecoupledText: {
+    color: '#94A3B8',
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginRight: 6,
   },
   // Export PDF Modal Styles
   exportModalOverlay: {

@@ -30,7 +30,8 @@ const generateMapHTML = (
   persilList: PersilPelanggan[] = [],
   overlayLayers: OverlayFile[] = [],
   activeBaseMap: string = 'streets',
-  isLegendCollapsed: boolean = false
+  isLegendCollapsed: boolean = false,
+  anchorTiangId?: string | null
 ) => {
   const isAddMode = isAddingTiang || isAddingGardu || isDrawingJalur;
   const legendDisplayState = isLegendCollapsed ? 'none' : 'block';
@@ -74,11 +75,17 @@ const generateMapHTML = (
 
     // Check if selected (override all)
     const isSelected = selectedTiangIds.includes(t.id);
+    const isAnchor = anchorTiangId === t.id;
+
     if (isSelected) {
       bgColor = '#FFEB3B'; // Yellow warning color
       borderColor = '#FF9800'; // Orange border
       labelTextColor = '#FF9800';
       labelBorderColor = '#FF9800';
+    } else if (isAnchor) {
+      borderColor = '#10B981'; // Green anchor border
+      labelTextColor = '#059669';
+      labelBorderColor = '#10B981';
     }
 
     // Extract height and strength numbers for display
@@ -87,7 +94,14 @@ const generateMapHTML = (
     // Two-line format: tinggi on top, kekuatan below
     const ukuranLabel = tinggiNum + '/<br>' + kekuatanNum;
     const konstruksiLabel = t.konstruksi || '-';
-    const nomorLabel = t.kodeTiang || (t.nomorUrut ? `T.${t.nomorUrut}` : '-');
+
+    // Clean numbering (no 'T' prefix, existing poles without sequential numbers)
+    const isExisting = t.status === 'existing';
+    const cleanKode = t.kodeTiang ? String(t.kodeTiang).trim().replace(/^T[.\-_]?/i, '') : '';
+    let nomorLabel = isExisting ? (cleanKode || 'Eks') : (cleanKode || (t.nomorUrut ? `${t.nomorUrut}` : `${tiangIndex + 1}`));
+    if (isAnchor) {
+      nomorLabel = '🎯 ' + nomorLabel;
+    }
 
     // Circle label size & font sizes for ultra-sharp legibility
     const circleSize = isSelected ? 52 : 46;
@@ -252,7 +266,7 @@ const generateMapHTML = (
     const labelLng = t.koordinat.longitude + (bestQuadrant.offsetX * labelOffsetDeg);
 
     // Create circular label HTML with 3 sections
-    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:2px solid ' + labelBorderColor + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
+    const circleLabelHtml = '<div style="width:' + circleSize + 'px;height:' + circleSize + 'px;background:white;border:' + (isAnchor ? '2.5px solid #10B981' : ('2px solid ' + labelBorderColor)) + ';border-radius:50%;display:flex;flex-direction:column;overflow:hidden;' + (isAnchor ? 'box-shadow:0 0 14px rgba(16,185,129,0.7);' : '') + (isSelected ? 'transform:scale(1.1);' : '') + '">' +
       '<div style="display:flex;flex:1;border-bottom:1px solid ' + labelBorderColor + ';">' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + (fontSize + 1) + 'px;font-weight:bold;color:' + labelTextColor + ';border-right:1px solid ' + labelBorderColor + ';">' + nomorLabel + '</div>' +
       '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:' + ukuranFontSize + 'px;font-weight:bold;color:#333;">' + ukuranLabel + '</div>' +
@@ -709,29 +723,32 @@ const generateMapHTML = (
   `).join('\n');
 
   // Draggable center pin for adding mode with distance preview
+  const previewLineColor = anchorTiangId ? '#10B981' : '#FF9800';
+  const previewBorderColor = anchorTiangId ? '#059669' : '#E65100';
+
   const lastTiangScript = (isAddingTiang && lastTiangCoord) ? `
-    // Last tiang marker for reference
+    // Last / Anchor tiang marker for reference
     var lastTiangMarker = L.circleMarker([${lastTiangCoord.latitude}, ${lastTiangCoord.longitude}], {
       radius: 8,
-      fillColor: '#FF9800',
-      color: '#E65100',
+      fillColor: '${previewLineColor}',
+      color: '${previewBorderColor}',
       weight: 3,
-      fillOpacity: 0.9
+      fillOpacity: 0.95
     }).addTo(map);
     
-    // Distance line from last tiang to center (dashed)
+    // Distance line from last / anchor tiang to center (dashed)
     var distanceLine = L.polyline([[${lastTiangCoord.latitude}, ${lastTiangCoord.longitude}], map.getCenter()], {
-      color: '#FF9800',
+      color: '${previewLineColor}',
       weight: 3,
       dashArray: '8, 8',
-      opacity: 0.8
+      opacity: 0.85
     }).addTo(map);
     
     // Distance label
     var distanceLabel = L.marker(map.getCenter(), {
       icon: L.divIcon({
         className: 'distance-preview',
-        html: '<div id="distance-preview-label" style="background:#FF9800;color:white;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">-- m</div>',
+        html: '<div id="distance-preview-label" style="background:${previewBorderColor};color:white;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">-- m</div>',
         iconSize: [80, 24],
         iconAnchor: [40, 12]
       }),

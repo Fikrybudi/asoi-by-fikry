@@ -839,7 +839,11 @@ export const exportToCSV = async (survey: Survey): Promise<boolean> => {
             const desc = `Konstruksi: ${t.konstruksi} | Tinggi: ${t.tinggiTiang} | Jaringan: ${t.jenisJaringan}`;
             // Escape quotes in description if needed
             const cleanDesc = desc.replace(/"/g, '""');
-            csvContent += `Tiang ${t.nomorUrut},Tiang,${statusLabel},${t.koordinat.latitude},${t.koordinat.longitude},"${cleanDesc}",${t.jenisTiang}\n`;
+            const cleanKode = t.kodeTiang ? t.kodeTiang.replace(/^T[.\-_]?/i, '') : '';
+            const tiangName = t.status === 'existing'
+                ? `Tiang Eksisting${cleanKode ? ` (${cleanKode})` : ''}`
+                : `Tiang ${cleanKode || t.nomorUrut}`;
+            csvContent += `${tiangName},Tiang,${statusLabel},${t.koordinat.latitude},${t.koordinat.longitude},"${cleanDesc}",${t.jenisTiang}\n`;
         });
 
         // Add Gardu Data (no status for gardu)
@@ -857,6 +861,17 @@ export const exportToCSV = async (survey: Survey): Promise<boolean> => {
                 const cleanDesc = desc.replace(/"/g, '""');
                 const startCoord = j.koordinat && j.koordinat.length > 0 ? j.koordinat[0] : { latitude: 0, longitude: 0 };
                 csvContent += `${j.namaJalur || `Jalur ${idx + 1}`},Jalur,${statusLabel},${startCoord.latitude},${startCoord.longitude},"${cleanDesc}",${j.jenisJaringan || '-'}\n`;
+            });
+        }
+
+        // Add Custom Work Items if present
+        if (survey.customWorkItems && survey.customWorkItems.length > 0) {
+            csvContent += "\n--- PEKERJAAN LAINNYA / NON-PAKET ---\n";
+            csvContent += "No,Uraian Pekerjaan,Volume,Satuan,Keterangan\n";
+            survey.customWorkItems.forEach((c, idx) => {
+                const cleanUraian = (c.uraian || '').replace(/"/g, '""');
+                const cleanKet = (c.keterangan || '').replace(/"/g, '""');
+                csvContent += `${idx + 1},"${cleanUraian}",${c.volume},"${c.satuan}","${cleanKet}"\n`;
             });
         }
 

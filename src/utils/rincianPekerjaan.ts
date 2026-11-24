@@ -402,6 +402,20 @@ export function buildRincianPekerjaan(survey: Survey, options?: RincianPekerjaan
         lines.push('');
     }
 
+    // ─────────────────────────────────────────────
+    // 7. PEKERJAAN LAINNYA / NON-PAKET (CUSTOM)
+    // ─────────────────────────────────────────────
+    if (survey.customWorkItems && survey.customWorkItems.length > 0) {
+        lines.push('PEKERJAAN LAINNYA / NON-PAKET :');
+        let nomor = 1;
+        for (const item of survey.customWorkItems) {
+            const ket = item.keterangan ? ` (${item.keterangan})` : '';
+            lines.push(`${nomor}. ${item.uraian} : ${item.volume} ${item.satuan}${ket}`);
+            nomor++;
+        }
+        lines.push('');
+    }
+
     // If only the header "RINCIAN PEKERJAAN :" and the empty line were added, return empty array
     if (lines.length <= 2) {
         return [];

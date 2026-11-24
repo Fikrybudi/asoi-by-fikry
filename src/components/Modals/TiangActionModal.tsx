@@ -12,6 +12,7 @@ interface TiangActionModalProps {
   visible: boolean;
   tiang: Tiang | null;
   onClose: () => void;
+  onSelectAnchor?: () => void;
   onSelectBranch: (direction: 'R' | 'L') => void;
   onSelectMove: () => void;
   onSelectEdit: () => void;
@@ -22,6 +23,7 @@ export const TiangActionModal: React.FC<TiangActionModalProps> = ({
   visible,
   tiang,
   onClose,
+  onSelectAnchor,
   onSelectBranch,
   onSelectMove,
   onSelectEdit,
@@ -75,6 +77,26 @@ export const TiangActionModal: React.FC<TiangActionModalProps> = ({
 
               {/* Options List */}
               <ScrollView style={styles.optionsList} bounces={false}>
+                {/* 0. JADIKAN TIANG ACUAN OPTION */}
+                {onSelectAnchor && (
+                  <TouchableOpacity
+                    style={styles.optionCard}
+                    onPress={() => {
+                      onClose();
+                      onSelectAnchor();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.optionIconContainer, { backgroundColor: '#ECFDF5' }]}>
+                      <Ionicons name="locate" size={22} color="#059669" />
+                    </View>
+                    <View style={styles.optionTextContainer}>
+                      <Text style={[styles.optionTitle, { color: '#059669' }]}>🎯 Jadikan Tiang Acuan</Text>
+                      <Text style={styles.optionSubtitle}>Tarik garis bantu jarak & sambungan dari titik ini</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
                 {/* 1. PERCABANGAN OPTION */}
                 <TouchableOpacity
                   style={[styles.optionCard, showBranchOptions && styles.optionCardActive]}

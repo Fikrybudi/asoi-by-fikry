@@ -2,11 +2,12 @@
 // PLN SURVEY APP - Survey Summary Screen
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     View,
     Text,
+    TextInput,
     Modal,
     TouchableOpacity,
     ScrollView,
@@ -14,7 +15,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Survey, JalurKabel, Tiang, Gardu, BebanTrafoItem } from '../types';
+import { Survey, JalurKabel, Tiang, Gardu, BebanTrafoItem, CustomWorkItem } from '../types';
 import { OverlayFile } from '../types/overlayTypes';
 import { exportToPDF, exportToKML, exportToCSV } from '../utils/exportUtils';
 import { generateBASurveyPdf } from '../utils/baSurveyPdf';
@@ -34,6 +35,7 @@ interface SurveySummaryScreenProps {
     mapScreenshot?: string;
     onExportPDFGambar?: () => Promise<void>; // Callback to trigger map capture and PDF generation
     overlayLayers?: OverlayFile[];
+    onUpdateSurvey?: (survey: Survey) => void;
 }
 
 // =============================================================================
@@ -49,9 +51,105 @@ export default function SurveySummaryScreen({
     mapScreenshot,
     onExportPDFGambar,
     overlayLayers,
+    onUpdateSurvey,
 }: SurveySummaryScreenProps) {
     const [isExporting, setIsExporting] = useState(false);
     const [isExportingGambar, setIsExportingGambar] = useState(false);
+
+    // Custom Work Items (Pekerjaan Tambahan Non-Paket)
+    const [customItems, setCustomItems] = useState<CustomWorkItem[]>(survey.customWorkItems || []);
+    const [showCustomModal, setShowCustomModal] = useState<boolean>(false);
+    const [editingCustomId, setEditingCustomId] = useState<string | null>(null);
+    const [uraianInput, setUraianInput] = useState<string>('');
+    const [volumeInput, setVolumeInput] = useState<string>('1');
+    const [satuanInput, setSatuanInput] = useState<string>('Jurusan');
+    const [keteranganInput, setKeteranganInput] = useState<string>('');
+
+    // Keep customItems in sync when survey prop changes
+    useEffect(() => {
+        setCustomItems(survey.customWorkItems || []);
+    }, [survey.customWorkItems]);
+
+    const handleOpenAddCustom = () => {
+        setEditingCustomId(null);
+        setUraianInput('');
+        setVolumeInput('1');
+        setSatuanInput('Jurusan');
+        setKeteranganInput('');
+        setShowCustomModal(true);
+    };
+
+    const handleOpenEditCustom = (item: CustomWorkItem) => {
+        setEditingCustomId(item.id);
+        setUraianInput(item.uraian);
+        setVolumeInput(String(item.volume));
+        setSatuanInput(item.satuan);
+        setKeteranganInput(item.keterangan || '');
+        setShowCustomModal(true);
+    };
+
+    const handleSaveCustom = () => {
+        if (!uraianInput.trim()) {
+            Alert.alert('Perhatian', 'Uraian pekerjaan tidak boleh kosong');
+            return;
+        }
+        const vol = parseFloat(volumeInput) || 1;
+        const sat = satuanInput.trim() || 'Set';
+
+        let updatedList: CustomWorkItem[];
+        if (editingCustomId) {
+            updatedList = customItems.map(item =>
+                item.id === editingCustomId
+                    ? { ...item, uraian: uraianInput.trim(), volume: vol, satuan: sat, keterangan: keteranganInput.trim() || undefined }
+                    : item
+            );
+        } else {
+            const newItem: CustomWorkItem = {
+                id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                uraian: uraianInput.trim(),
+                volume: vol,
+                satuan: sat,
+                keterangan: keteranganInput.trim() || undefined,
+            };
+            updatedList = [...customItems, newItem];
+        }
+
+        setCustomItems(updatedList);
+        setShowCustomModal(false);
+
+        const updatedSurvey: Survey = {
+            ...survey,
+            customWorkItems: updatedList,
+            updatedAt: new Date(),
+            isSynced: false,
+        };
+        onUpdateSurvey?.(updatedSurvey);
+    };
+
+    const handleDeleteCustom = (id: string) => {
+        Alert.alert(
+            'Hapus Pekerjaan',
+            'Yakin ingin menghapus rincian pekerjaan ini?',
+            [
+                { text: 'Batal', style: 'cancel' },
+                {
+                    text: 'Hapus',
+                    style: 'destructive',
+                    onPress: () => {
+                        const updatedList = customItems.filter(item => item.id !== id);
+                        setCustomItems(updatedList);
+                        const updatedSurvey: Survey = {
+                            ...survey,
+                            customWorkItems: updatedList,
+                            updatedAt: new Date(),
+                            isSynced: false,
+                        };
+                        onUpdateSurvey?.(updatedSurvey);
+                    }
+                }
+            ]
+        );
+    };
 
     // Calculate statistics
     // Count jointing points (special markers with konstruksi starting with 'JOINTING-')
@@ -640,6 +738,74 @@ export default function SurveySummaryScreen({
                         </View>
                     )}
 
+                    {/* Rekap Pekerjaan Lainnya / Non-Paket (Custom Work Items) */}
+                    <View style={styles.section}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                <Ionicons name="construct" size={18} color="#2563EB" style={{ marginRight: 8 }} />
+                                <Text style={[styles.sectionTitle, { marginBottom: 0, color: '#1E293B' }]}>
+                                    Pekerjaan Non-Paket ({customItems.length})
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.customAddBtn}
+                                onPress={handleOpenAddCustom}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="add-circle" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                                <Text style={styles.customAddBtnText}>+ Tambah</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {customItems.length === 0 ? (
+                            <View style={styles.customEmptyBox}>
+                                <Text style={styles.customEmptyText}>
+                                    Belum ada rincian pekerjaan non-paket / tambahan.
+                                </Text>
+                                <Text style={styles.customEmptySubtext}>
+                                    Contoh: Pasang kabel naik NYY 1 jurusan, bongkar tiang, dll.
+                                </Text>
+                            </View>
+                        ) : (
+                            customItems.map((item, idx) => (
+                                <View key={item.id || idx} style={styles.customItemCard}>
+                                    <View style={{ flex: 1, paddingRight: 8 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <Text style={styles.customItemIndex}>{idx + 1}.</Text>
+                                            <Text style={styles.customItemUraian}>{item.uraian}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                            <View style={styles.customVolumeBadge}>
+                                                <Text style={styles.customVolumeBadgeText}>
+                                                    {item.volume} {item.satuan}
+                                                </Text>
+                                            </View>
+                                            {item.keterangan ? (
+                                                <Text style={styles.customItemKeterangan} numberOfLines={1}>
+                                                    • {item.keterangan}
+                                                </Text>
+                                            ) : null}
+                                        </View>
+                                    </View>
+                                    <View style={styles.customItemActions}>
+                                        <TouchableOpacity
+                                            style={styles.customEditBtn}
+                                            onPress={() => handleOpenEditCustom(item)}
+                                        >
+                                            <Ionicons name="pencil" size={15} color="#2563EB" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.customDeleteBtn}
+                                            onPress={() => handleDeleteCustom(item.id)}
+                                        >
+                                            <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))
+                        )}
+                    </View>
+
                     {/* Export Section */}
                     {(totalTiang > 0 || totalGardu > 0 || totalJalur > 0) && (
                         <View style={styles.section}>
@@ -750,6 +916,107 @@ export default function SurveySummaryScreen({
                     </TouchableOpacity>
                 </View>
             </View >
+
+            {/* Modal Tambah / Edit Pekerjaan Non-Paket */}
+            <Modal
+                visible={showCustomModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowCustomModal(false)}
+            >
+                <View style={styles.customModalOverlay}>
+                    <View style={styles.customModalContainer}>
+                        <View style={styles.customModalHeader}>
+                            <Text style={styles.customModalTitle}>
+                                {editingCustomId ? '✏️ Edit Pekerjaan' : '➕ Tambah Pekerjaan Non-Paket'}
+                            </Text>
+                            <TouchableOpacity onPress={() => setShowCustomModal(false)}>
+                                <Ionicons name="close" size={22} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                            <Text style={styles.inputLabel}>Uraian Pekerjaan *</Text>
+                            <TextInput
+                                style={styles.textInputBox}
+                                placeholder="Contoh: Pasang kabel naik NYY 4x95mm²"
+                                placeholderTextColor="#94A3B8"
+                                value={uraianInput}
+                                onChangeText={setUraianInput}
+                            />
+
+                            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.inputLabel}>Volume *</Text>
+                                    <TextInput
+                                        style={styles.textInputBox}
+                                        placeholder="1"
+                                        placeholderTextColor="#94A3B8"
+                                        keyboardType="numeric"
+                                        value={volumeInput}
+                                        onChangeText={setVolumeInput}
+                                    />
+                                </View>
+                                <View style={{ flex: 1.2 }}>
+                                    <Text style={styles.inputLabel}>Satuan *</Text>
+                                    <TextInput
+                                        style={styles.textInputBox}
+                                        placeholder="Jurusan / Set / Meter"
+                                        placeholderTextColor="#94A3B8"
+                                        value={satuanInput}
+                                        onChangeText={setSatuanInput}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Quick Preset Chips for Satuan */}
+                            <View style={styles.chipRow}>
+                                {['Jurusan', 'Meter', 'KMS', 'Set', 'Batang', 'Pcs', 'Titik'].map(preset => (
+                                    <TouchableOpacity
+                                        key={preset}
+                                        style={[
+                                            styles.presetChip,
+                                            satuanInput.toLowerCase() === preset.toLowerCase() && styles.presetChipActive
+                                        ]}
+                                        onPress={() => setSatuanInput(preset)}
+                                    >
+                                        <Text style={[
+                                            styles.presetChipText,
+                                            satuanInput.toLowerCase() === preset.toLowerCase() && styles.presetChipTextActive
+                                        ]}>{preset}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Keterangan (Opsional)</Text>
+                            <TextInput
+                                style={[styles.textInputBox, { height: 60, textAlignVertical: 'top' }]}
+                                placeholder="Misal: Sambung ke panel eksisting, dll."
+                                placeholderTextColor="#94A3B8"
+                                multiline
+                                numberOfLines={2}
+                                value={keteranganInput}
+                                onChangeText={setKeteranganInput}
+                            />
+                        </ScrollView>
+
+                        <View style={styles.customModalFooter}>
+                            <TouchableOpacity
+                                style={styles.btnCancel}
+                                onPress={() => setShowCustomModal(false)}
+                            >
+                                <Text style={styles.btnCancelText}>Batal</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.btnSave}
+                                onPress={handleSaveCustom}
+                            >
+                                <Text style={styles.btnSaveText}>Simpan</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </Modal >
     );
 }
@@ -1017,5 +1284,215 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#333',
+    },
+    // Custom Work Items Styles
+    customAddBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#2563EB',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 6,
+    },
+    customAddBtnText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    customEmptyBox: {
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 8,
+        borderStyle: 'dashed',
+        padding: 14,
+        alignItems: 'center',
+    },
+    customEmptyText: {
+        fontSize: 12.5,
+        fontWeight: '600',
+        color: '#64748B',
+        textAlign: 'center',
+    },
+    customEmptySubtext: {
+        fontSize: 11,
+        color: '#94A3B8',
+        textAlign: 'center',
+        marginTop: 4,
+    },
+    customItemCard: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    customItemIndex: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#2563EB',
+    },
+    customItemUraian: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1E293B',
+        flex: 1,
+    },
+    customVolumeBadge: {
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 12,
+        paddingVertical: 2,
+        paddingHorizontal: 8,
+    },
+    customVolumeBadgeText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#1D4ED8',
+    },
+    customItemKeterangan: {
+        fontSize: 11.5,
+        color: '#64748B',
+        fontStyle: 'italic',
+        flex: 1,
+    },
+    customItemActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    customEditBtn: {
+        backgroundColor: '#EFF6FF',
+        padding: 6,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+    },
+    customDeleteBtn: {
+        backgroundColor: '#FEF2F2',
+        padding: 6,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+    },
+    // Custom Modal Styles
+    customModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    customModalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 18,
+        width: '100%',
+        maxWidth: 420,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    customModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+        marginBottom: 10,
+    },
+    customModalTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#0F172A',
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#475569',
+        marginBottom: 6,
+    },
+    textInputBox: {
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        fontSize: 13.5,
+        color: '#0F172A',
+        backgroundColor: '#F8FAFC',
+    },
+    chipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 8,
+    },
+    presetChip: {
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 14,
+        paddingVertical: 3,
+        paddingHorizontal: 9,
+    },
+    presetChipActive: {
+        backgroundColor: '#EFF6FF',
+        borderColor: '#3B82F6',
+    },
+    presetChipText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    presetChipTextActive: {
+        color: '#1D4ED8',
+        fontWeight: 'bold',
+    },
+    customModalFooter: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 10,
+        marginTop: 16,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    btnCancel: {
+        paddingVertical: 9,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        backgroundColor: '#FFFFFF',
+    },
+    btnCancelText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    btnSave: {
+        paddingVertical: 9,
+        paddingHorizontal: 18,
+        borderRadius: 8,
+        backgroundColor: '#2563EB',
+    },
+    btnSaveText: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
     },
 });

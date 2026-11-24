@@ -47,6 +47,7 @@ interface SurveyMapProps {
   overlayLayers?: OverlayFile[];
   onZoomChange?: (zoom: number) => void;
   onLoadCloudJtr?: (garduId: string, garduNama?: string) => void;
+  anchorTiangId?: string | null;
 }
 
 // =============================================================================
@@ -100,6 +101,7 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
   overlayLayers = [],
   onZoomChange,
   onLoadCloudJtr,
+  anchorTiangId,
 }, ref) => {
   const webviewRef = useRef<WebView>(null);
   const containerRef = useRef<View>(null);
@@ -648,7 +650,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
       persilList,
       overlayLayers,
       activeBaseMap,
-      isLegendCollapsed
+      isLegendCollapsed,
+      anchorTiangId
     );
   }, [
     // Structural changes that REQUIRE HTML regeneration:
@@ -665,7 +668,8 @@ const SurveyMap = forwardRef<SurveyMapRef, SurveyMapProps>(({
     persilList,
     overlayLayers,
     activeBaseMap,
-    isLegendCollapsed
+    isLegendCollapsed,
+    anchorTiangId
   ]);
 
   // Memoize WebView source object reference to prevent reloading webview when non-HTML state updates
